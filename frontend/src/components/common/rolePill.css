@@ -1,0 +1,12 @@
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 700;
+  text-transform: capitalize;
+  border: 1px solid #93c5fd;
+}

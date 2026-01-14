@@ -1,0 +1,586 @@
+.landing-page {
+  height: 100vh;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.landing-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Left Side - Waste Segregation Guide */
+.landing-left {
+  background: #f8fafc;
+  padding: 20px 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+.brand-logo-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+  position: absolute;
+  top: 20px;
+  left: 24px;
+}
+
+.brand-icon-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.brand-text-small {
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.guide-header {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  flex-shrink: 0;
+  text-align: center;
+  width: 100%;
+  margin-top: 60px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.guide-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+
+.guide-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.guide-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 16px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.guide-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.guide-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.guide-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.guide-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.guide-category {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 2px solid #e2e8f0;
+  border-left: 4px solid;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.guide-category:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.guide-category--yellow {
+  border-left-color: #fbbf24;
+}
+
+.guide-category--red {
+  border-left-color: #ef4444;
+}
+
+.guide-category--white {
+  border-left-color: #94a3b8;
+}
+
+.guide-category--blue {
+  border-left-color: #3b82f6;
+}
+
+.guide-category__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.guide-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.guide-category__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.guide-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.guide-list li {
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.guide-list li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  color: #64748b;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.guide-note {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #475569;
+  border-left: 2px solid #fbbf24;
+  flex-shrink: 0;
+}
+
+.guide-note strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Right Side - Login/Signup */
+.landing-right {
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 48px;
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.landing-right__content {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  padding: 32px 28px;
+  border: 2px solid #9ca3af;
+  border-radius: 16px;
+  background: #4b5563;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  min-height: 450px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.landing-right__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.landing-right__subtitle {
+  font-size: 15px;
+  color: #e5e7eb;
+  margin: 0 0 24px;
+  line-height: 1.4;
+}
+
+.landing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn {
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: #ffffff;
+  border: 2px solid #9ca3af;
+}
+
+.btn-secondary:hover {
+  background: #9ca3af;
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+}
+
+.landing-right__footer {
+  margin: 0;
+  font-size: 14px;
+  color: #d1d5db;
+}
+
+.landing-right__footer a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.landing-right__footer a:hover {
+  text-decoration: underline;
+}
+
+/* Dashboard/User Info Styles */
+.user-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.user-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.user-role-badge {
+  margin-top: 8px;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.btn-logout {
+  background: #6b7280;
+  color: #ffffff;
+  border: 2px solid #9ca3af;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-logout:hover {
+  background: #9ca3af;
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+}
+
+.user-info {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #6b7280;
+  text-align: center;
+}
+
+.user-email {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.user-roles {
+  margin: 0;
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+.device-suggestion {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.device-suggestion a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.device-suggestion a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 968px) {
+  .landing-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .landing-left {
+    height: auto;
+    min-height: 50vh;
+    padding: 20px 24px;
+  }
+
+  .guide-header {
+    margin-top: 60px;
+    padding: 12px;
+  }
+
+  .guide-content {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .landing-right {
+    height: auto;
+    min-height: 50vh;
+    padding: 40px 32px;
+  }
+
+  .landing-right__content {
+    padding: 32px 24px;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-left {
+    padding: 16px 12px;
+  }
+
+  .brand-logo-top {
+    top: 16px;
+    left: 12px;
+    margin-bottom: 0;
+  }
+
+  .brand-icon-small {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .brand-text-small {
+    font-size: 14px;
+  }
+
+  .guide-header {
+    margin-top: 50px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .guide-title {
+    font-size: 18px;
+  }
+
+  .guide-subtitle {
+    font-size: 11px;
+  }
+
+  .guide-content {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .guide-category {
+    padding: 10px;
+    border-width: 1px;
+  }
+
+  .guide-category__title {
+    font-size: 13px;
+  }
+
+  .guide-list li {
+    font-size: 10px;
+    padding: 3px 0;
+  }
+
+  .landing-right {
+    padding: 24px 16px;
+  }
+
+  .landing-right__content {
+    padding: 24px 16px;
+    border-radius: 12px;
+  }
+
+  .landing-right__title {
+    font-size: 22px;
+  }
+
+  .landing-right__subtitle {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-left {
+    padding: 12px 8px;
+  }
+
+  .brand-logo-top {
+    top: 12px;
+    left: 8px;
+  }
+
+  .brand-icon-small {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .brand-text-small {
+    font-size: 12px;
+  }
+
+  .guide-header {
+    margin-top: 45px;
+    padding: 10px;
+  }
+
+  .guide-title {
+    font-size: 16px;
+  }
+
+  .guide-subtitle {
+    font-size: 10px;
+  }
+
+  .guide-content {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .guide-category {
+    padding: 8px;
+  }
+
+  .landing-right {
+    padding: 20px 12px;
+  }
+
+  .landing-right__content {
+    padding: 20px 12px;
+  }
+
+  .landing-right__title {
+    font-size: 20px;
+  }
+
+  .landing-right__subtitle {
+    font-size: 13px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
