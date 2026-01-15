@@ -112,35 +112,101 @@
   background: #ffffff;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   margin-bottom: 16px;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  /* Better scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.company-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.company-table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.company-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.company-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .company-table {
   width: 100%;
+  min-width: 2000px;
   border-collapse: collapse;
+  table-layout: auto;
 }
 
 .company-table thead {
   background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .company-table th {
-  padding: 10px 14px;
+  padding: 12px 10px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+  vertical-align: middle;
+  min-width: fit-content;
 }
 
+/* Specific column widths */
+.company-table th:nth-child(1) { min-width: 110px; } /* Company Code */
+.company-table th:nth-child(2) { min-width: 150px; } /* Company Name */
+.company-table th:nth-child(3) { min-width: 130px; } /* GSTIN */
+.company-table th:nth-child(4) { min-width: 120px; } /* State */
+.company-table th:nth-child(5) { min-width: 110px; } /* PCB Auth Num */
+.company-table th:nth-child(6) { min-width: 120px; } /* CTO Water Num */
+.company-table th:nth-child(7) { min-width: 130px; } /* CTO Water Date */
+.company-table th:nth-child(8) { min-width: 150px; } /* CTO Water Valid Upto */
+.company-table th:nth-child(9) { min-width: 110px; } /* CTO Air Num */
+.company-table th:nth-child(10) { min-width: 130px; } /* CTO Air Date */
+.company-table th:nth-child(11) { min-width: 150px; } /* CTO Air Valid Upto */
+.company-table th:nth-child(12) { min-width: 120px; } /* CTE Water Num */
+.company-table th:nth-child(13) { min-width: 130px; } /* CTE Water Date */
+.company-table th:nth-child(14) { min-width: 150px; } /* CTE Water Valid Upto */
+.company-table th:nth-child(15) { min-width: 110px; } /* CTE Air Num */
+.company-table th:nth-child(16) { min-width: 130px; } /* CTE Air Date */
+.company-table th:nth-child(17) { min-width: 150px; } /* CTE Air Valid Upto */
+.company-table th:nth-child(18) { min-width: 140px; } /* Hazardous Waste Num */
+.company-table th:nth-child(19) { min-width: 110px; } /* PCB Zone ID */
+.company-table th:nth-child(20) { min-width: 130px; } /* GST Valid From */
+.company-table th:nth-child(21) { min-width: 100px; } /* GST Rate */
+.company-table th:nth-child(22) { min-width: 90px; } /* Status */
+.company-table th:nth-child(23) { min-width: 110px; } /* Actions */
+
 .company-table td {
-  padding: 12px 14px;
-  font-size: 13px;
+  padding: 12px 10px;
+  font-size: 12px;
   color: #1e293b;
   border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Allow wrapping only for company name */
+.company-table td:nth-child(2) {
+  white-space: normal;
+  max-width: 150px;
 }
 
 .company-table tbody tr:hover {
@@ -217,37 +283,46 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 0;
 }
 
 .modal-content {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   width: 100%;
   max-width: 900px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-height: 95vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  margin: 0;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 14px 18px;
   border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .modal-title {
   font-size: 18px;
   font-weight: 700;
-  color: #1e293b;
+  color: #0f172a;
   margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .modal-close-btn {
@@ -255,46 +330,88 @@
   border: none;
   color: #64748b;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 32px;
+  height: 32px;
 }
 
 .modal-close-btn:hover {
   background: #f1f5f9;
-  color: #1e293b;
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.modal-close-btn:active {
+  transform: rotate(90deg) scale(0.95);
 }
 
 /* Form */
 .company-form {
-  padding: 24px;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  margin: 0;
 }
 
 .form-section {
-  margin-bottom: 32px;
+  padding: 14px 18px;
+  margin: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.form-section:first-child {
+  padding-top: 18px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  padding-bottom: 18px;
 }
 
 .form-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 14px 0;
+  padding: 0;
+  border: none;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+}
+
+.form-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, #e2e8f0 0%, transparent 100%);
+  margin-left: 12px;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 14px;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 .form-group--full {
@@ -302,22 +419,65 @@
 }
 
 .form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 7px 0;
+  padding: 0;
+  line-height: 1.4;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 100%;
 }
 
 .form-group input,
 .form-group select,
 .form-group textarea {
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 13px;
-  color: #1e293b;
+  font-size: 14px;
+  color: #0f172a;
   font-family: inherit;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  background-color: #ffffff;
+  line-height: 1.4;
+  margin: 0;
+  vertical-align: top;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.form-group textarea {
+  height: auto;
+  min-height: 85px;
+  resize: vertical;
+  line-height: 1.5;
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+  cursor: pointer;
+  background-color: #ffffff;
+}
+
+.form-group select option {
+  padding: 10px;
+  color: #0f172a;
 }
 
 .form-group input:focus,
@@ -325,49 +485,79 @@
 .form-group textarea:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+  background-color: #ffffff;
 }
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
+.form-group input:hover:not(:focus),
+.form-group select:hover:not(:focus),
+.form-group textarea:hover:not(:focus) {
+  border-color: #cbd5e1;
+}
+
+.form-group select:hover {
+  border-color: #cbd5e1;
+  background-color: #fafbfc;
+}
+
+.form-group select:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding-top: 24px;
+  gap: 10px;
+  padding: 14px 18px;
   border-top: 1px solid #e2e8f0;
-  margin-top: 24px;
+  margin: 0;
+  background: #fafbfc;
+  flex-shrink: 0;
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.3px;
+  min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn--primary {
-  background: #2d3748;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: #ffffff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
 
 .btn--primary:hover {
-  background: #1a202c;
+  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
 }
 
 .btn--secondary {
-  background: #f1f5f9;
+  background: #ffffff;
   color: #475569;
+  border: 1.5px solid #e2e8f0;
 }
 
 .btn--secondary:hover {
-  background: #e2e8f0;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
 /* Responsive */

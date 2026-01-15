@@ -1,0 +1,145 @@
+/* Data Table Styles - Reusable for all CRUD tables */
+.data-table-container {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  overflow-y: visible;
+  margin-bottom: 16px;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  /* Better scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.data-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.data-table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.data-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.data-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.data-table thead {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.data-table th {
+  padding: 12px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+  vertical-align: middle;
+  min-width: fit-content;
+}
+
+.data-table td {
+  padding: 12px 10px;
+  font-size: 12px;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-table td.allow-wrap {
+  white-space: normal;
+}
+
+.data-table td.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.data-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Action Buttons */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+}
+
+.action-btn--edit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.action-btn--edit:hover {
+  background: #bfdbfe;
+}
+
+.action-btn--delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.action-btn--delete:hover {
+  background: #fecaca;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge--active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge--inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.col-actions {
+  min-width: 110px !important;
+  text-align: center;
+}

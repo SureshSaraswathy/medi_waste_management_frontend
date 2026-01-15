@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './categoryMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
 
 interface Category {
   id: string;
+  companyName: string;
   categoryCode: string;
   categoryName: string;
   status: 'Active' | 'Inactive';
@@ -15,6 +18,13 @@ interface Category {
   modifiedOn: string;
 }
 
+interface Company {
+  id: string;
+  companyCode: string;
+  companyName: string;
+  status: 'Active' | 'Inactive';
+}
+
 const CategoryMasterPage = () => {
   const { logout } = useAuth();
   const location = useLocation();
@@ -22,9 +32,18 @@ const CategoryMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // Companies from Company Master - Load active companies only
+  const [companies] = useState<Company[]>([
+    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
+    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
+    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
+  ]);
+
   const [categories, setCategories] = useState<Category[]>([
     {
       id: '1',
+      companyName: 'Sample Company',
       categoryCode: 'CAT001',
       categoryName: 'Yellow Category',
       status: 'Active',
@@ -35,6 +54,7 @@ const CategoryMasterPage = () => {
     },
     {
       id: '2',
+      companyName: 'ABC Industries',
       categoryCode: 'CAT002',
       categoryName: 'Red Category',
       status: 'Active',
@@ -45,6 +65,7 @@ const CategoryMasterPage = () => {
     },
     {
       id: '3',
+      companyName: 'XYZ Corporation',
       categoryCode: 'CAT003',
       categoryName: 'White Category',
       status: 'Active',
@@ -55,6 +76,7 @@ const CategoryMasterPage = () => {
     },
     {
       id: '4',
+      companyName: 'Sample Company',
       categoryCode: 'CAT004',
       categoryName: 'Blue Category',
       status: 'Active',
@@ -153,7 +175,8 @@ const CategoryMasterPage = () => {
 
   const filteredCategories = categories.filter(category =>
     category.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    category.categoryCode.toLowerCase().includes(searchQuery.toLowerCase())
+    category.categoryCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    category.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAdd = () => {
@@ -196,6 +219,23 @@ const CategoryMasterPage = () => {
     setShowModal(false);
     setEditingCategory(null);
   };
+
+  // Define columns for the table
+  const columns: Column<Category>[] = [
+    { key: 'companyName', label: 'Company Name', minWidth: 180, allowWrap: true },
+    { key: 'categoryCode', label: 'Category Code', minWidth: 140 },
+    { key: 'categoryName', label: 'Category Name', minWidth: 200, allowWrap: true },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 100,
+      render: (category) => (
+        <span className={`status-badge status-badge--${category.status.toLowerCase()}`}>
+          {category.status}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="dashboard-page">
@@ -255,100 +295,28 @@ const CategoryMasterPage = () => {
           </div>
         </header>
 
-        {/* Category Master Content */}
-        <div className="category-master-page">
-          <div className="category-master-header">
-            <h1 className="category-master-title">Category Master</h1>
-          </div>
-
+        {/* Category Master Content using reusable template */}
+        <MasterPageLayout
+          title="Category Master"
+          breadcrumb="/ Masters / Category Master"
+          data={categories}
+          filteredData={filteredCategories}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(category) => category.id}
+          addButtonLabel="Add Category"
+        >
           {/* Tabs */}
-          <div className="category-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              Category List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="category-master-actions">
-            <div className="category-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="category-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-category-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Category
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="category-table-container">
-            <table className="category-table">
-              <thead>
-                <tr>
-                  <th>Category Code</th>
-                  <th>Category Name</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCategories.map((category) => (
-                  <tr key={category.id}>
-                    <td>{category.categoryCode}</td>
-                    <td>{category.categoryName}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${category.status.toLowerCase()}`}>
-                        {category.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(category)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(category.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="category-pagination-info">
-            Showing {filteredCategories.length} of {categories.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'Category List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}
@@ -369,13 +337,15 @@ const CategoryMasterPage = () => {
 // Category Form Modal Component
 interface CategoryFormModalProps {
   category: Category | null;
+  companies: Company[];
   onClose: () => void;
   onSave: (data: Partial<Category>) => void;
 }
 
-const CategoryFormModal = ({ category, onClose, onSave }: CategoryFormModalProps) => {
+const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Category>>(
     category || {
+      companyName: '',
       categoryCode: '',
       categoryName: '',
       status: 'Active',
@@ -404,12 +374,28 @@ const CategoryFormModal = ({ category, onClose, onSave }: CategoryFormModalProps
           <div className="form-section">
             <div className="form-grid">
               <div className="form-group">
+                <label>Company Name *</label>
+                <select
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.companyName}>
+                      {company.companyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Category Code *</label>
                 <input
                   type="text"
                   value={formData.categoryCode || ''}
                   onChange={(e) => setFormData({ ...formData, categoryCode: e.target.value })}
                   required
+                  placeholder="Enter Category Code"
                 />
               </div>
               <div className="form-group">
@@ -419,6 +405,7 @@ const CategoryFormModal = ({ category, onClose, onSave }: CategoryFormModalProps
                   value={formData.categoryName || ''}
                   onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
                   required
+                  placeholder="Enter Category Name"
                 />
               </div>
               <div className="form-group">

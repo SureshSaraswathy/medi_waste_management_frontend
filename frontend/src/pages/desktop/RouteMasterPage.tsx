@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './routeMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
 
 interface Route {
   id: string;
+  companyName: string;
   routeCode: string;
   routeName: string;
   frequencyID: string;
@@ -16,6 +19,13 @@ interface Route {
   modifiedOn: string;
 }
 
+interface Company {
+  id: string;
+  companyCode: string;
+  companyName: string;
+  status: 'Active' | 'Inactive';
+}
+
 const RouteMasterPage = () => {
   const { logout } = useAuth();
   const location = useLocation();
@@ -23,9 +33,18 @@ const RouteMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
+
+  // Companies from Company Master - Load active companies only
+  const [companies] = useState<Company[]>([
+    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
+    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
+    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
+  ]);
+
   const [routes, setRoutes] = useState<Route[]>([
     {
       id: '1',
+      companyName: 'Sample Company',
       routeCode: 'RT001',
       routeName: 'North Zone Route',
       frequencyID: 'FREQ001',
@@ -37,6 +56,7 @@ const RouteMasterPage = () => {
     },
     {
       id: '2',
+      companyName: 'ABC Industries',
       routeCode: 'RT002',
       routeName: 'South Zone Route',
       frequencyID: 'FREQ002',
@@ -137,7 +157,8 @@ const RouteMasterPage = () => {
   const filteredRoutes = routes.filter(route =>
     route.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     route.routeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    route.frequencyID.toLowerCase().includes(searchQuery.toLowerCase())
+    route.frequencyID.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    route.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAdd = () => {
@@ -180,6 +201,24 @@ const RouteMasterPage = () => {
     setShowModal(false);
     setEditingRoute(null);
   };
+
+  // Define columns for the table
+  const columns: Column<Route>[] = [
+    { key: 'companyName', label: 'Company Name', minWidth: 180, allowWrap: true },
+    { key: 'routeCode', label: 'Route Code', minWidth: 120 },
+    { key: 'routeName', label: 'Route Name', minWidth: 200, allowWrap: true },
+    { key: 'frequencyID', label: 'Frequency ID', minWidth: 130 },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 100,
+      render: (route) => (
+        <span className={`status-badge status-badge--${route.status.toLowerCase()}`}>
+          {route.status}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="dashboard-page">
@@ -239,108 +278,35 @@ const RouteMasterPage = () => {
           </div>
         </header>
 
-        {/* Route Master Content */}
-        <div className="route-master-page">
-          <div className="route-master-header">
-            <h1 className="route-master-title">Route Master</h1>
-          </div>
-
+        {/* Route Master Content using reusable template */}
+        <MasterPageLayout
+          title="Route Master"
+          breadcrumb="/ Masters / Route Master"
+          data={routes}
+          filteredData={filteredRoutes}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(route) => route.id}
+          addButtonLabel="Add Route"
+        >
           {/* Tabs */}
-          <div className="route-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              Route List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="route-master-actions">
-            <div className="route-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="route-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-route-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Route
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="route-table-container">
-            <table className="route-table">
-              <thead>
-                <tr>
-                  <th>Route Code</th>
-                  <th>Route Name</th>
-                  <th>Frequency ID</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRoutes.map((route) => (
-                  <tr key={route.id}>
-                    <td>{route.routeCode}</td>
-                    <td>{route.routeName}</td>
-                    <td>{route.frequencyID}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${route.status.toLowerCase()}`}>
-                        {route.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(route)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(route.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="route-pagination-info">
-            Showing {filteredRoutes.length} of {routes.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'Route List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}
       {showModal && (
         <RouteFormModal
           route={editingRoute}
+          companies={companies.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingRoute(null);
@@ -355,13 +321,15 @@ const RouteMasterPage = () => {
 // Route Form Modal Component
 interface RouteFormModalProps {
   route: Route | null;
+  companies: Company[];
   onClose: () => void;
   onSave: (data: Partial<Route>) => void;
 }
 
-const RouteFormModal = ({ route, onClose, onSave }: RouteFormModalProps) => {
+const RouteFormModal = ({ route, companies, onClose, onSave }: RouteFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Route>>(
     route || {
+      companyName: '',
       routeCode: '',
       routeName: '',
       frequencyID: '',
@@ -391,12 +359,28 @@ const RouteFormModal = ({ route, onClose, onSave }: RouteFormModalProps) => {
           <div className="form-section">
             <div className="form-grid">
               <div className="form-group">
+                <label>Company Name *</label>
+                <select
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.companyName}>
+                      {company.companyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Route Code *</label>
                 <input
                   type="text"
                   value={formData.routeCode || ''}
                   onChange={(e) => setFormData({ ...formData, routeCode: e.target.value })}
                   required
+                  placeholder="Enter Route Code"
                 />
               </div>
               <div className="form-group">
@@ -406,6 +390,7 @@ const RouteFormModal = ({ route, onClose, onSave }: RouteFormModalProps) => {
                   value={formData.routeName || ''}
                   onChange={(e) => setFormData({ ...formData, routeName: e.target.value })}
                   required
+                  placeholder="Enter Route Name"
                 />
               </div>
               <div className="form-group">
@@ -415,6 +400,7 @@ const RouteFormModal = ({ route, onClose, onSave }: RouteFormModalProps) => {
                   value={formData.frequencyID || ''}
                   onChange={(e) => setFormData({ ...formData, frequencyID: e.target.value })}
                   required
+                  placeholder="Enter Frequency ID"
                 />
               </div>
               <div className="form-group">

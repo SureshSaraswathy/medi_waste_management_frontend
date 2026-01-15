@@ -6,9 +6,30 @@ import '../desktop/dashboardPage.css';
 
 interface User {
   id: string;
-  name: string;
-  email: string;
-  role: string;
+  companyName: string;
+  mobileNumber: string;
+  userName: string;
+  empCode: string;
+  userRoleID: string;
+  employmentType: string;
+  webLogin: boolean;
+  mobileApp: boolean;
+  dlNum: string;
+  aadhaar: string;
+  pan: string;
+  uan: string;
+  pfNum: string;
+  esiNum: string;
+  address: string;
+  area: string;
+  city: string;
+  district: string;
+  pincode: string;
+  emergencyContact: string;
+  contractorName: string;
+  grossSalary: string;
+  password: string;
+  emailAddress: string;
   status: 'Active' | 'Inactive';
   createdBy: string;
   createdOn: string;
@@ -16,10 +37,18 @@ interface User {
   modifiedOn: string;
 }
 
+interface Company {
+  id: string;
+  companyCode: string;
+  companyName: string;
+  status: 'Active' | 'Inactive';
+}
+
 interface Role {
   id: string;
   roleName: string;
   description: string;
+  companyName: string;
   status: 'Active' | 'Inactive';
   createdBy: string;
   createdOn: string;
@@ -37,12 +66,55 @@ const UserManagementPage = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
+  // Companies from Company Master - Load active companies only
+  const [companies] = useState<Company[]>([
+    {
+      id: '1',
+      companyCode: 'COMP001',
+      companyName: 'Sample Company',
+      status: 'Active',
+    },
+    {
+      id: '2',
+      companyCode: 'COMP002',
+      companyName: 'ABC Industries',
+      status: 'Active',
+    },
+    {
+      id: '3',
+      companyCode: 'COMP003',
+      companyName: 'XYZ Corporation',
+      status: 'Active',
+    },
+  ]);
+
   const [users, setUsers] = useState<User[]>([
     {
       id: '1',
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      role: 'Admin',
+      companyName: 'Sample Company',
+      mobileNumber: '+91-9876543210',
+      userName: 'johndoe',
+      empCode: 'EMP001',
+      userRoleID: 'Admin',
+      employmentType: 'Permanent',
+      webLogin: true,
+      mobileApp: true,
+      dlNum: 'DL1234567890',
+      aadhaar: '1234-5678-9012',
+      pan: 'ABCDE1234F',
+      uan: 'UAN123456789',
+      pfNum: 'PF123456789',
+      esiNum: 'ESI123456789',
+      address: '123 Main Street',
+      area: 'Downtown',
+      city: 'Mumbai',
+      district: 'Mumbai',
+      pincode: '400001',
+      emergencyContact: '+91-9876543211',
+      contractorName: '',
+      grossSalary: '50000',
+      password: '********',
+      emailAddress: 'john.doe@example.com',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -51,9 +123,30 @@ const UserManagementPage = () => {
     },
     {
       id: '2',
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      role: 'Manager',
+      companyName: 'ABC Industries',
+      mobileNumber: '+91-9876543212',
+      userName: 'janesmith',
+      empCode: 'EMP002',
+      userRoleID: 'Manager',
+      employmentType: 'Permanent',
+      webLogin: true,
+      mobileApp: false,
+      dlNum: 'DL0987654321',
+      aadhaar: '9876-5432-1098',
+      pan: 'FGHIJ5678K',
+      uan: 'UAN987654321',
+      pfNum: 'PF987654321',
+      esiNum: 'ESI987654321',
+      address: '456 Admin Avenue',
+      area: 'Suburban',
+      city: 'Delhi',
+      district: 'New Delhi',
+      pincode: '110001',
+      emergencyContact: '+91-9876543213',
+      contractorName: '',
+      grossSalary: '75000',
+      password: '********',
+      emailAddress: 'jane.smith@example.com',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-02',
@@ -62,9 +155,30 @@ const UserManagementPage = () => {
     },
     {
       id: '3',
-      name: 'Bob Wilson',
-      email: 'bob.wilson@example.com',
-      role: 'Viewer',
+      companyName: 'XYZ Corporation',
+      mobileNumber: '+91-9876543214',
+      userName: 'bobwilson',
+      empCode: 'EMP003',
+      userRoleID: 'Driver',
+      employmentType: 'Contract',
+      webLogin: false,
+      mobileApp: true,
+      dlNum: 'DL1122334455',
+      aadhaar: '5555-6666-7777',
+      pan: 'KLMNO9012P',
+      uan: 'UAN555666777',
+      pfNum: 'PF555666777',
+      esiNum: 'ESI555666777',
+      address: '789 Factory Road',
+      area: 'Industrial',
+      city: 'Bangalore',
+      district: 'Bangalore',
+      pincode: '560001',
+      emergencyContact: '+91-9876543215',
+      contractorName: 'ABC Contractors',
+      grossSalary: '35000',
+      password: '********',
+      emailAddress: 'bob.wilson@example.com',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-03',
@@ -76,8 +190,9 @@ const UserManagementPage = () => {
   const [roles, setRoles] = useState<Role[]>([
     {
       id: '1',
-      roleName: 'Viewer',
-      description: 'Viewer',
+      roleName: 'Driver',
+      description: 'Driver - Vehicle operation and transportation',
+      companyName: 'Sample Company',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -86,8 +201,9 @@ const UserManagementPage = () => {
     },
     {
       id: '2',
-      roleName: 'Maker',
-      description: 'Maker',
+      roleName: 'Supervisor',
+      description: 'Supervisor - Field supervision and monitoring',
+      companyName: 'ABC Industries',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -96,8 +212,9 @@ const UserManagementPage = () => {
     },
     {
       id: '3',
-      roleName: 'Checker',
-      description: 'checker',
+      roleName: 'Field Executive',
+      description: 'Field Executive - Field operations and execution',
+      companyName: 'Sample Company',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -106,8 +223,9 @@ const UserManagementPage = () => {
     },
     {
       id: '4',
-      roleName: 'Test',
-      description: 'Test',
+      roleName: 'Accountant',
+      description: 'Accountant - Financial management and accounting',
+      companyName: 'XYZ Corporation',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -116,8 +234,86 @@ const UserManagementPage = () => {
     },
     {
       id: '5',
+      roleName: 'FactoryIncharge',
+      description: 'Factory Incharge - Factory operations management',
+      companyName: 'ABC Industries',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '6',
+      roleName: 'Manager',
+      description: 'Manager - General management and coordination',
+      companyName: 'Sample Company',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '7',
+      roleName: 'Audit',
+      description: 'Audit - Auditing and compliance verification',
+      companyName: 'XYZ Corporation',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '8',
       roleName: 'Admin',
-      description: 'AdminA',
+      description: 'Admin - Administrative access and management',
+      companyName: 'Sample Company',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '9',
+      roleName: 'SuperAdmin',
+      description: 'Super Admin - Full system access and control',
+      companyName: 'Sample Company',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '10',
+      roleName: 'PCB',
+      description: 'PCB - PCB zone management and operations',
+      companyName: 'ABC Industries',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '11',
+      roleName: 'Training',
+      description: 'Training - Training and development management',
+      companyName: 'XYZ Corporation',
+      status: 'Active',
+      createdBy: 'System',
+      createdOn: '2023-01-01',
+      modifiedBy: 'System',
+      modifiedOn: '2023-01-01',
+    },
+    {
+      id: '12',
+      roleName: 'DataEntry',
+      description: 'Data Entry - Data entry and record management',
+      companyName: 'Sample Company',
       status: 'Active',
       createdBy: 'System',
       createdOn: '2023-01-01',
@@ -213,14 +409,17 @@ const UserManagementPage = () => {
   ];
 
   const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+    user.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.emailAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.empCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.mobileNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredRoles = roles.filter(role =>
     role.roleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    role.description.toLowerCase().includes(searchQuery.toLowerCase())
+    role.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    role.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddUser = () => {
@@ -411,9 +610,13 @@ const UserManagementPage = () => {
                 <table className="user-management-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Role</th>
+                      <th>Company Name</th>
+                      <th>User Name</th>
+                      <th>Emp Code</th>
+                      <th>Email Address</th>
+                      <th>Mobile Number</th>
+                      <th>User Role</th>
+                      <th>Employment Type</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -421,9 +624,13 @@ const UserManagementPage = () => {
                   <tbody>
                     {filteredUsers.map((user) => (
                       <tr key={user.id}>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{user.role}</td>
+                        <td>{user.companyName || '-'}</td>
+                        <td>{user.userName || '-'}</td>
+                        <td>{user.empCode || '-'}</td>
+                        <td>{user.emailAddress || '-'}</td>
+                        <td>{user.mobileNumber || '-'}</td>
+                        <td>{user.userRoleID || '-'}</td>
+                        <td>{user.employmentType || '-'}</td>
                         <td>
                           <span className={`status-badge status-badge--${user.status.toLowerCase()}`}>
                             {user.status}
@@ -469,8 +676,9 @@ const UserManagementPage = () => {
                 <table className="user-management-table">
                   <thead>
                     <tr>
-                      <th>Roles</th>
+                      <th>Role Name</th>
                       <th>Description</th>
+                      <th>Company Name</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -480,6 +688,7 @@ const UserManagementPage = () => {
                       <tr key={role.id}>
                         <td>{role.roleName}</td>
                         <td>{role.description}</td>
+                        <td>{role.companyName || '-'}</td>
                         <td>
                           <span className={`status-badge status-badge--${role.status.toLowerCase()}`}>
                             {role.status}
@@ -525,6 +734,7 @@ const UserManagementPage = () => {
         <UserFormModal
           user={editingUser}
           roles={roles.filter(r => r.status === 'Active').map(r => r.roleName)}
+          companies={companies.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowUserModal(false);
             setEditingUser(null);
@@ -537,6 +747,7 @@ const UserManagementPage = () => {
       {showRoleModal && (
         <RoleFormModal
           role={editingRole}
+          companies={companies.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowRoleModal(false);
             setEditingRole(null);
@@ -552,16 +763,38 @@ const UserManagementPage = () => {
 interface UserFormModalProps {
   user: User | null;
   roles: string[];
+  companies: Company[];
   onClose: () => void;
   onSave: (data: Partial<User>) => void;
 }
 
-const UserFormModal = ({ user, roles, onClose, onSave }: UserFormModalProps) => {
+const UserFormModal = ({ user, roles, companies, onClose, onSave }: UserFormModalProps) => {
   const [formData, setFormData] = useState<Partial<User>>(
     user || {
-      name: '',
-      email: '',
-      role: '',
+      companyName: '',
+      mobileNumber: '',
+      userName: '',
+      empCode: '',
+      userRoleID: '',
+      employmentType: '',
+      webLogin: false,
+      mobileApp: false,
+      dlNum: '',
+      aadhaar: '',
+      pan: '',
+      uan: '',
+      pfNum: '',
+      esiNum: '',
+      address: '',
+      area: '',
+      city: '',
+      district: '',
+      pincode: '',
+      emergencyContact: '',
+      contractorName: '',
+      grossSalary: '',
+      password: '',
+      emailAddress: '',
       status: 'Active',
     }
   );
@@ -585,37 +818,121 @@ const UserFormModal = ({ user, roles, onClose, onSave }: UserFormModalProps) => 
         </div>
 
         <form className="user-form" onSubmit={handleSubmit}>
+          {/* Basic Information */}
           <div className="form-section">
+            <h3 className="form-section-title">Basic Information</h3>
             <div className="form-grid">
               <div className="form-group">
-                <label>Name *</label>
+                <label>Company Name *</label>
+                <select
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.companyName}>
+                      {company.companyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>User Name *</label>
                 <input
                   type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.userName || ''}
+                  onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
                   required
                 />
               </div>
               <div className="form-group">
-                <label>Email *</label>
+                <label>Email Address *</label>
                 <input
                   type="email"
-                  value={formData.email || ''}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={formData.emailAddress || ''}
+                  onChange={(e) => setFormData({ ...formData, emailAddress: e.target.value })}
                   required
                 />
               </div>
               <div className="form-group">
-                <label>Role *</label>
+                <label>Mobile Number *</label>
+                <input
+                  type="tel"
+                  value={formData.mobileNumber || ''}
+                  onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Emp Code *</label>
+                <input
+                  type="text"
+                  value={formData.empCode || ''}
+                  onChange={(e) => setFormData({ ...formData, empCode: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>User Role ID *</label>
                 <select
-                  value={formData.role || ''}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  value={formData.userRoleID || ''}
+                  onChange={(e) => setFormData({ ...formData, userRoleID: e.target.value })}
                   required
                 >
                   <option value="">Select Role</option>
                   {roles.map((role) => (
                     <option key={role} value={role}>{role}</option>
                   ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Employment Type *</label>
+                <select
+                  value={formData.employmentType || ''}
+                  onChange={(e) => setFormData({ ...formData, employmentType: e.target.value })}
+                  required
+                >
+                  <option value="">Select Type</option>
+                  <option value="Permanent">Permanent</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Temporary">Temporary</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Password *</label>
+                <input
+                  type="password"
+                  value={formData.password || ''}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Access & Permissions */}
+          <div className="form-section">
+            <h3 className="form-section-title">Access & Permissions</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Web Login</label>
+                <select
+                  value={formData.webLogin ? 'true' : 'false'}
+                  onChange={(e) => setFormData({ ...formData, webLogin: e.target.value === 'true' })}
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Mobile App</label>
+                <select
+                  value={formData.mobileApp ? 'true' : 'false'}
+                  onChange={(e) => setFormData({ ...formData, mobileApp: e.target.value === 'true' })}
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
                 </select>
               </div>
               <div className="form-group">
@@ -627,6 +944,139 @@ const UserFormModal = ({ user, roles, onClose, onSave }: UserFormModalProps) => 
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Identity Documents */}
+          <div className="form-section">
+            <h3 className="form-section-title">Identity Documents</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>DL Number</label>
+                <input
+                  type="text"
+                  value={formData.dlNum || ''}
+                  onChange={(e) => setFormData({ ...formData, dlNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Aadhaar</label>
+                <input
+                  type="text"
+                  value={formData.aadhaar || ''}
+                  onChange={(e) => setFormData({ ...formData, aadhaar: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>PAN</label>
+                <input
+                  type="text"
+                  value={formData.pan || ''}
+                  onChange={(e) => setFormData({ ...formData, pan: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>UAN</label>
+                <input
+                  type="text"
+                  value={formData.uan || ''}
+                  onChange={(e) => setFormData({ ...formData, uan: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>PF Number</label>
+                <input
+                  type="text"
+                  value={formData.pfNum || ''}
+                  onChange={(e) => setFormData({ ...formData, pfNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>ESI Number</label>
+                <input
+                  type="text"
+                  value={formData.esiNum || ''}
+                  onChange={(e) => setFormData({ ...formData, esiNum: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Address Information */}
+          <div className="form-section">
+            <h3 className="form-section-title">Address Information</h3>
+            <div className="form-grid">
+              <div className="form-group form-group--full">
+                <label>Address</label>
+                <textarea
+                  value={formData.address || ''}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="form-group">
+                <label>Area</label>
+                <input
+                  type="text"
+                  value={formData.area || ''}
+                  onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>City</label>
+                <input
+                  type="text"
+                  value={formData.city || ''}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>District</label>
+                <input
+                  type="text"
+                  value={formData.district || ''}
+                  onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Pincode</label>
+                <input
+                  type="text"
+                  value={formData.pincode || ''}
+                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Employment Details */}
+          <div className="form-section">
+            <h3 className="form-section-title">Employment Details</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Emergency Contact</label>
+                <input
+                  type="tel"
+                  value={formData.emergencyContact || ''}
+                  onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Contractor Name</label>
+                <input
+                  type="text"
+                  value={formData.contractorName || ''}
+                  onChange={(e) => setFormData({ ...formData, contractorName: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Gross Salary</label>
+                <input
+                  type="text"
+                  value={formData.grossSalary || ''}
+                  onChange={(e) => setFormData({ ...formData, grossSalary: e.target.value })}
+                />
               </div>
             </div>
           </div>
@@ -648,15 +1098,17 @@ const UserFormModal = ({ user, roles, onClose, onSave }: UserFormModalProps) => 
 // Role Form Modal Component
 interface RoleFormModalProps {
   role: Role | null;
+  companies: Company[];
   onClose: () => void;
   onSave: (data: Partial<Role>) => void;
 }
 
-const RoleFormModal = ({ role, onClose, onSave }: RoleFormModalProps) => {
+const RoleFormModal = ({ role, companies, onClose, onSave }: RoleFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Role>>(
     role || {
       roleName: '',
       description: '',
+      companyName: '',
       status: 'Active',
     }
   );
@@ -699,6 +1151,21 @@ const RoleFormModal = ({ role, onClose, onSave }: RoleFormModalProps) => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
                 />
+              </div>
+              <div className="form-group">
+                <label>Company Name *</label>
+                <select
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.companyName}>
+                      {company.companyName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Status</label>

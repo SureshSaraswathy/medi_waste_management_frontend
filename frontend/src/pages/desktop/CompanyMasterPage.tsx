@@ -1,8 +1,27 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './companyMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
+
+interface State {
+  id: string;
+  stateCode: string;
+  stateName: string;
+  status: 'Active' | 'Inactive';
+}
+
+interface PCBZone {
+  id: string;
+  pcbZoneName: string;
+  pcbZoneAddress: string;
+  contactNum: string;
+  contactEmail: string;
+  alertEmail: string;
+  status: 'Active' | 'Inactive';
+}
 
 interface Company {
   id: string;
@@ -49,6 +68,72 @@ const CompanyMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  
+  // States from State Master - Load active states only
+  const [states] = useState<State[]>([
+    {
+      id: '1',
+      stateCode: 'MH',
+      stateName: 'Maharashtra',
+      status: 'Active',
+    },
+    {
+      id: '2',
+      stateCode: 'DL',
+      stateName: 'Delhi',
+      status: 'Active',
+    },
+    {
+      id: '3',
+      stateCode: 'KA',
+      stateName: 'Karnataka',
+      status: 'Active',
+    },
+    {
+      id: '4',
+      stateCode: 'TN',
+      stateName: 'Tamil Nadu',
+      status: 'Active',
+    },
+    {
+      id: '5',
+      stateCode: 'GJ',
+      stateName: 'Gujarat',
+      status: 'Active',
+    },
+  ]);
+
+  // PCB Zones from PCB Zone Master - Load active zones only
+  const [pcbZones] = useState<PCBZone[]>([
+    {
+      id: '1',
+      pcbZoneName: 'Zone A',
+      pcbZoneAddress: '123 Industrial Area, Mumbai',
+      contactNum: '+91-9876543210',
+      contactEmail: 'zonea@example.com',
+      alertEmail: 'alert.zonea@example.com',
+      status: 'Active',
+    },
+    {
+      id: '2',
+      pcbZoneName: 'Zone B',
+      pcbZoneAddress: '456 Commercial Street, Delhi',
+      contactNum: '+91-9876543211',
+      contactEmail: 'zoneb@example.com',
+      alertEmail: 'alert.zoneb@example.com',
+      status: 'Active',
+    },
+    {
+      id: '3',
+      pcbZoneName: 'Zone C',
+      pcbZoneAddress: '789 Business Park, Bangalore',
+      contactNum: '+91-9876543212',
+      contactEmail: 'zonec@example.com',
+      alertEmail: 'alert.zonec@example.com',
+      status: 'Active',
+    },
+  ]);
+
   const [companies, setCompanies] = useState<Company[]>([
     {
       id: '1',
@@ -58,7 +143,7 @@ const CompanyMasterPage = () => {
       adminOfficeAddress: '456 Admin Ave',
       factoryAddress: '789 Factory Rd',
       gstin: 'GST123456789',
-      state: 'Maharashtra',
+      state: 'MH',
       pincode: '400001',
       prefix: 'SC',
       authPersonName: 'John Doe',
@@ -222,6 +307,41 @@ const CompanyMasterPage = () => {
     setEditingCompany(null);
   };
 
+  // Define columns for the table
+  const columns: Column<Company>[] = [
+    { key: 'companyCode', label: 'Code', minWidth: 110 },
+    { key: 'companyName', label: 'Company Name', minWidth: 150, allowWrap: true },
+    { key: 'gstin', label: 'GSTIN', minWidth: 130 },
+    { key: 'state', label: 'State', minWidth: 120 },
+    { key: 'pcbauthNum', label: 'PCB Auth #', minWidth: 110 },
+    { key: 'ctoWaterNum', label: 'CTO Water #', minWidth: 120 },
+    { key: 'ctoWaterDate', label: 'CTO Wtr Date', minWidth: 130 },
+    { key: 'ctoWaterValidUpto', label: 'CTO Wtr Valid To', minWidth: 150 },
+    { key: 'ctoAirNum', label: 'CTO Air #', minWidth: 110 },
+    { key: 'ctoAirDate', label: 'CTO Air Date', minWidth: 130 },
+    { key: 'ctoAirValidUpto', label: 'CTO Air Valid To', minWidth: 150 },
+    { key: 'cteWaterNum', label: 'CTE Water #', minWidth: 120 },
+    { key: 'cteWaterDate', label: 'CTE Wtr Date', minWidth: 130 },
+    { key: 'cteWaterValidUpto', label: 'CTE Wtr Valid To', minWidth: 150 },
+    { key: 'cteAirNum', label: 'CTE Air #', minWidth: 110 },
+    { key: 'cteAirDate', label: 'CTE Air Date', minWidth: 130 },
+    { key: 'cteAirValidUpto', label: 'CTE Air Valid To', minWidth: 150 },
+    { key: 'hazardousWasteNum', label: 'Haz Waste #', minWidth: 140 },
+    { key: 'pcbZoneID', label: 'PCB Zone', minWidth: 110 },
+    { key: 'gstValidFrom', label: 'GST From', minWidth: 130 },
+    { key: 'gstRate', label: 'GST Rate', minWidth: 100 },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 90,
+      render: (company) => (
+        <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
+          {company.status}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
@@ -280,110 +400,36 @@ const CompanyMasterPage = () => {
           </div>
         </header>
 
-        {/* Company Master Content */}
-        <div className="company-master-page">
-          <div className="company-master-header">
-            <h1 className="company-master-title">Company Master</h1>
-          </div>
-
+        {/* Company Master Content using reusable template */}
+        <MasterPageLayout
+          title="Company Master"
+          breadcrumb="/ Masters / Company Master"
+          data={companies}
+          filteredData={filteredCompanies}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(company) => company.id}
+          addButtonLabel="Add Company"
+        >
           {/* Tabs */}
-          <div className="company-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              Company List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="company-master-actions">
-            <div className="company-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="company-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-company-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Company
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="company-table-container">
-            <table className="company-table">
-              <thead>
-                <tr>
-                  <th>Company Code</th>
-                  <th>Company Name</th>
-                  <th>GSTIN</th>
-                  <th>State</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCompanies.map((company) => (
-                  <tr key={company.id}>
-                    <td>{company.companyCode}</td>
-                    <td>{company.companyName}</td>
-                    <td>{company.gstin}</td>
-                    <td>{company.state}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
-                        {company.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(company)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(company.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="company-pagination-info">
-            Showing {filteredCompanies.length} of {companies.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'Company List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}
       {showModal && (
         <CompanyFormModal
           company={editingCompany}
+          states={states.filter(s => s.status === 'Active')}
+          pcbZones={pcbZones.filter(z => z.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingCompany(null);
@@ -398,11 +444,13 @@ const CompanyMasterPage = () => {
 // Company Form Modal Component
 interface CompanyFormModalProps {
   company: Company | null;
+  states: State[];
+  pcbZones: PCBZone[];
   onClose: () => void;
   onSave: (data: Partial<Company>) => void;
 }
 
-const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) => {
+const CompanyFormModal = ({ company, states, pcbZones, onClose, onSave }: CompanyFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Company>>(
     company || {
       companyCode: '',
@@ -489,12 +537,18 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
               </div>
               <div className="form-group">
                 <label>State *</label>
-                <input
-                  type="text"
+                <select
                   value={formData.state || ''}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   required
-                />
+                >
+                  <option value="">Select State</option>
+                  {states.map((state) => (
+                    <option key={state.id} value={state.stateCode}>
+                      {state.stateCode}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Pincode</label>
@@ -570,6 +624,185 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
                   type="date"
                   value={formData.authPersonDOB || ''}
                   onChange={(e) => setFormData({ ...formData, authPersonDOB: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">PCB Authorization</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>PCB Auth Num</label>
+                <input
+                  type="text"
+                  value={formData.pcbauthNum || ''}
+                  onChange={(e) => setFormData({ ...formData, pcbauthNum: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">CTO Water</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>CTO Water Num</label>
+                <input
+                  type="text"
+                  value={formData.ctoWaterNum || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoWaterNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTO Water Date</label>
+                <input
+                  type="date"
+                  value={formData.ctoWaterDate || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoWaterDate: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTO Water Valid Upto</label>
+                <input
+                  type="date"
+                  value={formData.ctoWaterValidUpto || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoWaterValidUpto: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">CTO Air</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>CTO Air Num</label>
+                <input
+                  type="text"
+                  value={formData.ctoAirNum || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoAirNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTO Air Date</label>
+                <input
+                  type="date"
+                  value={formData.ctoAirDate || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoAirDate: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTO Air Valid Upto</label>
+                <input
+                  type="date"
+                  value={formData.ctoAirValidUpto || ''}
+                  onChange={(e) => setFormData({ ...formData, ctoAirValidUpto: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">CTE Water</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>CTE Water Num</label>
+                <input
+                  type="text"
+                  value={formData.cteWaterNum || ''}
+                  onChange={(e) => setFormData({ ...formData, cteWaterNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTE Water Date</label>
+                <input
+                  type="date"
+                  value={formData.cteWaterDate || ''}
+                  onChange={(e) => setFormData({ ...formData, cteWaterDate: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTE Water Valid Upto</label>
+                <input
+                  type="date"
+                  value={formData.cteWaterValidUpto || ''}
+                  onChange={(e) => setFormData({ ...formData, cteWaterValidUpto: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">CTE Air</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>CTE Air Num</label>
+                <input
+                  type="text"
+                  value={formData.cteAirNum || ''}
+                  onChange={(e) => setFormData({ ...formData, cteAirNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTE Air Date</label>
+                <input
+                  type="date"
+                  value={formData.cteAirDate || ''}
+                  onChange={(e) => setFormData({ ...formData, cteAirDate: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>CTE Air Valid Upto</label>
+                <input
+                  type="date"
+                  value={formData.cteAirValidUpto || ''}
+                  onChange={(e) => setFormData({ ...formData, cteAirValidUpto: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title">Additional Details</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Hazardous Waste Num</label>
+                <input
+                  type="text"
+                  value={formData.hazardousWasteNum || ''}
+                  onChange={(e) => setFormData({ ...formData, hazardousWasteNum: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>PCB Zone ID</label>
+                <select
+                  value={formData.pcbZoneID || ''}
+                  onChange={(e) => setFormData({ ...formData, pcbZoneID: e.target.value })}
+                >
+                  <option value="">Select PCB Zone</option>
+                  {pcbZones.map((zone) => (
+                    <option key={zone.id} value={zone.pcbZoneName}>
+                      {zone.pcbZoneName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>GST Valid From</label>
+                <input
+                  type="date"
+                  value={formData.gstValidFrom || ''}
+                  onChange={(e) => setFormData({ ...formData, gstValidFrom: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>GST Rate</label>
+                <input
+                  type="text"
+                  value={formData.gstRate || ''}
+                  onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
+                  placeholder="e.g., 18%"
                 />
               </div>
             </div>

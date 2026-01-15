@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './pcbZoneMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
 
 interface PCBZone {
@@ -187,6 +189,25 @@ const PCBZoneMasterPage = () => {
     setEditingPCBZone(null);
   };
 
+  // Define columns for the table
+  const columns: Column<PCBZone>[] = [
+    { key: 'pcbZoneName', label: 'PCB Zone Name', minWidth: 150, allowWrap: true },
+    { key: 'pcbZoneAddress', label: 'PCB Zone Address', minWidth: 250, allowWrap: true },
+    { key: 'contactNum', label: 'Contact Number', minWidth: 140 },
+    { key: 'contactEmail', label: 'Contact Email', minWidth: 180, allowWrap: true },
+    { key: 'alertEmail', label: 'Alert Email', minWidth: 180, allowWrap: true },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 100,
+      render: (zone) => (
+        <span className={`status-badge status-badge--${zone.status.toLowerCase()}`}>
+          {zone.status}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
@@ -245,106 +266,28 @@ const PCBZoneMasterPage = () => {
           </div>
         </header>
 
-        {/* PCB Zone Master Content */}
-        <div className="pcb-zone-master-page">
-          <div className="pcb-zone-master-header">
-            <h1 className="pcb-zone-master-title">PCB Zone Master</h1>
-          </div>
-
+        {/* PCB Zone Master Content using reusable template */}
+        <MasterPageLayout
+          title="PCB Zone Master"
+          breadcrumb="/ Masters / PCB Zone Master"
+          data={pcbZones}
+          filteredData={filteredPCBZones}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(zone) => zone.id}
+          addButtonLabel="Add PCB Zone"
+        >
           {/* Tabs */}
-          <div className="pcb-zone-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              PCB Zone List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="pcb-zone-master-actions">
-            <div className="pcb-zone-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="pcb-zone-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-pcb-zone-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add PCB Zone
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="pcb-zone-table-container">
-            <table className="pcb-zone-table">
-              <thead>
-                <tr>
-                  <th>PCB Zone Name</th>
-                  <th>PCB Zone Address</th>
-                  <th>Contact Number</th>
-                  <th>Contact Email</th>
-                  <th>Alert Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPCBZones.map((zone) => (
-                  <tr key={zone.id}>
-                    <td>{zone.pcbZoneName}</td>
-                    <td>{zone.pcbZoneAddress}</td>
-                    <td>{zone.contactNum}</td>
-                    <td>{zone.contactEmail}</td>
-                    <td>{zone.alertEmail}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${zone.status.toLowerCase()}`}>
-                        {zone.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(zone)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(zone.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="pcb-zone-pagination-info">
-            Showing {filteredPCBZones.length} of {pcbZones.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'PCB Zone List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}

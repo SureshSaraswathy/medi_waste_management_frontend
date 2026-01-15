@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './areaMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
 
 interface Area {
@@ -181,6 +183,23 @@ const AreaMasterPage = () => {
     setEditingArea(null);
   };
 
+  // Define columns for the table
+  const columns: Column<Area>[] = [
+    { key: 'areaCode', label: 'Area Code', minWidth: 120 },
+    { key: 'areaName', label: 'Area Name', minWidth: 200, allowWrap: true },
+    { key: 'areaPincode', label: 'Area Pincode', minWidth: 130 },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 100,
+      render: (area) => (
+        <span className={`status-badge status-badge--${area.status.toLowerCase()}`}>
+          {area.status}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
@@ -239,102 +258,28 @@ const AreaMasterPage = () => {
           </div>
         </header>
 
-        {/* Area Master Content */}
-        <div className="area-master-page">
-          <div className="area-master-header">
-            <h1 className="area-master-title">Area Master</h1>
-          </div>
-
+        {/* Area Master Content using reusable template */}
+        <MasterPageLayout
+          title="Area Master"
+          breadcrumb="/ Masters / Area Master"
+          data={areas}
+          filteredData={filteredAreas}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(area) => area.id}
+          addButtonLabel="Add Area"
+        >
           {/* Tabs */}
-          <div className="area-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              Area List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="area-master-actions">
-            <div className="area-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="area-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-area-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Area
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="area-table-container">
-            <table className="area-table">
-              <thead>
-                <tr>
-                  <th>Area Code</th>
-                  <th>Area Name</th>
-                  <th>Area Pincode</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAreas.map((area) => (
-                  <tr key={area.id}>
-                    <td>{area.areaCode}</td>
-                    <td>{area.areaName}</td>
-                    <td>{area.areaPincode}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${area.status.toLowerCase()}`}>
-                        {area.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(area)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(area.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="area-pagination-info">
-            Showing {filteredAreas.length} of {areas.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'Area List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}

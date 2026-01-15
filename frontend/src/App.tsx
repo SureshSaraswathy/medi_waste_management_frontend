@@ -18,10 +18,40 @@ import PCBZoneMasterPage from './pages/desktop/PCBZoneMasterPage';
 import RouteMasterPage from './pages/desktop/RouteMasterPage';
 import ColorCodeMasterPage from './pages/desktop/ColorCodeMasterPage';
 import UserManagementPage from './pages/desktop/UserManagementPage';
+import HCFMasterPage from './pages/desktop/HCFMasterPage';
+import HCFAmendmentsPage from './pages/desktop/HCFAmendmentsPage';
+import HCFTypeMasterPage from './pages/desktop/HCFTypeMasterPage';
+import FleetManagementPage from './pages/desktop/FleetManagementPage';
+import RouteHCFMappingPage from './pages/desktop/RouteHCFMappingPage';
+import FrequencyMasterPage from './pages/desktop/FrequencyMasterPage';
+import InvoiceManagementPage from './pages/desktop/InvoiceManagementPage';
+import BarcodeGenerationPage from './pages/desktop/BarcodeGenerationPage';
+import TrainingCertificatePage from './pages/desktop/TrainingCertificatePage';
+import ContractMasterPage from './pages/desktop/ContractMasterPage';
+import AgreementPage from './pages/desktop/AgreementPage';
+import AgreementClausePage from './pages/desktop/AgreementClausePage';
 import UserCreatePage from './pages/desktop/UserCreatePage';
+import ReportPage from './pages/desktop/ReportPage';
 import BillingFinanceReportPage from './pages/desktop/BillingFinanceReportPage';
 import OperationsLogisticsReportPage from './pages/desktop/OperationsLogisticsReportPage';
 import HCFComplianceReportPage from './pages/desktop/HCFComplianceReportPage';
+import InvoiceReportPage from './pages/desktop/reports/InvoiceReportPage';
+import ContractReportPage from './pages/desktop/reports/ContractReportPage';
+import HCFReportPage from './pages/desktop/reports/HCFReportPage';
+import TrainingCertificateReportPage from './pages/desktop/reports/TrainingCertificateReportPage';
+import PaymentReportPage from './pages/desktop/reports/PaymentReportPage';
+import AgreementReportPage from './pages/desktop/reports/AgreementReportPage';
+import BarcodeReportPage from './pages/desktop/reports/BarcodeReportPage';
+import UserReportPage from './pages/desktop/reports/UserReportPage';
+import FleetReportPage from './pages/desktop/reports/FleetReportPage';
+import RevenueReportPage from './pages/desktop/reports/RevenueReportPage';
+import OutstandingReportPage from './pages/desktop/reports/OutstandingReportPage';
+import ContractRenewalReportPage from './pages/desktop/reports/ContractRenewalReportPage';
+import RouteReportPage from './pages/desktop/reports/RouteReportPage';
+import CollectionReportPage from './pages/desktop/reports/CollectionReportPage';
+import CompanyReportPage from './pages/desktop/reports/CompanyReportPage';
+import ComplianceReportPage from './pages/desktop/reports/ComplianceReportPage';
+import FleetMasterReportPage from './pages/desktop/reports/FleetMasterReportPage';
 import LoginPageMobile from './pages/mobile/LoginPage';
 import UserCreatePageMobile from './pages/mobile/UserCreatePage';
 
@@ -49,6 +79,14 @@ const App = () => (
         }
       />
       <Route
+        path="/transaction/barcode-generation"
+        element={
+          <ProtectedRoute>
+            <BarcodeGenerationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/finance"
         element={
           <ProtectedRoute>
@@ -65,10 +103,42 @@ const App = () => (
         }
       />
       <Route
+        path="/commercial-agreements/contract-master"
+        element={
+          <ProtectedRoute>
+            <ContractMasterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/commercial-agreements/agreement"
+        element={
+          <ProtectedRoute>
+            <AgreementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/commercial-agreements/agreement-clause"
+        element={
+          <ProtectedRoute>
+            <AgreementClausePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/compliance-training"
         element={
           <ProtectedRoute>
             <ComplianceTrainingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/compliance-training/training-certificate-management"
+        element={
+          <ProtectedRoute>
+            <TrainingCertificatePage />
           </ProtectedRoute>
         }
       />
@@ -145,10 +215,251 @@ const App = () => (
         }
       />
       <Route
+        path="/master/hcf-master"
+        element={
+          <ProtectedRoute>
+            <HCFMasterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/hcf-amendments"
+        element={
+          <ProtectedRoute>
+            <HCFAmendmentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/hcf-type"
+        element={
+          <ProtectedRoute>
+            <HCFTypeMasterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/fleet-management"
+        element={
+          <ProtectedRoute>
+            <FleetManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/route-hcf-mapping"
+        element={
+          <ProtectedRoute>
+            <RouteHCFMappingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/frequency"
+        element={
+          <ProtectedRoute>
+            <FrequencyMasterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/invoice-management"
+        element={
+          <ProtectedRoute>
+            <InvoiceManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report"
+        element={
+          <ProtectedRoute>
+            <ReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/invoice"
+        element={
+          <ProtectedRoute>
+            <InvoiceReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/contract"
+        element={
+          <ProtectedRoute>
+            <ContractReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/hcf"
+        element={
+          <ProtectedRoute>
+            <HCFReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/training-certificate"
+        element={
+          <ProtectedRoute>
+            <TrainingCertificateReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/payment"
+        element={
+          <ProtectedRoute>
+            <PaymentReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/agreement"
+        element={
+          <ProtectedRoute>
+            <AgreementReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/barcode"
+        element={
+          <ProtectedRoute>
+            <BarcodeReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/user"
+        element={
+          <ProtectedRoute>
+            <UserReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/fleet"
+        element={
+          <ProtectedRoute>
+            <FleetReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/revenue"
+        element={
+          <ProtectedRoute>
+            <RevenueReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/outstanding"
+        element={
+          <ProtectedRoute>
+            <OutstandingReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/contract-renewal"
+        element={
+          <ProtectedRoute>
+            <ContractRenewalReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/route"
+        element={
+          <ProtectedRoute>
+            <RouteReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/collection"
+        element={
+          <ProtectedRoute>
+            <CollectionReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/company"
+        element={
+          <ProtectedRoute>
+            <CompanyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/compliance"
+        element={
+          <ProtectedRoute>
+            <ComplianceReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/fleet-master"
+        element={
+          <ProtectedRoute>
+            <FleetMasterReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/report/billing-finance"
         element={
           <ProtectedRoute>
             <BillingFinanceReportPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Backwards compatibility - redirect old report paths to new ones */}
+      <Route
+        path="/report/billing-finance/invoice-generation"
+        element={
+          <ProtectedRoute>
+            <InvoiceReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/billing-finance/unbilled-services"
+        element={
+          <ProtectedRoute>
+            <InvoiceReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/billing-finance/outstanding-payments"
+        element={
+          <ProtectedRoute>
+            <OutstandingReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/billing-finance/pending-payments"
+        element={
+          <ProtectedRoute>
+            <PaymentReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/billing-finance/cost-revenue-analysis"
+        element={
+          <ProtectedRoute>
+            <RevenueReportPage />
           </ProtectedRoute>
         }
       />

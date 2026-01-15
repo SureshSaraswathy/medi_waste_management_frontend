@@ -117,7 +117,7 @@ const BillingFinanceReportPage = () => {
           <line x1="16" y1="17" x2="8" y2="17"></line>
         </svg>
       ),
-      path: '/report/billing-finance/invoice-generation',
+      path: '/report/invoice',
     },
     {
       id: 'unbilled-services',
@@ -132,7 +132,7 @@ const BillingFinanceReportPage = () => {
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ),
-      path: '/report/billing-finance/unbilled-services',
+      path: '/report/invoice',
     },
     {
       id: 'outstanding-payments',
@@ -162,7 +162,7 @@ const BillingFinanceReportPage = () => {
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ),
-      path: '/report/billing-finance/pending-payments',
+      path: '/report/payment',
     },
     {
       id: 'cost-revenue-analysis',
@@ -177,7 +177,7 @@ const BillingFinanceReportPage = () => {
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ),
-      path: '/report/billing-finance/cost-revenue-analysis',
+      path: '/report/revenue',
     },
   ];
 

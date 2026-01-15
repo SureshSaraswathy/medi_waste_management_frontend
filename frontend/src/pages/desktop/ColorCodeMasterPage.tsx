@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import './colorCodeMasterPage.css';
+import MasterPageLayout from '../../components/common/MasterPageLayout';
+import Tabs from '../../components/common/Tabs';
+import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
+
+interface Company {
+  id: string;
+  companyCode: string;
+  companyName: string;
+  status: 'Active' | 'Inactive';
+}
 
 interface ColorCode {
   id: string;
   colorName: string;
+  companyName: string;
   status: 'Active' | 'Inactive';
   createdBy: string;
   createdOn: string;
@@ -21,10 +31,34 @@ const ColorCodeMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingColorCode, setEditingColorCode] = useState<ColorCode | null>(null);
+  
+  // Companies from Company Master - Load active companies only
+  const [companies] = useState<Company[]>([
+    {
+      id: '1',
+      companyCode: 'COMP001',
+      companyName: 'Sample Company',
+      status: 'Active',
+    },
+    {
+      id: '2',
+      companyCode: 'COMP002',
+      companyName: 'ABC Industries',
+      status: 'Active',
+    },
+    {
+      id: '3',
+      companyCode: 'COMP003',
+      companyName: 'XYZ Corporation',
+      status: 'Active',
+    },
+  ]);
+
   const [colorCodes, setColorCodes] = useState<ColorCode[]>([
     {
       id: '1',
       colorName: 'Yellow',
+      companyName: 'Sample Company',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-01',
@@ -34,6 +68,7 @@ const ColorCodeMasterPage = () => {
     {
       id: '2',
       colorName: 'Red',
+      companyName: 'ABC Industries',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-01',
@@ -43,6 +78,7 @@ const ColorCodeMasterPage = () => {
     {
       id: '3',
       colorName: 'White',
+      companyName: 'Sample Company',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-01',
@@ -52,6 +88,7 @@ const ColorCodeMasterPage = () => {
     {
       id: '4',
       colorName: 'Blue',
+      companyName: 'XYZ Corporation',
       status: 'Active',
       createdBy: 'Admin',
       createdOn: '2023-01-01',
@@ -147,7 +184,8 @@ const ColorCodeMasterPage = () => {
   ];
 
   const filteredColorCodes = colorCodes.filter(colorCode =>
-    colorCode.colorName.toLowerCase().includes(searchQuery.toLowerCase())
+    colorCode.colorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    colorCode.companyName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAdd = () => {
@@ -190,6 +228,22 @@ const ColorCodeMasterPage = () => {
     setShowModal(false);
     setEditingColorCode(null);
   };
+
+  // Define columns for the table
+  const columns: Column<ColorCode>[] = [
+    { key: 'colorName', label: 'Color Name', minWidth: 200, allowWrap: true },
+    { key: 'companyName', label: 'Company Name', minWidth: 200, allowWrap: true },
+    {
+      key: 'status',
+      label: 'Status',
+      minWidth: 100,
+      render: (colorCode) => (
+        <span className={`status-badge status-badge--${colorCode.status.toLowerCase()}`}>
+          {colorCode.status}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="dashboard-page">
@@ -249,104 +303,35 @@ const ColorCodeMasterPage = () => {
           </div>
         </header>
 
-        {/* Color Code Master Content */}
-        <div className="color-code-master-page">
-          <div className="color-code-master-header">
-            <h1 className="color-code-master-title">Color Code Master</h1>
-          </div>
-
+        {/* Color Code Master Content using reusable template */}
+        <MasterPageLayout
+          title="Color Code Master"
+          breadcrumb="/ Masters / Color Code Master"
+          data={colorCodes}
+          filteredData={filteredColorCodes}
+          columns={columns}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAdd={handleAdd}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          getId={(colorCode) => colorCode.id}
+          addButtonLabel="Add Color Code"
+        >
           {/* Tabs */}
-          <div className="color-code-master-tabs">
-            <button
-              className={`tab-button ${activeTab === 'list' ? 'tab-button--active' : ''}`}
-              onClick={() => setActiveTab('list')}
-            >
-              Color Code List
-            </button>
-          </div>
-
-          {/* Search and Add Button */}
-          <div className="color-code-master-actions">
-            <div className="color-code-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                className="color-code-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <button className="add-color-code-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Color Code
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="color-code-table-container">
-            <table className="color-code-table">
-              <thead>
-                <tr>
-                  <th>Color Name</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredColorCodes.map((colorCode) => (
-                  <tr key={colorCode.id}>
-                    <td>{colorCode.colorName}</td>
-                    <td>
-                      <span className={`status-badge status-badge--${colorCode.status.toLowerCase()}`}>
-                        {colorCode.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn action-btn--edit"
-                        onClick={() => handleEdit(colorCode)}
-                        title="Edit"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button
-                        className="action-btn action-btn--delete"
-                        onClick={() => handleDelete(colorCode.id)}
-                        title="Delete"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Info */}
-          <div className="color-code-pagination-info">
-            Showing {filteredColorCodes.length} of {colorCodes.length} Items
-          </div>
-        </div>
+          <Tabs
+            tabs={[{ id: 'list', label: 'Color Code List' }]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
+          />
+        </MasterPageLayout>
       </main>
 
       {/* Add/Edit Modal */}
       {showModal && (
         <ColorCodeFormModal
           colorCode={editingColorCode}
+          companies={companies.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingColorCode(null);
@@ -361,14 +346,16 @@ const ColorCodeMasterPage = () => {
 // Color Code Form Modal Component
 interface ColorCodeFormModalProps {
   colorCode: ColorCode | null;
+  companies: Company[];
   onClose: () => void;
   onSave: (data: Partial<ColorCode>) => void;
 }
 
-const ColorCodeFormModal = ({ colorCode, onClose, onSave }: ColorCodeFormModalProps) => {
+const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCodeFormModalProps) => {
   const [formData, setFormData] = useState<Partial<ColorCode>>(
     colorCode || {
       colorName: '',
+      companyName: '',
       status: 'Active',
     }
   );
@@ -402,6 +389,21 @@ const ColorCodeFormModal = ({ colorCode, onClose, onSave }: ColorCodeFormModalPr
                   onChange={(e) => setFormData({ ...formData, colorName: e.target.value })}
                   required
                 />
+              </div>
+              <div className="form-group">
+                <label>Company Name *</label>
+                <select
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.companyName}>
+                      {company.companyName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Status</label>
