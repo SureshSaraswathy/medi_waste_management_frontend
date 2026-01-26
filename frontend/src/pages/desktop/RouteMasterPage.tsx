@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { routeService, RouteResponse } from '../../services/routeService';
+import { companyService, CompanyResponse } from '../../services/companyService';
+import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -26,6 +29,14 @@ interface Company {
   status: 'Active' | 'Inactive';
 }
 
+interface Frequency {
+  id: string;
+  frequencyCode: string;
+  frequencyName: string;
+  companyName: string;
+  status: 'Active' | 'Inactive';
+}
+
 const RouteMasterPage = () => {
   const { logout } = useAuth();
   const location = useLocation();
@@ -33,40 +44,118 @@ const RouteMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [frequencies, setFrequencies] = useState<Frequency[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Companies from Company Master - Load active companies only
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true); // Get only active companies
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
 
-  const [routes, setRoutes] = useState<Route[]>([
-    {
-      id: '1',
-      companyName: 'Sample Company',
-      routeCode: 'RT001',
-      routeName: 'North Zone Route',
-      frequencyID: 'FREQ001',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      companyName: 'ABC Industries',
-      routeCode: 'RT002',
-      routeName: 'South Zone Route',
-      frequencyID: 'FREQ002',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  // Load frequencies from API
+  const loadFrequencies = async () => {
+    try {
+      const apiFrequencies = await frequencyService.getAllFrequencies(undefined, true); // Get only active frequencies
+      const mappedFrequencies: Frequency[] = apiFrequencies.map((apiFrequency: FrequencyResponse) => ({
+        id: apiFrequency.id,
+        frequencyCode: apiFrequency.frequencyCode,
+        frequencyName: apiFrequency.frequencyName,
+        companyName: apiFrequency.companyName || '',
+        status: apiFrequency.status,
+      }));
+      setFrequencies(mappedFrequencies);
+    } catch (err) {
+      console.error('Error loading frequencies:', err);
+    }
+  };
+
+  // Load routes from API
+  const loadRoutes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Ensure companies and frequencies are loaded
+      let currentCompanies = companies;
+      if (currentCompanies.length === 0) {
+        const apiCompanies = await companyService.getAllCompanies(true);
+        currentCompanies = apiCompanies.map((apiCompany: CompanyResponse) => ({
+          id: apiCompany.id,
+          companyCode: apiCompany.companyCode,
+          companyName: apiCompany.companyName,
+          status: apiCompany.status,
+        }));
+        setCompanies(currentCompanies);
+      }
+
+      let currentFrequencies = frequencies;
+      if (currentFrequencies.length === 0) {
+        const apiFrequencies = await frequencyService.getAllFrequencies(undefined, true);
+        currentFrequencies = apiFrequencies.map((apiFrequency: FrequencyResponse) => ({
+          id: apiFrequency.id,
+          frequencyCode: apiFrequency.frequencyCode,
+          frequencyName: apiFrequency.frequencyName,
+          companyName: apiFrequency.companyName || '',
+          status: apiFrequency.status,
+        }));
+        setFrequencies(currentFrequencies);
+      }
+
+      const apiRoutes = await routeService.getAllRoutes(true); // Get only active routes
+      const mappedRoutes: Route[] = apiRoutes.map((apiRoute: RouteResponse) => {
+        // Find company name
+        const company = currentCompanies.find(c => c.id === apiRoute.companyId);
+        const companyName = company?.companyName || 'Unknown';
+
+        // Find frequency code
+        const frequency = currentFrequencies.find(f => f.id === apiRoute.frequencyId);
+        const frequencyCode = frequency?.frequencyCode || apiRoute.frequencyId || '';
+
+        return {
+          id: apiRoute.id,
+          companyName: companyName,
+          routeCode: apiRoute.routeCode,
+          routeName: apiRoute.routeName,
+          frequencyID: frequencyCode,
+          status: apiRoute.status,
+          createdBy: apiRoute.createdBy || '',
+          createdOn: apiRoute.createdOn,
+          modifiedBy: apiRoute.modifiedBy || '',
+          modifiedOn: apiRoute.modifiedOn,
+        };
+      });
+      setRoutes(mappedRoutes);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load routes';
+      setError(errorMessage);
+      console.error('Error loading routes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+      await loadFrequencies();
+      await loadRoutes();
+    };
+    initializeData();
+  }, []);
 
   const navItems = [
     { 
@@ -171,35 +260,71 @@ const RouteMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this route?')) {
-      setRoutes(routes.filter(r => r.id !== id));
+      try {
+        setLoading(true);
+        await routeService.deleteRoute(id);
+        await loadRoutes();
+        alert('Route deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete route';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting route:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<Route>) => {
-    if (editingRoute) {
-      // Update existing
-      setRoutes(routes.map(r => 
-        r.id === editingRoute.id 
-          ? { ...r, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : r
-      ));
-    } else {
-      // Add new
-      const newRoute: Route = {
-        id: Date.now().toString(),
-        ...formData as Route,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setRoutes([...routes, newRoute]);
+  const handleSave = async (formData: Partial<Route>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === formData.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      // Find frequency ID from frequency code
+      const selectedFrequency = frequencies.find(f => f.frequencyCode === formData.frequencyID);
+
+      if (editingRoute) {
+        // Update existing - only frequencyId and status can be updated (routeCode, routeName, companyId are immutable)
+        await routeService.updateRoute(editingRoute.id, {
+          frequencyId: selectedFrequency?.id,
+          status: formData.status,
+        });
+        alert('Route updated successfully');
+      } else {
+        // Add new
+        if (!formData.routeCode || !formData.routeName || !formData.companyName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await routeService.createRoute({
+          routeCode: formData.routeCode,
+          routeName: formData.routeName,
+          companyId: selectedCompany.id,
+          frequencyId: selectedFrequency?.id,
+        });
+        alert('Route created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingRoute(null);
+      await loadRoutes();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save route';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving route:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingRoute(null);
   };
 
   // Define columns for the table
@@ -258,6 +383,17 @@ const RouteMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -277,6 +413,27 @@ const RouteMasterPage = () => {
             <span className="breadcrumb">/ Masters / Route Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !routes.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading routes...
+          </div>
+        )}
 
         {/* Route Master Content using reusable template */}
         <MasterPageLayout
@@ -307,6 +464,7 @@ const RouteMasterPage = () => {
         <RouteFormModal
           route={editingRoute}
           companies={companies.filter(c => c.status === 'Active')}
+          frequencies={frequencies.filter(f => f.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingRoute(null);
@@ -322,11 +480,12 @@ const RouteMasterPage = () => {
 interface RouteFormModalProps {
   route: Route | null;
   companies: Company[];
+  frequencies: Frequency[];
   onClose: () => void;
   onSave: (data: Partial<Route>) => void;
 }
 
-const RouteFormModal = ({ route, companies, onClose, onSave }: RouteFormModalProps) => {
+const RouteFormModal = ({ route, companies, frequencies, onClose, onSave }: RouteFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Route>>(
     route || {
       companyName: '',
@@ -364,6 +523,8 @@ const RouteFormModal = ({ route, companies, onClose, onSave }: RouteFormModalPro
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
+                  disabled={!!route} // Disable when editing (immutable field)
+                  style={route ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -381,6 +542,8 @@ const RouteFormModal = ({ route, companies, onClose, onSave }: RouteFormModalPro
                   onChange={(e) => setFormData({ ...formData, routeCode: e.target.value })}
                   required
                   placeholder="Enter Route Code"
+                  disabled={!!route} // Disable when editing (immutable field)
+                  style={route ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -391,17 +554,23 @@ const RouteFormModal = ({ route, companies, onClose, onSave }: RouteFormModalPro
                   onChange={(e) => setFormData({ ...formData, routeName: e.target.value })}
                   required
                   placeholder="Enter Route Name"
+                  disabled={!!route} // Disable when editing (immutable field)
+                  style={route ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
-                <label>Frequency ID *</label>
-                <input
-                  type="text"
+                <label>Frequency</label>
+                <select
                   value={formData.frequencyID || ''}
                   onChange={(e) => setFormData({ ...formData, frequencyID: e.target.value })}
-                  required
-                  placeholder="Enter Frequency ID"
-                />
+                >
+                  <option value="">Select Frequency</option>
+                  {frequencies.map((frequency) => (
+                    <option key={frequency.id} value={frequency.frequencyCode}>
+                      {frequency.frequencyName} ({frequency.frequencyCode})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Status</label>

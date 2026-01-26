@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { stateService, StateResponse } from '../../services/stateService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -24,28 +25,40 @@ const StateMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingState, setEditingState] = useState<State | null>(null);
-  const [states, setStates] = useState<State[]>([
-    {
-      id: '1',
-      stateCode: 'MH',
-      stateName: 'Maharashtra',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      stateCode: 'DL',
-      stateName: 'Delhi',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  const [states, setStates] = useState<State[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load states from API
+  const loadStates = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiStates = await stateService.getAllStates(true); // Get only active states
+      const mappedStates: State[] = apiStates.map((apiState: StateResponse) => ({
+        id: apiState.id,
+        stateCode: apiState.stateCode,
+        stateName: apiState.stateName,
+        status: apiState.status,
+        createdBy: apiState.createdBy || '',
+        createdOn: apiState.createdOn,
+        modifiedBy: apiState.modifiedBy || '',
+        modifiedOn: apiState.modifiedOn,
+      }));
+      setStates(mappedStates);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load states';
+      setError(errorMessage);
+      console.error('Error loading states:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load states on component mount
+  useEffect(() => {
+    loadStates();
+  }, []);
 
   const navItems = [
     { 
@@ -148,35 +161,58 @@ const StateMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this state?')) {
-      setStates(states.filter(s => s.id !== id));
+      try {
+        setLoading(true);
+        await stateService.deleteState(id);
+        await loadStates(); // Reload states after deletion
+        alert('State deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete state';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting state:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<State>) => {
-    if (editingState) {
-      // Update existing
-      setStates(states.map(s => 
-        s.id === editingState.id 
-          ? { ...s, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : s
-      ));
-    } else {
-      // Add new
-      const newState: State = {
-        id: Date.now().toString(),
-        ...formData as State,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setStates([...states, newState]);
+  const handleSave = async (formData: Partial<State>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (editingState) {
+        // Update existing - only status can be updated (stateCode and stateName are immutable)
+        await stateService.updateState(editingState.id, {
+          status: formData.status,
+        });
+        alert('State updated successfully');
+      } else {
+        // Add new
+        if (!formData.stateCode || !formData.stateName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await stateService.createState({
+          stateCode: formData.stateCode,
+          stateName: formData.stateName,
+        });
+        alert('State created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingState(null);
+      await loadStates(); // Reload states after save
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save state';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving state:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingState(null);
   };
 
   // Define columns for the table
@@ -233,6 +269,17 @@ const StateMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -252,6 +299,27 @@ const StateMasterPage = () => {
             <span className="breadcrumb">/ Masters / State Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !states.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading states...
+          </div>
+        )}
 
         {/* State Master Content using reusable template */}
         <MasterPageLayout
@@ -337,6 +405,8 @@ const StateFormModal = ({ state, onClose, onSave }: StateFormModalProps) => {
                   onChange={(e) => setFormData({ ...formData, stateCode: e.target.value })}
                   required
                   maxLength={10}
+                  disabled={!!state} // Disable when editing (immutable field)
+                  style={state ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -346,6 +416,8 @@ const StateFormModal = ({ state, onClose, onSave }: StateFormModalProps) => {
                   value={formData.stateName || ''}
                   onChange={(e) => setFormData({ ...formData, stateName: e.target.value })}
                   required
+                  disabled={!!state} // Disable when editing (immutable field)
+                  style={state ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">

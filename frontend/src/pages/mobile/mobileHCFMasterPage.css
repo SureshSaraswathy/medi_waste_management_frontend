@@ -1,0 +1,33 @@
+.mobile-hcf-master {
+  padding: 16px;
+}
+
+.mobile-hcf-master-info {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.mobile-hcf-master-info p {
+  color: #6b7280;
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.mobile-hcf-master-btn {
+  padding: 12px 24px;
+  background: #667eea;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-hcf-master-btn:active {
+  background: #5568d3;
+}

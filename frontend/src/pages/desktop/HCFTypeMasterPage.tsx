@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData } from '../../utils/permissions';
+import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import './hcfTypeMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -24,54 +27,79 @@ interface Company {
 }
 
 const HCFTypeMasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
+  const canCreate = canCreateMasterData(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingHCFType, setEditingHCFType] = useState<HCFType | null>(null);
+  const [hcfTypes, setHcfTypes] = useState<HCFType[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Master data - Load from Company Master
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true);
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
 
-  const [hcfTypes, setHcfTypes] = useState<HCFType[]>([
-    {
-      id: '1',
-      companyName: 'Sample Company',
-      hcfTypeCode: 'TYPE001',
-      hcfTypeName: 'Hospital',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-01',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      companyName: 'ABC Industries',
-      hcfTypeCode: 'TYPE002',
-      hcfTypeName: 'Clinic',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-02',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-02',
-    },
-    {
-      id: '3',
-      companyName: 'XYZ Corporation',
-      hcfTypeCode: 'TYPE003',
-      hcfTypeName: 'Medical Center',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-03',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-03',
-    },
-  ]);
+  // Load HCF Types from API
+  const loadHcfTypes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiHcfTypes = await hcfTypeService.getAllHcfTypes(undefined, true);
+      const mappedHcfTypes: HCFType[] = apiHcfTypes.map((apiHcfType: HcfTypeResponse) => {
+        const company = companies.find(c => c.id === apiHcfType.companyId);
+        return {
+          id: apiHcfType.id,
+          companyName: company?.companyName || 'Unknown Company',
+          hcfTypeCode: apiHcfType.hcfTypeCode,
+          hcfTypeName: apiHcfType.hcfTypeName,
+          status: apiHcfType.status,
+          createdBy: apiHcfType.createdBy || '',
+          createdOn: apiHcfType.createdOn,
+          modifiedBy: apiHcfType.modifiedBy || '',
+          modifiedOn: apiHcfType.modifiedOn,
+        };
+      });
+      setHcfTypes(mappedHcfTypes);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load HCF types';
+      setError(errorMessage);
+      console.error('Error loading HCF types:', err);
+      setHcfTypes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies first, then HCF types
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, []);
+
+  // Load HCF types when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadHcfTypes();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const filteredHCFTypes = hcfTypes.filter(hcfType =>
     hcfType.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -89,28 +117,66 @@ const HCFTypeMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this HCF Type?')) {
-      setHcfTypes(hcfTypes.filter(hcfType => hcfType.id !== id));
+      try {
+        setLoading(true);
+        await hcfTypeService.deleteHcfType(id);
+        await loadHcfTypes();
+        alert('HCF Type deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete HCF type';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting HCF type:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (data: Partial<HCFType>) => {
-    if (editingHCFType) {
-      setHcfTypes(hcfTypes.map(hcfType => hcfType.id === editingHCFType.id ? { ...hcfType, ...data } : hcfType));
-    } else {
-      const newHCFType: HCFType = {
-        ...data as HCFType,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setHcfTypes([...hcfTypes, newHCFType]);
+  const handleSave = async (data: Partial<HCFType>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === data.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      if (editingHCFType) {
+        // Update existing - only status can be updated (hcfTypeCode, hcfTypeName, companyId are immutable)
+        await hcfTypeService.updateHcfType(editingHCFType.id, {
+          status: data.status,
+        });
+        alert('HCF Type updated successfully');
+      } else {
+        // Add new
+        if (!data.hcfTypeCode || !data.hcfTypeName || !data.companyName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await hcfTypeService.createHcfType({
+          hcfTypeCode: data.hcfTypeCode,
+          hcfTypeName: data.hcfTypeName,
+          companyId: selectedCompany.id,
+        });
+        alert('HCF Type created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingHCFType(null);
+      await loadHcfTypes();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save HCF type';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving HCF type:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingHCFType(null);
   };
 
   const navItems = [
@@ -153,6 +219,17 @@ const HCFTypeMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -170,6 +247,27 @@ const HCFTypeMasterPage = () => {
             <span className="breadcrumb">/ Masters / HCF Type Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !hcfTypes.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading HCF types...
+          </div>
+        )}
 
         <div className="hcf-type-master-page">
           <div className="hcf-type-master-header">
@@ -190,13 +288,15 @@ const HCFTypeMasterPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-hcf-type-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add HCF Type
-            </button>
+            {canCreate && (
+              <button className="add-hcf-type-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add HCF Type
+              </button>
+            )}
           </div>
 
           <div className="hcf-type-table-container">
@@ -325,6 +425,8 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
+                  disabled={!!hcfType} // Disable when editing (immutable field)
+                  style={hcfType ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -342,6 +444,8 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
                   onChange={(e) => setFormData({ ...formData, hcfTypeCode: e.target.value })}
                   required
                   placeholder="Enter HCF Type Code"
+                  disabled={!!hcfType} // Disable when editing (immutable field)
+                  style={hcfType ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -352,6 +456,8 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
                   onChange={(e) => setFormData({ ...formData, hcfTypeName: e.target.value })}
                   required
                   placeholder="Enter HCF Type Name"
+                  disabled={!!hcfType} // Disable when editing (immutable field)
+                  style={hcfType ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">

@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData } from '../../utils/permissions';
+import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import './frequencyMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -24,54 +27,79 @@ interface Company {
 }
 
 const FrequencyMasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
+  const canCreate = canCreateMasterData(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingFrequency, setEditingFrequency] = useState<Frequency | null>(null);
+  const [frequencies, setFrequencies] = useState<Frequency[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Master data - Load from Company Master
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true);
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
 
-  const [frequencies, setFrequencies] = useState<Frequency[]>([
-    {
-      id: '1',
-      frequencyCode: 'FREQ001',
-      frequencyName: 'Daily',
-      companyName: 'Sample Company',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-01',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      frequencyCode: 'FREQ002',
-      frequencyName: 'Weekly',
-      companyName: 'ABC Industries',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-02',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-02',
-    },
-    {
-      id: '3',
-      frequencyCode: 'FREQ003',
-      frequencyName: 'Monthly',
-      companyName: 'XYZ Corporation',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-03',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-03',
-    },
-  ]);
+  // Load frequencies from API
+  const loadFrequencies = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiFrequencies = await frequencyService.getAllFrequencies(undefined, true);
+      const mappedFrequencies: Frequency[] = apiFrequencies.map((apiFrequency: FrequencyResponse) => {
+        const company = companies.find(c => c.id === apiFrequency.companyId);
+        return {
+          id: apiFrequency.id,
+          frequencyCode: apiFrequency.frequencyCode,
+          frequencyName: apiFrequency.frequencyName,
+          companyName: company?.companyName || 'Unknown Company',
+          status: apiFrequency.status,
+          createdBy: apiFrequency.createdBy || '',
+          createdOn: apiFrequency.createdOn,
+          modifiedBy: apiFrequency.modifiedBy || '',
+          modifiedOn: apiFrequency.modifiedOn,
+        };
+      });
+      setFrequencies(mappedFrequencies);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load frequencies';
+      setError(errorMessage);
+      console.error('Error loading frequencies:', err);
+      setFrequencies([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies first, then frequencies
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, []);
+
+  // Load frequencies when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadFrequencies();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const filteredFrequencies = frequencies.filter(frequency =>
     frequency.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -89,28 +117,66 @@ const FrequencyMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this frequency?')) {
-      setFrequencies(frequencies.filter(frequency => frequency.id !== id));
+      try {
+        setLoading(true);
+        await frequencyService.deleteFrequency(id);
+        await loadFrequencies();
+        alert('Frequency deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete frequency';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting frequency:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (data: Partial<Frequency>) => {
-    if (editingFrequency) {
-      setFrequencies(frequencies.map(frequency => frequency.id === editingFrequency.id ? { ...frequency, ...data } : frequency));
-    } else {
-      const newFrequency: Frequency = {
-        ...data as Frequency,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setFrequencies([...frequencies, newFrequency]);
+  const handleSave = async (data: Partial<Frequency>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === data.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      if (editingFrequency) {
+        // Update existing - only status can be updated (frequencyCode, frequencyName, companyId are immutable)
+        await frequencyService.updateFrequency(editingFrequency.id, {
+          status: data.status,
+        });
+        alert('Frequency updated successfully');
+      } else {
+        // Add new
+        if (!data.frequencyCode || !data.frequencyName || !data.companyName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await frequencyService.createFrequency({
+          frequencyCode: data.frequencyCode,
+          frequencyName: data.frequencyName,
+          companyId: selectedCompany.id,
+        });
+        alert('Frequency created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingFrequency(null);
+      await loadFrequencies();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save frequency';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving frequency:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingFrequency(null);
   };
 
   const navItems = [
@@ -153,6 +219,17 @@ const FrequencyMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -170,6 +247,27 @@ const FrequencyMasterPage = () => {
             <span className="breadcrumb">/ Masters / Frequency Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !frequencies.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading frequencies...
+          </div>
+        )}
 
         <div className="frequency-master-page">
           <div className="frequency-master-header">
@@ -190,13 +288,15 @@ const FrequencyMasterPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-frequency-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Frequency
-            </button>
+            {canCreate && (
+              <button className="add-frequency-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Frequency
+              </button>
+            )}
           </div>
 
           <div className="frequency-table-container">
@@ -325,6 +425,8 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
+                  disabled={!!frequency} // Disable when editing (immutable field)
+                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -342,6 +444,8 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
                   onChange={(e) => setFormData({ ...formData, frequencyCode: e.target.value })}
                   required
                   placeholder="Enter Frequency Code"
+                  disabled={!!frequency} // Disable when editing (immutable field)
+                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -352,6 +456,8 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
                   onChange={(e) => setFormData({ ...formData, frequencyName: e.target.value })}
                   required
                   placeholder="Enter Frequency Name"
+                  disabled={!!frequency} // Disable when editing (immutable field)
+                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">

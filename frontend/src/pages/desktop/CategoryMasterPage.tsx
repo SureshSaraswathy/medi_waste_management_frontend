@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { categoryService, CategoryResponse } from '../../services/categoryService';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -32,60 +34,75 @@ const CategoryMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Companies from Company Master - Load active companies only
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true);
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
 
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: '1',
-      companyName: 'Sample Company',
-      categoryCode: 'CAT001',
-      categoryName: 'Yellow Category',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      companyName: 'ABC Industries',
-      categoryCode: 'CAT002',
-      categoryName: 'Red Category',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '3',
-      companyName: 'XYZ Corporation',
-      categoryCode: 'CAT003',
-      categoryName: 'White Category',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '4',
-      companyName: 'Sample Company',
-      categoryCode: 'CAT004',
-      categoryName: 'Blue Category',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  // Load categories from API
+  const loadCategories = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // NOTE: Backend API needs to be created. This will fail until backend is ready.
+      const apiCategories = await categoryService.getAllCategories(undefined, true);
+      const mappedCategories: Category[] = apiCategories.map((apiCategory: CategoryResponse) => {
+        const company = companies.find(c => c.id === apiCategory.companyId);
+        return {
+          id: apiCategory.id,
+          companyName: company?.companyName || 'Unknown Company',
+          categoryCode: apiCategory.categoryCode,
+          categoryName: apiCategory.categoryName,
+          status: apiCategory.status,
+          createdBy: apiCategory.createdBy || '',
+          createdOn: apiCategory.createdOn,
+          modifiedBy: apiCategory.modifiedBy || '',
+          modifiedOn: apiCategory.modifiedOn,
+        };
+      });
+      setCategories(mappedCategories);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load categories';
+      setError(errorMessage);
+      console.error('Error loading categories:', err);
+      // For now, keep empty array if API fails (backend not ready)
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies first, then categories
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, []);
+
+  // Load categories when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadCategories();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const navItems = [
     { 
@@ -189,35 +206,66 @@ const CategoryMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
-      setCategories(categories.filter(c => c.id !== id));
+      try {
+        setLoading(true);
+        await categoryService.deleteCategory(id);
+        await loadCategories();
+        alert('Category deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete category';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting category:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<Category>) => {
-    if (editingCategory) {
-      // Update existing
-      setCategories(categories.map(c => 
-        c.id === editingCategory.id 
-          ? { ...c, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : c
-      ));
-    } else {
-      // Add new
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        ...formData as Category,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setCategories([...categories, newCategory]);
+  const handleSave = async (formData: Partial<Category>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === formData.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      if (editingCategory) {
+        // Update existing - only status can be updated (categoryCode, categoryName, companyId are immutable)
+        await categoryService.updateCategory(editingCategory.id, {
+          status: formData.status,
+        });
+        alert('Category updated successfully');
+      } else {
+        // Add new
+        if (!formData.categoryCode || !formData.categoryName || !formData.companyName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await categoryService.createCategory({
+          categoryCode: formData.categoryCode,
+          categoryName: formData.categoryName,
+          companyId: selectedCompany.id,
+        });
+        alert('Category created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingCategory(null);
+      await loadCategories();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save category';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving category:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingCategory(null);
   };
 
   // Define columns for the table
@@ -275,6 +323,17 @@ const CategoryMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -294,6 +353,27 @@ const CategoryMasterPage = () => {
             <span className="breadcrumb">/ Masters / Category Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !categories.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading categories...
+          </div>
+        )}
 
         {/* Category Master Content using reusable template */}
         <MasterPageLayout
@@ -323,6 +403,7 @@ const CategoryMasterPage = () => {
       {showModal && (
         <CategoryFormModal
           category={editingCategory}
+          companies={companies.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingCategory(null);
@@ -379,6 +460,8 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
+                  disabled={!!category} // Disable when editing (immutable field)
+                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -396,6 +479,8 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
                   onChange={(e) => setFormData({ ...formData, categoryCode: e.target.value })}
                   required
                   placeholder="Enter Category Code"
+                  disabled={!!category} // Disable when editing (immutable field)
+                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -406,6 +491,8 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
                   onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
                   required
                   placeholder="Enter Category Name"
+                  disabled={!!category} // Disable when editing (immutable field)
+                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">

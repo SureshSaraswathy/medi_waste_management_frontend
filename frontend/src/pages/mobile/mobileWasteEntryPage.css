@@ -1,0 +1,97 @@
+.mobile-waste-entry {
+  padding: 16px;
+}
+
+.mobile-waste-entry-success,
+.mobile-waste-entry-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.mobile-waste-entry-success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.mobile-waste-entry-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.mobile-waste-entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mobile-waste-entry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-waste-entry-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.mobile-waste-entry-field input,
+.mobile-waste-entry-field textarea {
+  padding: 14px;
+  font-size: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  font-family: inherit;
+}
+
+.mobile-waste-entry-field input:focus,
+.mobile-waste-entry-field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.mobile-waste-entry-field input:disabled,
+.mobile-waste-entry-field textarea:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.mobile-waste-entry-field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.mobile-waste-entry-submit {
+  padding: 16px;
+  background: #667eea;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  margin-top: 8px;
+}
+
+.mobile-waste-entry-submit:active {
+  background: #5568d3;
+}
+
+.mobile-waste-entry-submit:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}

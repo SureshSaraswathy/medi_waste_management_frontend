@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { trainingCertificateService, TrainingCertificateResponse } from '../../services/trainingCertificateService';
+import { companyService, CompanyResponse } from '../../services/companyService';
+import { hcfService, HcfResponse } from '../../services/hcfService';
 import './trainingCertificatePage.css';
 import '../desktop/dashboardPage.css';
 
@@ -10,10 +13,12 @@ interface TrainingCertificate {
   staffName: string;
   staffCode: string;
   designation: string;
-  hcfCode: string;
+  hcfCode: string; // Display code
+  hcfId: string; // Backend ID
   trainingDate: string;
   status: 'Active' | 'Inactive';
-  companyName: string;
+  companyName: string; // Display name
+  companyId: string; // Backend ID
   trainedBy: string;
   createdBy: string;
   createdOn: string;
@@ -21,23 +26,8 @@ interface TrainingCertificate {
   modifiedOn: string;
 }
 
-interface Company {
-  id: string;
-  companyCode: string;
-  companyName: string;
-  status: 'Active' | 'Inactive';
-}
-
-interface HCF {
-  id: string;
-  hcfCode: string;
-  hcfName: string;
-  companyName: string;
-  status: 'Active' | 'Inactive';
-}
-
 const TrainingCertificatePage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('All');
@@ -49,94 +39,128 @@ const TrainingCertificatePage = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingCertificate, setEditingCertificate] = useState<TrainingCertificate | null>(null);
   const [viewingCertificate, setViewingCertificate] = useState<TrainingCertificate | null>(null);
+  
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Master data
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  const [companies, setCompanies] = useState<CompanyResponse[]>([]);
+  const [hcfs, setHcfs] = useState<HcfResponse[]>([]);
+  const [certificates, setCertificates] = useState<TrainingCertificate[]>([]);
 
-  const [hcfs] = useState<HCF[]>([
-    { id: '1', hcfCode: 'HCF001', hcfName: 'City Hospital', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', hcfCode: 'HCF002', hcfName: 'General Hospital', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', hcfCode: 'HCF003', hcfName: 'Medical Center', companyName: 'XYZ Corporation', status: 'Active' },
-    { id: '4', hcfCode: 'HCF004', hcfName: 'City Clinic', companyName: 'Sample Company', status: 'Active' },
-  ]);
-
-  const [certificates, setCertificates] = useState<TrainingCertificate[]>([
-    {
-      id: '1',
-      certificateNo: 'CERT-2024-001',
-      staffName: 'John Doe',
-      staffCode: 'STF001',
-      designation: 'Nurse',
-      hcfCode: 'HCF001',
-      trainingDate: '2024-01-15',
-      status: 'Active',
-      companyName: 'Sample Company',
-      trainedBy: 'Training Organization ABC',
-      createdBy: 'System',
-      createdOn: '2024-01-15',
-      modifiedBy: 'System',
-      modifiedOn: '2024-01-15',
-    },
-    {
-      id: '2',
-      certificateNo: 'CERT-2024-002',
-      staffName: 'Jane Smith',
-      staffCode: 'STF002',
-      designation: 'Doctor',
-      hcfCode: 'HCF002',
-      trainingDate: '2024-01-20',
-      status: 'Active',
-      companyName: 'ABC Industries',
-      trainedBy: 'Dr. Robert Wilson',
-      createdBy: 'System',
-      createdOn: '2024-01-20',
-      modifiedBy: 'System',
-      modifiedOn: '2024-01-20',
-    },
-    {
-      id: '3',
-      certificateNo: 'CERT-2024-003',
-      staffName: 'Mike Johnson',
-      staffCode: 'STF003',
-      designation: 'Lab Technician',
-      hcfCode: 'HCF003',
-      trainingDate: '2024-02-01',
-      status: 'Inactive',
-      companyName: 'XYZ Corporation',
-      trainedBy: 'Training Institute XYZ',
-      createdBy: 'System',
-      createdOn: '2024-02-01',
-      modifiedBy: 'System',
-      modifiedOn: '2024-02-01',
-    },
-  ]);
-
-  const filteredCertificates = certificates.filter(certificate => {
-    const matchesSearch = 
-      certificate.certificateNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      certificate.staffName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      certificate.staffCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      certificate.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      hcfs.find(h => h.hcfCode === certificate.hcfCode)?.hcfName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCompany = companyFilter === 'All' || certificate.companyName === companyFilter;
-    const matchesHCF = hcfFilter === 'All' || certificate.hcfCode === hcfFilter;
-    const matchesStatus = statusFilter === 'All' || certificate.status === statusFilter;
-    
-    let matchesDateRange = true;
-    if (dateFrom && certificate.trainingDate < dateFrom) {
-      matchesDateRange = false;
+  // Load companies
+  const loadCompanies = useCallback(async () => {
+    try {
+      const data = await companyService.getAllCompanies(undefined, true);
+      setCompanies(data);
+    } catch (err: any) {
+      console.error('Failed to load companies:', err);
+      setError('Failed to load companies');
     }
-    if (dateTo && certificate.trainingDate > dateTo) {
-      matchesDateRange = false;
+  }, []);
+
+  // Load HCFs
+  const loadHcfs = useCallback(async (companyId?: string) => {
+    try {
+      const data = await hcfService.getAllHcfs(companyId, true);
+      setHcfs(data);
+    } catch (err: any) {
+      console.error('Failed to load HCFs:', err);
+      setError('Failed to load HCFs');
     }
-    
-    return matchesSearch && matchesCompany && matchesHCF && matchesStatus && matchesDateRange;
-  });
+  }, []);
+
+  // Load certificates
+  const loadCertificates = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const companyId = companyFilter !== 'All' 
+        ? companies.find(c => c.companyName === companyFilter)?.id 
+        : undefined;
+      
+      const filters: any = {};
+      if (hcfFilter !== 'All') {
+        const hcf = hcfs.find(h => h.hcfCode === hcfFilter);
+        if (hcf) filters.hcfId = hcf.id;
+      }
+      if (statusFilter !== 'All') {
+        filters.status = statusFilter;
+      }
+      if (dateFrom) filters.dateFrom = dateFrom;
+      if (dateTo) filters.dateTo = dateTo;
+      if (searchQuery) filters.search = searchQuery;
+
+      const data = await trainingCertificateService.getAllCertificates(
+        companyId,
+        false,
+        Object.keys(filters).length > 0 ? filters : undefined
+      );
+
+      // Map backend data to frontend format
+      const mappedCertificates: TrainingCertificate[] = data.map(cert => {
+        const company = companies.find(c => c.id === cert.companyId);
+        const hcf = hcfs.find(h => h.id === cert.hcfId);
+        return {
+          id: cert.id,
+          certificateNo: cert.certificateNo,
+          staffName: cert.staffName,
+          staffCode: cert.staffCode,
+          designation: cert.designation || '',
+          hcfCode: hcf?.hcfCode || '',
+          hcfId: cert.hcfId,
+          trainingDate: cert.trainingDate,
+          status: cert.status,
+          companyName: company?.companyName || '',
+          companyId: cert.companyId,
+          trainedBy: cert.trainedBy,
+          createdBy: cert.createdBy || '',
+          createdOn: cert.createdOn,
+          modifiedBy: cert.modifiedBy || '',
+          modifiedOn: cert.modifiedOn,
+        };
+      });
+      setCertificates(mappedCertificates);
+    } catch (err: any) {
+      console.error('Failed to load certificates:', err);
+      setError(err.message || 'Failed to load certificates');
+    } finally {
+      setLoading(false);
+    }
+  }, [companyFilter, hcfFilter, statusFilter, dateFrom, dateTo, searchQuery, companies, hcfs]);
+
+  // Initial load
+  useEffect(() => {
+    const initialize = async () => {
+      await loadCompanies();
+      await loadHcfs();
+    };
+    initialize();
+  }, [loadCompanies, loadHcfs]);
+
+  // Reload certificates when filters change
+  useEffect(() => {
+    if (companies.length > 0 && hcfs.length > 0) {
+      loadCertificates();
+    }
+  }, [companyFilter, hcfFilter, statusFilter, dateFrom, dateTo, searchQuery, companies, hcfs, loadCertificates]);
+
+  // Reload HCFs when company filter changes
+  useEffect(() => {
+    if (companyFilter !== 'All') {
+      const company = companies.find(c => c.companyName === companyFilter);
+      if (company) {
+        loadHcfs(company.id);
+      }
+    } else {
+      loadHcfs();
+    }
+  }, [companyFilter, companies, loadHcfs]);
+
+  // Certificates are already filtered by API, so we use them directly
+  const filteredCertificates = certificates;
 
   const handleCreate = () => {
     setEditingCertificate(null);
@@ -157,9 +181,18 @@ const TrainingCertificatePage = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this certificate?')) {
-      setCertificates(certificates.filter(certificate => certificate.id !== id));
+      try {
+        setLoading(true);
+        await trainingCertificateService.deleteCertificate(id);
+        await loadCertificates();
+      } catch (err: any) {
+        console.error('Failed to delete certificate:', err);
+        alert(err.message || 'Failed to delete certificate');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -171,33 +204,74 @@ const TrainingCertificatePage = () => {
     alert('Export functionality will be implemented');
   };
 
-  const handleSave = (data: Partial<TrainingCertificate>) => {
-    if (editingCertificate) {
-      const updatedCertificate = {
-        ...editingCertificate,
-        ...data,
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setCertificates(certificates.map(cert => cert.id === editingCertificate.id ? updatedCertificate : cert));
-    } else {
-      const newCertificate: TrainingCertificate = {
-        ...data as TrainingCertificate,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setCertificates([...certificates, newCertificate]);
+  const handleSave = async (data: Partial<TrainingCertificate>) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      if (editingCertificate) {
+        // Update existing certificate
+        const updateData: any = {};
+        if (data.staffName !== undefined) updateData.staffName = data.staffName;
+        if (data.staffCode !== undefined) updateData.staffCode = data.staffCode;
+        if (data.designation !== undefined) updateData.designation = data.designation;
+        if (data.hcfId !== undefined) updateData.hcfId = data.hcfId;
+        if (data.trainingDate !== undefined) updateData.trainingDate = data.trainingDate;
+        if (data.trainedBy !== undefined) updateData.trainedBy = data.trainedBy;
+        if (data.status !== undefined) updateData.status = data.status;
+
+        await trainingCertificateService.updateCertificate(editingCertificate.id, updateData);
+      } else {
+        // Create new certificate
+        const company = companies.find(c => c.companyName === data.companyName);
+        if (!company) {
+          throw new Error('Company not found');
+        }
+        if (!data.hcfId) {
+          throw new Error('HCF is required');
+        }
+        if (!data.certificateNo) {
+          throw new Error('Certificate number is required');
+        }
+
+        await trainingCertificateService.createCertificate({
+          certificateNo: data.certificateNo || generateCertificateNo(),
+          staffName: data.staffName || '',
+          staffCode: data.staffCode || '',
+          designation: data.designation,
+          hcfId: data.hcfId,
+          trainingDate: data.trainingDate || new Date().toISOString().split('T')[0],
+          companyId: company.id,
+          trainedBy: data.trainedBy || '',
+        });
+      }
+
+      await loadCertificates();
+      setShowCreateModal(false);
+      setEditingCertificate(null);
+    } catch (err: any) {
+      console.error('Failed to save certificate:', err);
+      setError(err.message || 'Failed to save certificate');
+      alert(err.message || 'Failed to save certificate');
+    } finally {
+      setSaving(false);
     }
-    setShowCreateModal(false);
-    setEditingCertificate(null);
   };
 
   const generateCertificateNo = (): string => {
     const year = new Date().getFullYear();
     const count = certificates.length + 1;
     return `CERT-${year}-${count.toString().padStart(3, '0')}`;
+  };
+
+  // Map HCF by company name for display
+  const getHcfsByCompany = (companyName: string) => {
+    if (companyName === 'All') {
+      return hcfs.filter(h => h.status === 'Active');
+    }
+    const company = companies.find(c => c.companyName === companyName);
+    if (!company) return [];
+    return hcfs.filter(h => h.companyId === company.id && h.status === 'Active');
   };
 
   const navItems = [
@@ -211,9 +285,7 @@ const TrainingCertificatePage = () => {
   ];
 
   // Filter HCFs based on selected company
-  const filteredHCFsForCompany = companyFilter === 'All' 
-    ? hcfs.filter(h => h.status === 'Active')
-    : hcfs.filter(h => h.companyName === companyFilter && h.status === 'Active');
+  const filteredHCFsForCompany = getHcfsByCompany(companyFilter);
 
   return (
     <div className="dashboard-container">
@@ -245,6 +317,17 @@ const TrainingCertificatePage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -264,6 +347,16 @@ const TrainingCertificatePage = () => {
         </header>
 
         <div className="training-certificate-page">
+          {error && (
+            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
+              {error}
+            </div>
+          )}
+          {loading && (
+            <div className="loading-message" style={{ padding: '10px', marginBottom: '20px', textAlign: 'center' }}>
+              Loading...
+            </div>
+          )}
           <div className="training-certificate-header">
             <h1 className="training-certificate-title">Training Certificate Management</h1>
           </div>
@@ -502,37 +595,96 @@ const TrainingCertificatePage = () => {
 // Certificate Form Modal Component
 interface CertificateFormModalProps {
   certificate: TrainingCertificate | null;
-  companies: Company[];
-  hcfs: HCF[];
+  companies: CompanyResponse[];
+  hcfs: HcfResponse[];
   onClose: () => void;
   onSave: (data: Partial<TrainingCertificate>) => void;
   generateCertificateNo: () => string;
 }
 
 const CertificateFormModal = ({ certificate, companies, hcfs, onClose, onSave, generateCertificateNo }: CertificateFormModalProps) => {
-  const [formData, setFormData] = useState<Partial<TrainingCertificate>>(
-    certificate || {
+  // Initialize form data with companyId if editing
+  const getInitialFormData = (): Partial<TrainingCertificate> => {
+    if (certificate) {
+      // When editing, ensure companyId is set from companyName
+      const company = companies.find(c => c.companyName === certificate.companyName);
+      return {
+        ...certificate,
+        companyId: certificate.companyId || company?.id || '',
+      };
+    }
+    return {
       certificateNo: '',
       staffName: '',
       staffCode: '',
       designation: '',
       hcfCode: '',
+      hcfId: '',
       trainingDate: new Date().toISOString().split('T')[0],
       status: 'Active',
       companyName: '',
+      companyId: '',
       trainedBy: '',
-    }
-  );
+    };
+  };
+
+  const [formData, setFormData] = useState<Partial<TrainingCertificate>>(getInitialFormData());
 
   const [certificateNoMode, setCertificateNoMode] = useState<'auto' | 'manual'>(certificate ? 'manual' : 'auto');
 
-  // Filter HCFs based on selected company
-  const filteredHCFs = formData.companyName
-    ? hcfs.filter(hcf => hcf.companyName === formData.companyName)
-    : [];
+  // Update companyId when companies load or when companyName changes
+  useEffect(() => {
+    if (formData.companyName && !formData.companyId && companies.length > 0) {
+      const company = companies.find(c => c.companyName === formData.companyName);
+      if (company) {
+        setFormData(prev => ({ ...prev, companyId: company.id }));
+      }
+    }
+  }, [formData.companyName, companies.length]);
+
+  // Filter HCFs based on selected company (check both companyId and companyName)
+  const filteredHCFs = (() => {
+    if (!formData.companyId && !formData.companyName) {
+      return [];
+    }
+    
+    // Find company by ID or name
+    const selectedCompany = formData.companyId 
+      ? companies.find(c => c.id === formData.companyId)
+      : companies.find(c => c.companyName === formData.companyName);
+    
+    if (!selectedCompany) {
+      return [];
+    }
+    
+    // Filter HCFs by company ID (hcfs are already filtered by status in parent)
+    const filtered = hcfs.filter(hcf => hcf.companyId === selectedCompany.id);
+    
+    return filtered;
+  })();
 
   const handleFieldChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    const updates: any = { [field]: value };
+    
+    // When company name changes, also update companyId and clear HCF selection
+    if (field === 'companyName') {
+      const company = companies.find(c => c.companyName === value);
+      if (company) {
+        updates.companyId = company.id;
+      }
+      updates.hcfCode = '';
+      updates.hcfId = '';
+    }
+    
+    // When HCF code changes, also update hcfId
+    if (field === 'hcfCode') {
+      const hcf = filteredHCFs.find(h => h.hcfCode === value);
+      if (hcf) {
+        updates.hcfId = hcf.id;
+      }
+    }
+    
+    setFormData({ ...formData, ...updates });
   };
 
   const handleCertificateNoModeChange = (mode: 'auto' | 'manual') => {
@@ -597,7 +749,6 @@ const CertificateFormModal = ({ certificate, companies, hcfs, onClose, onSave, g
                   value={formData.companyName || ''}
                   onChange={(e) => {
                     handleFieldChange('companyName', e.target.value);
-                    handleFieldChange('hcfCode', '');
                   }}
                   required
                 >
@@ -615,14 +766,18 @@ const CertificateFormModal = ({ certificate, companies, hcfs, onClose, onSave, g
                   value={formData.hcfCode || ''}
                   onChange={(e) => handleFieldChange('hcfCode', e.target.value)}
                   required
-                  disabled={!formData.companyName}
+                  disabled={!formData.companyId && !formData.companyName}
                 >
                   <option value="">Select HCF</option>
-                  {filteredHCFs.map((hcf) => (
-                    <option key={hcf.id} value={hcf.hcfCode}>
-                      {hcf.hcfCode} - {hcf.hcfName}
-                    </option>
-                  ))}
+                  {filteredHCFs.length === 0 && (formData.companyId || formData.companyName) ? (
+                    <option value="" disabled>No HCFs available for selected company</option>
+                  ) : (
+                    filteredHCFs.map((hcf) => (
+                      <option key={hcf.id} value={hcf.hcfCode}>
+                        {hcf.hcfCode} - {hcf.hcfName}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -64,10 +65,13 @@ interface Company {
 const CompanyMasterPage = () => {
   const { logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // States from State Master - Load active states only
   const [states] = useState<State[]>([
@@ -134,45 +138,88 @@ const CompanyMasterPage = () => {
     },
   ]);
 
-  const [companies, setCompanies] = useState<Company[]>([
-    {
-      id: '1',
-      companyCode: 'COMP001',
-      companyName: 'Sample Company',
-      regdOfficeAddress: '123 Main St',
-      adminOfficeAddress: '456 Admin Ave',
-      factoryAddress: '789 Factory Rd',
-      gstin: 'GST123456789',
-      state: 'MH',
-      pincode: '400001',
-      prefix: 'SC',
-      authPersonName: 'John Doe',
-      authPersonDesignation: 'Manager',
-      authPersonDOB: '1990-01-01',
-      pcbauthNum: 'PCB001',
-      ctoWaterNum: 'CTOW001',
-      ctoWaterDate: '2023-01-01',
-      ctoWaterValidUpto: '2024-01-01',
-      ctoAirNum: 'CTOA001',
-      ctoAirDate: '2023-01-01',
-      ctoAirValidUpto: '2024-01-01',
-      cteWaterNum: 'CTEW001',
-      cteWaterDate: '2023-01-01',
-      cteWaterValidUpto: '2024-01-01',
-      cteAirNum: 'CTEA001',
-      cteAirDate: '2023-01-01',
-      cteAirValidUpto: '2024-01-01',
-      hazardousWasteNum: 'HW001',
-      pcbZoneID: 'ZONE001',
-      gstValidFrom: '2023-01-01',
-      gstRate: '18%',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Map backend CompanyResponse to frontend Company interface
+  const mapCompanyResponseToCompany = (apiCompany: CompanyResponse): Company => {
+    return {
+      id: apiCompany.id,
+      companyCode: apiCompany.companyCode,
+      companyName: apiCompany.companyName,
+      regdOfficeAddress: '', // Will be added to backend later
+      adminOfficeAddress: '', // Will be added to backend later
+      factoryAddress: '', // Will be added to backend later
+      gstin: '', // Will be added to backend later
+      state: '', // Will be added to backend later
+      pincode: '', // Will be added to backend later
+      prefix: '', // Will be added to backend later
+      authPersonName: '', // Will be added to backend later
+      authPersonDesignation: '', // Will be added to backend later
+      authPersonDOB: '', // Will be added to backend later
+      pcbauthNum: '', // Will be added to backend later
+      ctoWaterNum: '', // Will be added to backend later
+      ctoWaterDate: '', // Will be added to backend later
+      ctoWaterValidUpto: '', // Will be added to backend later
+      ctoAirNum: '', // Will be added to backend later
+      ctoAirDate: '', // Will be added to backend later
+      ctoAirValidUpto: '', // Will be added to backend later
+      cteWaterNum: '', // Will be added to backend later
+      cteWaterDate: '', // Will be added to backend later
+      cteWaterValidUpto: '', // Will be added to backend later
+      cteAirNum: '', // Will be added to backend later
+      cteAirDate: '', // Will be added to backend later
+      cteAirValidUpto: '', // Will be added to backend later
+      hazardousWasteNum: '', // Will be added to backend later
+      pcbZoneID: '', // Will be added to backend later
+      gstValidFrom: '', // Will be added to backend later
+      gstRate: '', // Will be added to backend later
+      status: apiCompany.status,
+      createdBy: apiCompany.createdBy || 'System',
+      createdOn: apiCompany.createdOn,
+      modifiedBy: apiCompany.modifiedBy || 'System',
+      modifiedOn: apiCompany.modifiedOn,
+    };
+  };
+
+  // Load companies from API
+  const loadCompanies = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true); // Get only active companies
+      const mappedCompanies = apiCompanies.map((apiCompany) => 
+        mapCompanyResponseToCompany(apiCompany)
+      );
+      setCompanies(mappedCompanies);
+    } catch (err: any) {
+      const errorMessage = (err as Error).message || 'Failed to load companies';
+      console.error('Error loading companies:', err);
+      
+      // Check for authentication errors
+      if (
+        errorMessage.includes('not authenticated') ||
+        errorMessage.includes('Unauthorized') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403') ||
+        err?.status === 401 ||
+        err?.status === 403
+      ) {
+        // Clear invalid auth data and redirect to login
+        localStorage.removeItem('mw-auth-user');
+        navigate('/login', { replace: true });
+        return;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies on component mount
+  useEffect(() => {
+    loadCompanies();
+  }, []);
 
   const navItems = [
     { 
@@ -260,11 +307,14 @@ const CompanyMasterPage = () => {
     },
   ];
 
-  const filteredCompanies = companies.filter(company =>
-    company.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    company.companyCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    company.gstin.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCompanies = companies.filter(company => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (company.companyName || '').toLowerCase().includes(query) ||
+      (company.companyCode || '').toLowerCase().includes(query) ||
+      (company.gstin || '').toLowerCase().includes(query)
+    );
+  });
 
   const handleAdd = () => {
     setEditingCompany(null);
@@ -276,35 +326,72 @@ const CompanyMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this company?')) {
-      setCompanies(companies.filter(c => c.id !== id));
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this company?')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      await companyService.deleteCompany(id);
+      await loadCompanies(); // Reload companies after deletion
+    } catch (err) {
+      setError((err as Error).message || 'Failed to delete company');
+      console.error('Error deleting company:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSave = (formData: Partial<Company>) => {
-    if (editingCompany) {
-      // Update existing
-      setCompanies(companies.map(c => 
-        c.id === editingCompany.id 
-          ? { ...c, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : c
-      ));
-    } else {
-      // Add new
-      const newCompany: Company = {
-        id: Date.now().toString(),
-        ...formData as Company,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setCompanies([...companies, newCompany]);
+  const handleSave = async (formData: Partial<Company>) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      if (editingCompany) {
+        // Update existing company
+        // Note: Currently backend only supports companyCode, companyName, status
+        // Additional fields will need to be added to backend later
+        const updateData = {
+          companyCode: formData.companyCode,
+          companyName: formData.companyName,
+          status: formData.status,
+        };
+        
+        await companyService.updateCompany(editingCompany.id, updateData);
+      } else {
+        // Create new company
+        // Note: Currently backend only supports companyCode and companyName
+        // Additional fields will need to be added to backend later
+        if (!formData.companyCode || !formData.companyName) {
+          throw new Error('Company Code and Company Name are required');
+        }
+        
+        const createData = {
+          companyCode: formData.companyCode,
+          companyName: formData.companyName,
+        };
+        
+        await companyService.createCompany(createData);
+      }
+      
+      // Reload companies after save
+      await loadCompanies();
+      setShowModal(false);
+      setEditingCompany(null);
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'Failed to save company';
+      setError(errorMessage);
+      console.error('Error saving company:', err);
+      
+      // If authentication error, suggest login
+      if (errorMessage.includes('403') || errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setError('Authentication failed. Please login again.');
+      }
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingCompany(null);
   };
 
   // Define columns for the table
@@ -380,6 +467,17 @@ const CompanyMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -399,6 +497,46 @@ const CompanyMasterPage = () => {
             <span className="breadcrumb">/ Masters / Company Master</span>
           </div>
         </header>
+
+        {/* Error Banner */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px',
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#c33', 
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '20px',
+            color: '#666'
+          }}>
+            Loading...
+          </div>
+        )}
 
         {/* Company Master Content using reusable template */}
         <MasterPageLayout
@@ -430,6 +568,7 @@ const CompanyMasterPage = () => {
           company={editingCompany}
           states={states.filter(s => s.status === 'Active')}
           pcbZones={pcbZones.filter(z => z.status === 'Active')}
+          loading={loading}
           onClose={() => {
             setShowModal(false);
             setEditingCompany(null);
@@ -446,11 +585,12 @@ interface CompanyFormModalProps {
   company: Company | null;
   states: State[];
   pcbZones: PCBZone[];
+  loading?: boolean;
   onClose: () => void;
   onSave: (data: Partial<Company>) => void;
 }
 
-const CompanyFormModal = ({ company, states, pcbZones, onClose, onSave }: CompanyFormModalProps) => {
+const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose, onSave }: CompanyFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Company>>(
     company || {
       companyCode: '',
@@ -828,8 +968,8 @@ const CompanyFormModal = ({ company, states, pcbZones, onClose, onSave }: Compan
             <button type="button" className="btn btn--secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              {company ? 'Update' : 'Save'}
+            <button type="submit" className="btn btn--primary" disabled={loading}>
+              {loading ? 'Saving...' : (company ? 'Update' : 'Save')}
             </button>
           </div>
         </form>

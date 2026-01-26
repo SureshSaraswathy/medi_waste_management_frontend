@@ -14,6 +14,7 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   onEdit?: (item: T) => void;
   onDelete?: (id: string) => void;
+  onRowClick?: (item: T) => void;
   getId: (item: T) => string;
   emptyMessage?: string;
 }
@@ -23,6 +24,7 @@ function DataTable<T extends Record<string, any>>({
   columns,
   onEdit,
   onDelete,
+  onRowClick,
   getId,
   emptyMessage = 'No data available',
 }: DataTableProps<T>) {
@@ -51,17 +53,28 @@ function DataTable<T extends Record<string, any>>({
             </tr>
           ) : (
             data.map((item) => (
-              <tr key={getId(item)}>
+              <tr 
+                key={getId(item)}
+                onClick={() => onRowClick && onRowClick(item)}
+                style={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                className={onRowClick ? 'data-table-row-clickable' : ''}
+              >
                 {columns.map((column) => (
                   <td
                     key={column.key}
                     className={column.allowWrap ? 'allow-wrap' : ''}
+                    onClick={(e) => {
+                      // Prevent row click when clicking action buttons
+                      if ((e.target as HTMLElement).closest('.action-btn')) {
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     {column.render ? column.render(item) : item[column.key] || '-'}
                   </td>
                 ))}
                 {(onEdit || onDelete) && (
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     {onEdit && (
                       <button
                         className="action-btn action-btn--edit"

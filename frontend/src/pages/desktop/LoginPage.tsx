@@ -4,9 +4,11 @@ import { useAuth } from '../../hooks/useAuth';
 import './loginPage.css';
 
 const LoginPage = () => {
-  const { login, verifyOTP, loading } = useAuth();
+  const { login, verifyOTP, loading, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // All hooks must be called before any conditional returns
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -17,6 +19,14 @@ const LoginPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(0);
 
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user && !loading) {
+      const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
+      navigate(redirect || '/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate, location]);
+
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
@@ -24,11 +34,65 @@ const LoginPage = () => {
     }
   }, [resendTimer]);
 
+  // Show loading state while checking authentication (after all hooks are called)
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #2d3748',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+        <p style={{ color: '#666', fontSize: '14px' }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // Validate username/email format
+  const validateUsername = (value: string): boolean => {
+    if (!value || value.trim().length === 0) {
+      return false;
+    }
+    // Allow username (alphanumeric, underscore, hyphen) or email format
+    const usernamePattern = /^[a-zA-Z0-9_-]+$/;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return usernamePattern.test(value.trim()) || emailPattern.test(value.trim());
+  };
+
   const onSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
     setError(null);
+    
+    // Validate username/email format
+    if (!validateUsername(email)) {
+      setError('Please enter a valid username or email address');
+      return;
+    }
+    
+    // Validate password
+    if (!password || password.trim().length === 0) {
+      setError('Please enter your password');
+      return;
+    }
+    
     try {
-      const result = await login(email, password);
+      const result = await login(email.trim(), password);
       if (result.requiresOTP && result.email) {
         // Show OTP form on same page
         setOtpEmail(result.email);
@@ -39,7 +103,7 @@ const LoginPage = () => {
         navigate(redirect || '/dashboard', { replace: true });
       }
     } catch (err) {
-      setError((err as Error).message || 'Unable to login');
+      setError((err as Error).message || 'Invalid credentials. Please check your username and password.');
     }
   };
 
@@ -196,11 +260,16 @@ const LoginPage = () => {
                       id="username"
                       type="text"
                       className="form-input-with-icon"
-                      placeholder="Username"
+                      placeholder="Username or Email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setError(null); // Clear error when user types
+                      }}
                       required
                       disabled={showOTP}
+                      autoComplete="username"
+                      aria-label="Username or Email"
                     />
                   </div>
                 </div>
@@ -217,9 +286,14 @@ const LoginPage = () => {
                       className="form-input-with-icon"
                       placeholder="Password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setError(null); // Clear error when user types
+                      }}
                       required
                       disabled={showOTP}
+                      autoComplete="current-password"
+                      aria-label="Password"
                     />
                     <button
                       type="button"

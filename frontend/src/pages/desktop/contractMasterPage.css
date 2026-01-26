@@ -20,7 +20,7 @@
 /* Actions Bar */
 .contract-master-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 20px;
   gap: 16px;
@@ -72,7 +72,8 @@
   padding-right: 40px;
 }
 
-.create-contract-btn {
+.create-contract-btn,
+.add-contract-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -85,9 +86,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.create-contract-btn:hover {
+.create-contract-btn:hover,
+.add-contract-btn:hover {
   background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
@@ -170,9 +174,9 @@
   color: #065f46;
 }
 
-.contract-status-badge--closed {
-  background: #e5e7eb;
-  color: #374151;
+.contract-status-badge--expired {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 /* Action Buttons */

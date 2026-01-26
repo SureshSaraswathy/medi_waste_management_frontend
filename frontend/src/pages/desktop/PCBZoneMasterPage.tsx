@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -27,34 +28,43 @@ const PCBZoneMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingPCBZone, setEditingPCBZone] = useState<PCBZone | null>(null);
-  const [pcbZones, setPcbZones] = useState<PCBZone[]>([
-    {
-      id: '1',
-      pcbZoneName: 'Zone A',
-      pcbZoneAddress: '123 Industrial Area, Mumbai',
-      contactNum: '+91-9876543210',
-      contactEmail: 'zonea@example.com',
-      alertEmail: 'alert.zonea@example.com',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      pcbZoneName: 'Zone B',
-      pcbZoneAddress: '456 Commercial Street, Delhi',
-      contactNum: '+91-9876543211',
-      contactEmail: 'zoneb@example.com',
-      alertEmail: 'alert.zoneb@example.com',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  const [pcbZones, setPcbZones] = useState<PCBZone[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load PCB Zones from API
+  const loadPcbZones = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiZones = await pcbZoneService.getAllPcbZones(true); // Get only active zones
+      const mappedZones: PCBZone[] = apiZones.map((apiZone: PcbZoneResponse) => ({
+        id: apiZone.id,
+        pcbZoneName: apiZone.pcbZoneName,
+        pcbZoneAddress: apiZone.pcbZoneAddress || '',
+        contactNum: apiZone.contactNum || '',
+        contactEmail: apiZone.contactEmail || '',
+        alertEmail: apiZone.alertEmail || '',
+        status: apiZone.status,
+        createdBy: apiZone.createdBy || '',
+        createdOn: apiZone.createdOn,
+        modifiedBy: apiZone.modifiedBy || '',
+        modifiedOn: apiZone.modifiedOn,
+      }));
+      setPcbZones(mappedZones);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load PCB zones';
+      setError(errorMessage);
+      console.error('Error loading PCB zones:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load PCB zones on component mount
+  useEffect(() => {
+    loadPcbZones();
+  }, []);
 
   const navItems = [
     { 
@@ -158,35 +168,65 @@ const PCBZoneMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this PCB Zone?')) {
-      setPcbZones(pcbZones.filter(z => z.id !== id));
+      try {
+        setLoading(true);
+        await pcbZoneService.deletePcbZone(id);
+        await loadPcbZones(); // Reload zones after deletion
+        alert('PCB Zone deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete PCB zone';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting PCB zone:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<PCBZone>) => {
-    if (editingPCBZone) {
-      // Update existing
-      setPcbZones(pcbZones.map(z => 
-        z.id === editingPCBZone.id 
-          ? { ...z, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : z
-      ));
-    } else {
-      // Add new
-      const newPCBZone: PCBZone = {
-        id: Date.now().toString(),
-        ...formData as PCBZone,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setPcbZones([...pcbZones, newPCBZone]);
+  const handleSave = async (formData: Partial<PCBZone>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (editingPCBZone) {
+        // Update existing - only updatable fields can be changed (pcbZoneName is immutable)
+        await pcbZoneService.updatePcbZone(editingPCBZone.id, {
+          pcbZoneAddress: formData.pcbZoneAddress,
+          contactNum: formData.contactNum,
+          contactEmail: formData.contactEmail,
+          alertEmail: formData.alertEmail,
+          status: formData.status,
+        });
+        alert('PCB Zone updated successfully');
+      } else {
+        // Add new
+        if (!formData.pcbZoneName) {
+          alert('Please fill in PCB Zone Name');
+          return;
+        }
+        await pcbZoneService.createPcbZone({
+          pcbZoneName: formData.pcbZoneName,
+          pcbZoneAddress: formData.pcbZoneAddress,
+          contactNum: formData.contactNum,
+          contactEmail: formData.contactEmail,
+          alertEmail: formData.alertEmail,
+        });
+        alert('PCB Zone created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingPCBZone(null);
+      await loadPcbZones(); // Reload zones after save
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save PCB zone';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving PCB zone:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingPCBZone(null);
   };
 
   // Define columns for the table
@@ -246,6 +286,17 @@ const PCBZoneMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -265,6 +316,27 @@ const PCBZoneMasterPage = () => {
             <span className="breadcrumb">/ Masters / PCB Zone Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !pcbZones.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading PCB zones...
+          </div>
+        )}
 
         {/* PCB Zone Master Content using reusable template */}
         <MasterPageLayout
@@ -352,6 +424,8 @@ const PCBZoneFormModal = ({ pcbZone, onClose, onSave }: PCBZoneFormModalProps) =
                   value={formData.pcbZoneName || ''}
                   onChange={(e) => setFormData({ ...formData, pcbZoneName: e.target.value })}
                   required
+                  disabled={!!pcbZone} // Disable when editing (immutable field)
+                  style={pcbZone ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group form-group--full">

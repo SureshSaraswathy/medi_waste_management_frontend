@@ -1,0 +1,33 @@
+.mobile-assign-hospital {
+  padding: 16px;
+}
+
+.mobile-assign-hospital-info {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.mobile-assign-hospital-info p {
+  color: #6b7280;
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+.mobile-assign-hospital-btn {
+  padding: 12px 24px;
+  background: #667eea;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-assign-hospital-btn:active {
+  background: #5568d3;
+}

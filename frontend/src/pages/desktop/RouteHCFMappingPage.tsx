@@ -1,18 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData } from '../../utils/permissions';
+import { routeHcfService, RouteHcfMappingResponse } from '../../services/routeHcfService';
+import { companyService, CompanyResponse } from '../../services/companyService';
+import { routeService, RouteResponse } from '../../services/routeService';
+import { hcfService, HcfResponse } from '../../services/hcfService';
 import './routeHCFMappingPage.css';
 import '../desktop/dashboardPage.css';
 
 interface RouteHCFMapping {
   id: string;
+  routeId: string;
   routeCode: string;
+  routeName: string;
+  hcfId: string;
   hcfCode: string;
+  hcfName: string;
+  companyId: string;
   companyName: string;
+  sequenceOrder?: number;
   status: 'Active' | 'Inactive';
-  createdBy: string;
+  createdBy: string | null;
   createdOn: string;
-  modifiedBy: string;
+  modifiedBy: string | null;
   modifiedOn: string;
 }
 
@@ -40,55 +51,145 @@ interface HCF {
 }
 
 const RouteHCFMappingPage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
+  const canCreate = canCreateMasterData(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingMapping, setEditingMapping] = useState<RouteHCFMapping | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Master data - Load from respective masters
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [hcfs, setHcfs] = useState<HCF[]>([]);
+  const [mappings, setMappings] = useState<RouteHCFMapping[]>([]);
 
-  const [routes] = useState<Route[]>([
-    { id: '1', routeCode: 'RT001', routeName: 'North Zone Route', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', routeCode: 'RT002', routeName: 'South Zone Route', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', routeCode: 'RT003', routeName: 'East Zone Route', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = useCallback(async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true);
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  }, []);
 
-  const [hcfs] = useState<HCF[]>([
-    { id: '1', hcfCode: 'HCF001', hcfName: 'City Hospital', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', hcfCode: 'HCF002', hcfName: 'General Hospital', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', hcfCode: 'HCF003', hcfName: 'Medical Center', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load routes from API
+  const loadRoutes = useCallback(async () => {
+    try {
+      const apiRoutes = await routeService.getAllRoutes(true);
+      const mappedRoutes: Route[] = await Promise.all(
+        apiRoutes.map(async (apiRoute: RouteResponse) => {
+          const company = companies.find(c => c.id === apiRoute.companyId);
+          return {
+            id: apiRoute.id,
+            routeCode: apiRoute.routeCode,
+            routeName: apiRoute.routeName,
+            companyName: company?.companyName || 'Unknown',
+            status: apiRoute.status,
+          };
+        })
+      );
+      setRoutes(mappedRoutes);
+    } catch (err) {
+      console.error('Error loading routes:', err);
+    }
+  }, [companies]);
 
-  const [mappings, setMappings] = useState<RouteHCFMapping[]>([
-    {
-      id: '1',
-      routeCode: 'RT001',
-      hcfCode: 'HCF001',
-      companyName: 'Sample Company',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-01',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      routeCode: 'RT002',
-      hcfCode: 'HCF002',
-      companyName: 'ABC Industries',
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-02',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-02',
-    },
-  ]);
+  // Load HCFs from API
+  const loadHcfs = useCallback(async () => {
+    try {
+      const apiHcfs = await hcfService.getAllHcfs(undefined, true);
+      const mappedHcfs: HCF[] = await Promise.all(
+        apiHcfs.map(async (apiHcf: HcfResponse) => {
+          const company = companies.find(c => c.id === apiHcf.companyId);
+          return {
+            id: apiHcf.id,
+            hcfCode: apiHcf.hcfCode,
+            hcfName: apiHcf.hcfName,
+            companyName: company?.companyName || 'Unknown',
+            status: apiHcf.status,
+          };
+        })
+      );
+      setHcfs(mappedHcfs);
+    } catch (err) {
+      console.error('Error loading HCFs:', err);
+    }
+  }, [companies]);
+
+  // Load mappings from API
+  const loadMappings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiMappings = await routeHcfService.getAllRouteHcfMappings(undefined, undefined, undefined, true);
+      
+      // Map backend response to frontend format
+      const mappedMappings: RouteHCFMapping[] = apiMappings.map((apiMapping: RouteHcfMappingResponse) => {
+        const route = routes.find(r => r.id === apiMapping.routeId);
+        const hcf = hcfs.find(h => h.id === apiMapping.hcfId);
+        const company = companies.find(c => c.id === apiMapping.companyId);
+        
+        return {
+          id: apiMapping.id,
+          routeId: apiMapping.routeId,
+          routeCode: route?.routeCode || '',
+          routeName: route?.routeName || '',
+          hcfId: apiMapping.hcfId,
+          hcfCode: hcf?.hcfCode || '',
+          hcfName: hcf?.hcfName || '',
+          companyId: apiMapping.companyId,
+          companyName: company?.companyName || 'Unknown',
+          sequenceOrder: apiMapping.sequenceOrder,
+          status: apiMapping.status,
+          createdBy: apiMapping.createdBy,
+          createdOn: apiMapping.createdOn,
+          modifiedBy: apiMapping.modifiedBy,
+          modifiedOn: apiMapping.modifiedOn,
+        };
+      });
+      setMappings(mappedMappings);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load mappings';
+      setError(errorMessage);
+      console.error('Error loading mappings:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [routes, hcfs, companies]);
+
+  // Load data on component mount
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, [loadCompanies]);
+
+  // Load routes and HCFs when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadRoutes();
+      loadHcfs();
+    }
+  }, [companies, loadRoutes, loadHcfs]);
+
+  // Load mappings when routes, HCFs, and companies are loaded
+  useEffect(() => {
+    if (routes.length > 0 && hcfs.length > 0 && companies.length > 0) {
+      loadMappings();
+    }
+  }, [routes, hcfs, companies, loadMappings]);
 
   const filteredMappings = mappings.filter(mapping =>
     mapping.routeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -108,28 +209,141 @@ const RouteHCFMappingPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this Route-HCF mapping?')) {
-      setMappings(mappings.filter(mapping => mapping.id !== id));
+      try {
+        setLoading(true);
+        setError(null);
+        await routeHcfService.deleteRouteHcfMapping(id);
+        setSuccessMessage('Mapping deleted successfully');
+        await loadMappings();
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      } catch (err) {
+        let errorMessage = 'Failed to delete mapping';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+          if (errorMessage.includes('not found')) {
+            errorMessage = 'This mapping could not be found. It may have already been deleted.';
+          } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+            errorMessage = 'You do not have permission to delete this mapping.';
+          }
+        }
+        setError(errorMessage);
+        console.error('Error deleting mapping:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (data: Partial<RouteHCFMapping>) => {
-    if (editingMapping) {
-      setMappings(mappings.map(mapping => mapping.id === editingMapping.id ? { ...mapping, ...data } : mapping));
-    } else {
-      const newMapping: RouteHCFMapping = {
-        ...data as RouteHCFMapping,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setMappings([...mappings, newMapping]);
+  // Helper function to format error messages
+  const formatErrorMessage = (error: any, selectedRoute?: Route, selectedHcf?: HCF): string => {
+    let errorMessage = 'Failed to save mapping';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check if it's a duplicate mapping error
+      if (errorMessage.includes('already exists') || errorMessage.includes('mapping between')) {
+        if (selectedRoute && selectedHcf) {
+          errorMessage = `This mapping already exists: Route "${selectedRoute.routeCode} - ${selectedRoute.routeName}" and HCF "${selectedHcf.hcfCode} - ${selectedHcf.hcfName}" are already mapped together. Each route-HCF combination can only be mapped once.`;
+        } else {
+          errorMessage = 'This mapping already exists. Each route-HCF combination can only be mapped once.';
+        }
+      }
+      
+      // Handle other common error patterns
+      else if (errorMessage.includes('not found')) {
+        errorMessage = 'One or more selected items (Route, HCF, or Company) could not be found. Please refresh and try again.';
+      } else if (errorMessage.includes('invalid')) {
+        errorMessage = 'Invalid data provided. Please check your inputs and try again.';
+      } else if (errorMessage.includes('required')) {
+        errorMessage = 'Please fill in all required fields.';
+      } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+        errorMessage = 'You do not have permission to perform this action.';
+      } else if (errorMessage.includes('HTTP 409') || errorMessage.includes('Conflict')) {
+        errorMessage = 'A conflict occurred. This mapping may already exist.';
+      } else if (errorMessage.includes('HTTP 400') || errorMessage.includes('Bad Request')) {
+        errorMessage = 'Invalid request. Please check your inputs and try again.';
+      } else if (errorMessage.includes('HTTP 500') || errorMessage.includes('Internal Server Error')) {
+        errorMessage = 'An internal server error occurred. Please try again later or contact support.';
+      }
     }
-    setShowModal(false);
-    setEditingMapping(null);
+    
+    return errorMessage;
+  };
+
+  const handleSave = async (data: Partial<RouteHCFMapping>) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === data.companyName);
+      if (!selectedCompany) {
+        setError('Please select a valid company');
+        return;
+      }
+
+      // Find route ID from route code
+      const selectedRoute = routes.find(r => r.routeCode === data.routeCode && r.companyName === data.companyName);
+      if (!selectedRoute) {
+        setError('Please select a valid route');
+        return;
+      }
+
+      // Find HCF ID from HCF code
+      const selectedHcf = hcfs.find(h => h.hcfCode === data.hcfCode && h.companyName === data.companyName);
+      if (!selectedHcf) {
+        setError('Please select a valid HCF');
+        return;
+      }
+
+      if (editingMapping) {
+        // Update existing mapping
+        await routeHcfService.updateRouteHcfMapping(editingMapping.id, {
+          sequenceOrder: data.sequenceOrder,
+          status: data.status,
+        });
+        setError(null);
+        setSuccessMessage('Mapping updated successfully');
+        setShowModal(false);
+        setEditingMapping(null);
+        await loadMappings();
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      } else {
+        // Create new mapping
+        await routeHcfService.createRouteHcfMapping({
+          routeId: selectedRoute.id,
+          hcfId: selectedHcf.id,
+          companyId: selectedCompany.id,
+          sequenceOrder: data.sequenceOrder,
+        });
+        setError(null);
+        setSuccessMessage('Mapping created successfully');
+        setShowModal(false);
+        setEditingMapping(null);
+        await loadMappings();
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      }
+    } catch (err) {
+      const selectedRoute = routes.find(r => r.routeCode === data.routeCode && r.companyName === data.companyName);
+      const selectedHcf = hcfs.find(h => h.hcfCode === data.hcfCode && h.companyName === data.companyName);
+      const errorMessage = formatErrorMessage(err, selectedRoute, selectedHcf);
+      setError(errorMessage);
+      console.error('Error saving mapping:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const navItems = [
@@ -172,6 +386,17 @@ const RouteHCFMappingPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -189,6 +414,77 @@ const RouteHCFMappingPage = () => {
             <span className="breadcrumb">/ Masters / Route-HCF Mapping</span>
           </div>
         </header>
+
+        {/* Success Message */}
+        {successMessage && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#d4edda', 
+            color: '#155724', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #c3e6cb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>{successMessage}</span>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#155724',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px',
+                lineHeight: '1'
+              }}
+              aria-label="Close success message"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#c33',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px',
+                lineHeight: '1'
+              }}
+              aria-label="Close error message"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !mappings.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading mappings...
+          </div>
+        )}
 
         <div className="route-hcf-mapping-page">
           <div className="route-hcf-mapping-header">
@@ -209,13 +505,15 @@ const RouteHCFMappingPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-mapping-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Mapping
-            </button>
+            {canCreate && (
+              <button className="add-mapping-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Mapping
+              </button>
+            )}
           </div>
 
           <div className="route-hcf-mapping-table-container">
@@ -238,13 +536,11 @@ const RouteHCFMappingPage = () => {
                   </tr>
                 ) : (
                   filteredMappings.map((mapping) => {
-                    const route = routes.find(r => r.routeCode === mapping.routeCode);
-                    const hcf = hcfs.find(h => h.hcfCode === mapping.hcfCode);
                     return (
                       <tr key={mapping.id}>
                         <td>{mapping.companyName || '-'}</td>
-                        <td>{route ? `${mapping.routeCode} - ${route.routeName}` : mapping.routeCode}</td>
-                        <td>{hcf ? `${mapping.hcfCode} - ${hcf.hcfName}` : mapping.hcfCode}</td>
+                        <td>{mapping.routeCode ? `${mapping.routeCode} - ${mapping.routeName}` : '-'}</td>
+                        <td>{mapping.hcfCode ? `${mapping.hcfCode} - ${mapping.hcfName}` : '-'}</td>
                         <td>
                           <span className={`status-badge status-badge--${mapping.status.toLowerCase()}`}>
                             {mapping.status}

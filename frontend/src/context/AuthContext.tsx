@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { loginRequest, registerUserRequest, sendOTPEmail, loginWithOTP } from '../services/authService';
 
-type Role = 'admin' | 'manager' | 'staff' | 'viewer';
+type Role = 'admin' | 'manager' | 'staff' | 'viewer' | 'superadmin';
 
 export type User = {
   id: string;
@@ -40,25 +40,62 @@ const STORAGE_KEY = 'mw-auth-user';
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with true to check localStorage
 
+  // Load user from localStorage on mount
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+    const loadUserFromStorage = () => {
       try {
-        setUser(JSON.parse(raw));
-      } catch {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const storedUser = JSON.parse(raw);
+          // Validate that stored user has required fields and token is valid
+          if (storedUser && storedUser.id && storedUser.token && storedUser.token.trim() !== '') {
+            // Additional validation: check if token looks valid (JWT tokens have 3 parts)
+            const tokenParts = storedUser.token.split('.');
+            if (tokenParts.length === 3) {
+              setUser(storedUser);
+            } else {
+              // Invalid token format, remove user data
+              console.warn('Invalid token format in storage');
+              localStorage.removeItem(STORAGE_KEY);
+              setUser(null);
+            }
+          } else {
+            // Invalid user data, remove it
+            console.warn('Invalid user data in storage');
+            localStorage.removeItem(STORAGE_KEY);
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error loading user from storage:', error);
         localStorage.removeItem(STORAGE_KEY);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    loadUserFromStorage();
   }, []);
 
   const persist = useCallback((next: User | null) => {
     setUser(next);
     if (next) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.error('Error saving user to storage:', error);
+      }
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.error('Error removing user from storage:', error);
+      }
     }
   }, []);
 

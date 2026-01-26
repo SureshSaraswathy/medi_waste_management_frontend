@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData } from '../../utils/permissions';
 import DataTable, { Column } from './DataTable';
 import './masterPageLayout.css';
 
@@ -17,6 +19,7 @@ interface MasterPageLayoutProps<T> {
   addButtonLabel?: string;
   emptyMessage?: string;
   children?: React.ReactNode; // For custom content like tabs
+  showAddButton?: boolean; // Optional prop to override default permission check
 }
 
 function MasterPageLayout<T extends Record<string, any>>({
@@ -34,7 +37,14 @@ function MasterPageLayout<T extends Record<string, any>>({
   addButtonLabel = 'Add',
   emptyMessage,
   children,
+  showAddButton,
 }: MasterPageLayoutProps<T>) {
+  const { user } = useAuth();
+  // Use showAddButton prop if provided, otherwise check permissions
+  const canCreate = showAddButton !== undefined 
+    ? showAddButton 
+    : canCreateMasterData(user);
+
   return (
     <div className="master-page-layout">
       <div className="master-page-header">
@@ -59,13 +69,15 @@ function MasterPageLayout<T extends Record<string, any>>({
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
-        <button className="add-item-btn" onClick={onAdd}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          {addButtonLabel}
-        </button>
+        {canCreate && (
+          <button className="add-item-btn" onClick={onAdd}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            {addButtonLabel}
+          </button>
+        )}
       </div>
 
       {/* Data Table */}

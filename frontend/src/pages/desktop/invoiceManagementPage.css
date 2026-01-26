@@ -671,4 +671,30 @@
   .invoice-action-buttons {
     flex-wrap: wrap;
   }
+
+  /* Payment summary bar responsive */
+  .invoice-payment-summary-bar {
+    left: 0 !important;
+    padding: 14px 16px !important;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+    min-height: auto !important;
+  }
+
+  .invoice-payment-summary-bar > div:first-child {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .invoice-payment-summary-bar > div:last-child {
+    width: 100%;
+  }
+
+  .invoice-payment-summary-bar > div:last-child button {
+    width: 100%;
+    min-height: 44px;
+  }
 }

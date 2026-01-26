@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { colorService, ColorResponse } from '../../services/colorService';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -31,71 +33,72 @@ const ColorCodeMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingColorCode, setEditingColorCode] = useState<ColorCode | null>(null);
-  
-  // Companies from Company Master - Load active companies only
-  const [companies] = useState<Company[]>([
-    {
-      id: '1',
-      companyCode: 'COMP001',
-      companyName: 'Sample Company',
-      status: 'Active',
-    },
-    {
-      id: '2',
-      companyCode: 'COMP002',
-      companyName: 'ABC Industries',
-      status: 'Active',
-    },
-    {
-      id: '3',
-      companyCode: 'COMP003',
-      companyName: 'XYZ Corporation',
-      status: 'Active',
-    },
-  ]);
+  const [colorCodes, setColorCodes] = useState<ColorCode[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [colorCodes, setColorCodes] = useState<ColorCode[]>([
-    {
-      id: '1',
-      colorName: 'Yellow',
-      companyName: 'Sample Company',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      colorName: 'Red',
-      companyName: 'ABC Industries',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '3',
-      colorName: 'White',
-      companyName: 'Sample Company',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '4',
-      colorName: 'Blue',
-      companyName: 'XYZ Corporation',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true); // Get only active companies
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
+
+  // Load colors from API
+  const loadColors = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiColors = await colorService.getAllColors(undefined, true); // Get only active colors
+      const mappedColors: ColorCode[] = apiColors.map((apiColor: ColorResponse) => {
+        // Find company name by companyId
+        const company = companies.find(c => c.id === apiColor.companyId);
+        return {
+          id: apiColor.id,
+          colorName: apiColor.colorName,
+          companyName: company?.companyName || 'Unknown Company',
+          status: apiColor.status,
+          createdBy: apiColor.createdBy || '',
+          createdOn: apiColor.createdOn,
+          modifiedBy: apiColor.modifiedBy || '',
+          modifiedOn: apiColor.modifiedOn,
+        };
+      });
+      setColorCodes(mappedColors);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load color codes';
+      setError(errorMessage);
+      console.error('Error loading color codes:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies first, then colors
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, []);
+
+  // Load colors when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadColors();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const navItems = [
     { 
@@ -198,35 +201,65 @@ const ColorCodeMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this color code?')) {
-      setColorCodes(colorCodes.filter(c => c.id !== id));
+      try {
+        setLoading(true);
+        await colorService.deleteColor(id);
+        await loadColors(); // Reload colors after deletion
+        alert('Color code deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete color code';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting color code:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<ColorCode>) => {
-    if (editingColorCode) {
-      // Update existing
-      setColorCodes(colorCodes.map(c => 
-        c.id === editingColorCode.id 
-          ? { ...c, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : c
-      ));
-    } else {
-      // Add new
-      const newColorCode: ColorCode = {
-        id: Date.now().toString(),
-        ...formData as ColorCode,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setColorCodes([...colorCodes, newColorCode]);
+  const handleSave = async (formData: Partial<ColorCode>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === formData.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      if (editingColorCode) {
+        // Update existing - only status can be updated (colorName and companyId are immutable)
+        await colorService.updateColor(editingColorCode.id, {
+          status: formData.status,
+        });
+        alert('Color code updated successfully');
+      } else {
+        // Add new
+        if (!formData.colorName || !formData.companyName) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await colorService.createColor({
+          colorName: formData.colorName,
+          companyId: selectedCompany.id,
+        });
+        alert('Color code created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingColorCode(null);
+      await loadColors(); // Reload colors after save
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save color code';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving color code:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingColorCode(null);
   };
 
   // Define columns for the table
@@ -283,6 +316,17 @@ const ColorCodeMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -302,6 +346,27 @@ const ColorCodeMasterPage = () => {
             <span className="breadcrumb">/ Masters / Color Code Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !colorCodes.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading color codes...
+          </div>
+        )}
 
         {/* Color Code Master Content using reusable template */}
         <MasterPageLayout
@@ -388,6 +453,8 @@ const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCode
                   value={formData.colorName || ''}
                   onChange={(e) => setFormData({ ...formData, colorName: e.target.value })}
                   required
+                  disabled={!!colorCode} // Disable when editing (immutable field)
+                  style={colorCode ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -396,6 +463,8 @@ const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCode
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
+                  disabled={!!colorCode} // Disable when editing (immutable field)
+                  style={colorCode ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (

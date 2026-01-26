@@ -1,0 +1,132 @@
+.payment-success-page {
+  padding: 40px 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-success-header {
+  margin-bottom: 40px;
+}
+
+.payment-success-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.success-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Receipt Card - Emphasize Amount Received */
+.receipt-card {
+  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #cbd5e1;
+}
+
+.amount-received-section {
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+  border-radius: 8px;
+  padding: 0 16px;
+  margin-top: 8px;
+}
+
+.amount-value {
+  font-weight: 700;
+  font-size: 28px;
+  color: #059669;
+  letter-spacing: 0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+/* Settlement Card */
+.settlement-card {
+  background: #ffffff;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.primary-action-btn {
+  padding: 14px 32px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.primary-action-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.primary-action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.secondary-action-btn {
+  padding: 14px 32px;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.secondary-action-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+.secondary-action-btn:active {
+  background: #f1f5f9;
+}
+
+@media print {
+  .payment-success-page {
+    padding: 20px;
+  }
+  
+  .success-card {
+    page-break-inside: avoid;
+  }
+
+  .action-buttons {
+    display: none;
+  }
+
+  .amount-received-section {
+    background: #ffffff;
+    border: 2px solid #1e293b;
+  }
+}

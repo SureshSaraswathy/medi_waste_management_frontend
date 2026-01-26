@@ -19,7 +19,7 @@
 
 .agreement-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 20px;
   gap: 16px;
@@ -69,6 +69,29 @@
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 40px;
+}
+
+.add-agreement-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.add-agreement-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .generate-agreement-btn {
@@ -146,11 +169,12 @@
 
 .agreement-status-badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
+  padding: 6px 14px;
+  border-radius: 20px; /* Pill-shaped */
   font-size: 12px;
   font-weight: 600;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .agreement-status-badge--draft {
@@ -186,13 +210,18 @@
   transition: all 0.2s ease;
 }
 
-.action-btn--preview {
+.action-btn--view {
   background: #e0e7ff;
   color: #3730a3;
 }
 
-.action-btn--preview:hover {
+.action-btn--view:hover {
   background: #c7d2fe;
+}
+
+.action-btn--view:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .action-btn--download {
@@ -202,6 +231,70 @@
 
 .action-btn--download:hover {
   background: #bbf7d0;
+}
+
+.action-btn--download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .agreement-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .agreement-search-box,
+  .status-filter-select {
+    width: 100%;
+  }
+
+  .agreement-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .agreement-table {
+    min-width: 600px;
+  }
+
+  .agreement-action-buttons {
+    flex-wrap: wrap;
+  }
+}
+
+/* Accessibility Improvements */
+.agreement-status-badge:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.action-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.action-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .action-btn--email {
@@ -524,6 +617,453 @@
   font-style: italic;
 }
 
+/* Agreement Preview Controls */
+.agreement-preview-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stamp-paper-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.stamp-paper-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.preview-actions .btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Agreement Document Styles */
+.agreement-document {
+  padding: 24px;
+  background: #ffffff;
+  color: #1e293b;
+  font-family: 'Times New Roman', serif;
+  line-height: 1.8;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.loading-message {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.agreement-page {
+  min-height: 100%;
+  padding: 40px;
+  background: #ffffff;
+}
+
+/* Stamp Paper Mode */
+.agreement-document.stamp-paper-mode .agreement-page--stamp-paper {
+  page-break-after: always;
+  break-after: page;
+}
+
+.stamp-paper-blank-space {
+  height: 0;
+  min-height: 0;
+}
+
+.agreement-party-intro {
+  margin-top: 0;
+}
+
+.party-intro-title {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #0f172a;
+}
+
+.party-intro-subtitle {
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 24px;
+  color: #334155;
+}
+
+.party-intro-subtitle strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.party-details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.party-section {
+  margin-bottom: 20px;
+}
+
+.party-intro-text {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #0f172a;
+  text-transform: uppercase;
+}
+
+.party-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  color: #0f172a;
+}
+
+.party-description {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+}
+
+.party-description strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Agreement Header */
+.agreement-header-section {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #1e293b;
+}
+
+.agreement-main-title {
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  color: #0f172a;
+}
+
+.agreement-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.agreement-meta p {
+  margin: 0;
+}
+
+/* Agreement Sections */
+.agreement-section {
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* WHEREAS Section */
+.agreement-whereas-section {
+  margin-bottom: 24px;
+}
+
+.whereas-intro {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+  margin-bottom: 16px;
+}
+
+.whereas-clauses {
+  margin-left: 0;
+}
+
+.whereas-item {
+  margin-bottom: 16px;
+}
+
+.whereas-text {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+  margin: 0;
+  text-indent: 0;
+}
+
+.whereas-text strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* NOW THEREFORE Section */
+.agreement-now-therefore-section {
+  margin-bottom: 24px;
+  margin-top: 24px;
+}
+
+.now-therefore-text {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+  margin: 0;
+}
+
+.now-therefore-text strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Terms Section */
+.agreement-terms-section {
+  margin-top: 24px;
+}
+
+.clause-item {
+  margin-bottom: 16px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.clause-text {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+  margin: 0;
+  text-indent: 0;
+}
+
+.clause-text strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Signature Section */
+.agreement-signature-section {
+  margin-top: 48px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.signature-block {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.signature-party {
+  flex: 1;
+}
+
+.signature-party-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #0f172a;
+  text-align: left;
+}
+
+.signature-space {
+  margin-top: 40px;
+}
+
+.signature-line {
+  width: 250px;
+  height: 1px;
+  border-bottom: 2px solid #1e293b;
+  margin-bottom: 12px;
+}
+
+.signature-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  color: #1e293b;
+}
+
+.signature-designation {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.signature-date-place {
+  margin-top: 40px;
+  margin-bottom: 30px;
+}
+
+.date-place-text {
+  font-size: 14px;
+  color: #334155;
+  margin: 8px 0;
+}
+
+.date-place-text strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.witness-section {
+  margin-top: 40px;
+}
+
+.witness-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #0f172a;
+  margin-top: 30px;
+}
+
+.witness-block {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+.witness-item {
+  flex: 1;
+}
+
+.witness-item .signature-line {
+  width: 200px;
+  margin-bottom: 8px;
+}
+
+.witness-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  color: #1e293b;
+}
+
+.witness-address {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .agreement-document,
+  .agreement-document * {
+    visibility: visible;
+  }
+
+  .agreement-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: #ffffff;
+    overflow: visible;
+  }
+
+  .modal-overlay,
+  .modal-content,
+  .modal-header,
+  .agreement-preview-controls,
+  .modal-footer {
+    display: none !important;
+  }
+
+  .agreement-page {
+    page-break-after: always;
+    break-after: page;
+    padding: 20mm;
+    min-height: 297mm; /* A4 height */
+    width: 210mm; /* A4 width */
+  }
+
+  .agreement-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Stamp Paper Mode - First Page */
+  .stamp-paper-mode .agreement-page--stamp-paper {
+    padding-top: 0;
+  }
+
+  .stamp-paper-mode .stamp-paper-blank-space {
+    height: 65mm; /* 6.5 cm blank space for stamp */
+    min-height: 65mm;
+    display: block;
+  }
+
+  .stamp-paper-mode .agreement-page--stamp-paper .agreement-party-intro {
+    margin-top: 0;
+  }
+
+  /* Ensure proper page breaks */
+  .agreement-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .clause-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .agreement-signature-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-before: auto;
+    break-before: auto;
+  }
+
+  /* Hide loading states */
+  .loading,
+  .error-message {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   .agreement-actions {
     flex-direction: column;
@@ -537,5 +1077,23 @@
   .form-grid,
   .preview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .agreement-preview-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .preview-actions {
+    width: 100%;
+  }
+
+  .preview-actions .btn {
+    flex: 1;
+  }
+
+  .signature-block,
+  .witness-block {
+    flex-direction: column;
   }
 }

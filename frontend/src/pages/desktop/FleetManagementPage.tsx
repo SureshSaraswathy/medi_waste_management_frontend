@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData } from '../../utils/permissions';
+import { fleetService, FleetResponse } from '../../services/fleetService';
+import { companyService, CompanyResponse } from '../../services/companyService';
 import './fleetManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -42,50 +45,97 @@ interface Company {
 }
 
 const FleetManagementPage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
+  const canCreate = canCreateMasterData(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
+  const [fleets, setFleets] = useState<Fleet[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Master data - Load from Company Master
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Load companies from API
+  const loadCompanies = async () => {
+    try {
+      const apiCompanies = await companyService.getAllCompanies(true);
+      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
+        id: apiCompany.id,
+        companyCode: apiCompany.companyCode,
+        companyName: apiCompany.companyName,
+        status: apiCompany.status,
+      }));
+      setCompanies(mappedCompanies);
+    } catch (err) {
+      console.error('Error loading companies:', err);
+    }
+  };
 
-  const [fleets, setFleets] = useState<Fleet[]>([
-    {
-      id: '1',
-      companyName: 'Sample Company',
-      vehicleNum: 'MH-01-AB-1234',
-      capacity: '5000',
-      vehMake: 'Tata',
-      vehModel: '407',
-      mfgYear: '2020',
-      nextFCDate: '2024-12-31',
-      pucDateValidUpto: '2024-12-31',
-      insuranceValidUpto: '2024-12-31',
-      ownerName: 'John Doe',
-      ownerContact: '+91-9876543210',
-      ownerEmail: 'john.doe@example.com',
-      ownerPAN: 'ABCDE1234F',
-      ownerAadhaar: '1234-5678-9012',
-      pymtToName: 'John Doe',
-      pymtBankName: 'State Bank of India',
-      pymtAccNum: '123456789012',
-      pymtIFSCode: 'SBIN0001234',
-      pymtBranch: 'Mumbai Main Branch',
-      contractAmount: '50000',
-      tdsExemption: false,
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-01',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  // Load fleets from API
+  const loadFleets = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiFleets = await fleetService.getAllFleets(undefined, true);
+      const mappedFleets: Fleet[] = apiFleets.map((apiFleet: FleetResponse) => {
+        const company = companies.find(c => c.id === apiFleet.companyId);
+        return {
+          id: apiFleet.id,
+          companyName: company?.companyName || 'Unknown Company',
+          vehicleNum: apiFleet.vehicleNum,
+          capacity: apiFleet.capacity || '',
+          vehMake: apiFleet.vehMake || '',
+          vehModel: apiFleet.vehModel || '',
+          mfgYear: apiFleet.mfgYear || '',
+          nextFCDate: apiFleet.nextFCDate || '',
+          pucDateValidUpto: apiFleet.pucDateValidUpto || '',
+          insuranceValidUpto: apiFleet.insuranceValidUpto || '',
+          ownerName: apiFleet.ownerName || '',
+          ownerContact: apiFleet.ownerContact || '',
+          ownerEmail: apiFleet.ownerEmail || '',
+          ownerPAN: apiFleet.ownerPAN || '',
+          ownerAadhaar: apiFleet.ownerAadhaar || '',
+          pymtToName: apiFleet.pymtToName || '',
+          pymtBankName: apiFleet.pymtBankName || '',
+          pymtAccNum: apiFleet.pymtAccNum || '',
+          pymtIFSCode: apiFleet.pymtIFSCode || '',
+          pymtBranch: apiFleet.pymtBranch || '',
+          contractAmount: apiFleet.contractAmount || '',
+          tdsExemption: apiFleet.tdsExemption || false,
+          status: apiFleet.status,
+          createdBy: apiFleet.createdBy || '',
+          createdOn: apiFleet.createdOn,
+          modifiedBy: apiFleet.modifiedBy || '',
+          modifiedOn: apiFleet.modifiedOn,
+        };
+      });
+      setFleets(mappedFleets);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load fleets';
+      setError(errorMessage);
+      console.error('Error loading fleets:', err);
+      setFleets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load companies first, then fleets
+  useEffect(() => {
+    const initializeData = async () => {
+      await loadCompanies();
+    };
+    initializeData();
+  }, []);
+
+  // Load fleets when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadFleets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const filteredFleets = fleets.filter(fleet =>
     fleet.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,28 +155,103 @@ const FleetManagementPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this fleet vehicle?')) {
-      setFleets(fleets.filter(fleet => fleet.id !== id));
+      try {
+        setLoading(true);
+        await fleetService.deleteFleet(id);
+        await loadFleets();
+        alert('Fleet deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete fleet';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting fleet:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (data: Partial<Fleet>) => {
-    if (editingFleet) {
-      setFleets(fleets.map(fleet => fleet.id === editingFleet.id ? { ...fleet, ...data } : fleet));
-    } else {
-      const newFleet: Fleet = {
-        ...data as Fleet,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setFleets([...fleets, newFleet]);
+  const handleSave = async (data: Partial<Fleet>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Find company ID from company name
+      const selectedCompany = companies.find(c => c.companyName === data.companyName);
+      if (!selectedCompany) {
+        alert('Please select a valid company');
+        return;
+      }
+
+      if (editingFleet) {
+        // Update existing - vehicleNum and companyId are immutable
+        await fleetService.updateFleet(editingFleet.id, {
+          capacity: data.capacity,
+          vehMake: data.vehMake,
+          vehModel: data.vehModel,
+          mfgYear: data.mfgYear,
+          nextFCDate: data.nextFCDate,
+          pucDateValidUpto: data.pucDateValidUpto,
+          insuranceValidUpto: data.insuranceValidUpto,
+          ownerName: data.ownerName,
+          ownerContact: data.ownerContact,
+          ownerEmail: data.ownerEmail,
+          ownerPAN: data.ownerPAN,
+          ownerAadhaar: data.ownerAadhaar,
+          pymtToName: data.pymtToName,
+          pymtBankName: data.pymtBankName,
+          pymtAccNum: data.pymtAccNum,
+          pymtIFSCode: data.pymtIFSCode,
+          pymtBranch: data.pymtBranch,
+          contractAmount: data.contractAmount,
+          tdsExemption: data.tdsExemption,
+          status: data.status,
+        });
+        alert('Fleet updated successfully');
+      } else {
+        // Add new
+        if (!data.vehicleNum || !data.companyName) {
+          alert('Please fill in Vehicle Number and Company Name');
+          return;
+        }
+        await fleetService.createFleet({
+          companyId: selectedCompany.id,
+          vehicleNum: data.vehicleNum,
+          capacity: data.capacity,
+          vehMake: data.vehMake,
+          vehModel: data.vehModel,
+          mfgYear: data.mfgYear,
+          nextFCDate: data.nextFCDate,
+          pucDateValidUpto: data.pucDateValidUpto,
+          insuranceValidUpto: data.insuranceValidUpto,
+          ownerName: data.ownerName,
+          ownerContact: data.ownerContact,
+          ownerEmail: data.ownerEmail,
+          ownerPAN: data.ownerPAN,
+          ownerAadhaar: data.ownerAadhaar,
+          pymtToName: data.pymtToName,
+          pymtBankName: data.pymtBankName,
+          pymtAccNum: data.pymtAccNum,
+          pymtIFSCode: data.pymtIFSCode,
+          pymtBranch: data.pymtBranch,
+          contractAmount: data.contractAmount,
+          tdsExemption: data.tdsExemption,
+        });
+        alert('Fleet created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingFleet(null);
+      await loadFleets();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save fleet';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving fleet:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingFleet(null);
   };
 
   const navItems = [
@@ -169,6 +294,17 @@ const FleetManagementPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -186,6 +322,27 @@ const FleetManagementPage = () => {
             <span className="breadcrumb">/ Masters / Fleet Management</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !fleets.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading fleets...
+          </div>
+        )}
 
         <div className="fleet-management-page">
           <div className="fleet-management-header">
@@ -206,13 +363,15 @@ const FleetManagementPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-fleet-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Vehicle
-            </button>
+            {canCreate && (
+              <button className="add-fleet-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Vehicle
+              </button>
+            )}
           </div>
 
           <div className="fleet-table-container">

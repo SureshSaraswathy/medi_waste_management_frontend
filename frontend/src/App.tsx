@@ -18,13 +18,23 @@ import PCBZoneMasterPage from './pages/desktop/PCBZoneMasterPage';
 import RouteMasterPage from './pages/desktop/RouteMasterPage';
 import ColorCodeMasterPage from './pages/desktop/ColorCodeMasterPage';
 import UserManagementPage from './pages/desktop/UserManagementPage';
+import RolesPermissionsPage from './pages/desktop/RolesPermissionsPage';
 import HCFMasterPage from './pages/desktop/HCFMasterPage';
 import HCFAmendmentsPage from './pages/desktop/HCFAmendmentsPage';
 import HCFTypeMasterPage from './pages/desktop/HCFTypeMasterPage';
 import FleetManagementPage from './pages/desktop/FleetManagementPage';
 import RouteHCFMappingPage from './pages/desktop/RouteHCFMappingPage';
 import FrequencyMasterPage from './pages/desktop/FrequencyMasterPage';
+import RouteAssignmentPage from './pages/desktop/RouteAssignmentPage';
+import WasteCollectionPage from './pages/desktop/WasteCollectionPage';
+import WasteTransactionPage from './pages/desktop/WasteTransactionPage';
+import VehicleWasteCollectionPage from './pages/desktop/VehicleWasteCollectionPage';
+import WasteProcessPage from './pages/desktop/WasteProcessPage';
 import InvoiceManagementPage from './pages/desktop/InvoiceManagementPage';
+import PaymentPage from './pages/desktop/PaymentPage';
+import PaymentSuccessPage from './pages/desktop/PaymentSuccessPage';
+import ReceiptManagementPage from './pages/desktop/ReceiptManagementPage';
+import FinancialBalanceSummaryPage from './pages/desktop/FinancialBalanceSummaryPage';
 import BarcodeGenerationPage from './pages/desktop/BarcodeGenerationPage';
 import TrainingCertificatePage from './pages/desktop/TrainingCertificatePage';
 import ContractMasterPage from './pages/desktop/ContractMasterPage';
@@ -52,8 +62,14 @@ import CollectionReportPage from './pages/desktop/reports/CollectionReportPage';
 import CompanyReportPage from './pages/desktop/reports/CompanyReportPage';
 import ComplianceReportPage from './pages/desktop/reports/ComplianceReportPage';
 import FleetMasterReportPage from './pages/desktop/reports/FleetMasterReportPage';
-import LoginPageMobile from './pages/mobile/LoginPage';
+import LoginPageMobileFirst from './pages/mobile/LoginPageMobileFirst';
 import UserCreatePageMobile from './pages/mobile/UserCreatePage';
+import ProfilePage from './pages/desktop/ProfilePage';
+import MobileHomePage from './pages/mobile/MobileHomePage';
+import MobileScanPage from './pages/mobile/MobileScanPage';
+import MobileWasteEntryPage from './pages/mobile/MobileWasteEntryPage';
+import MobileAssignHospitalPage from './pages/mobile/MobileAssignHospitalPage';
+import MobileHCFMasterPage from './pages/mobile/MobileHCFMasterPage';
 
 const App = () => (
   <AuthProvider>
@@ -61,12 +77,61 @@ const App = () => (
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-otp" element={<OTPVerificationPage />} />
-      <Route path="/mobile/login" element={<LoginPageMobile />} />
+      <Route path="/mobile/login" element={<LoginPageMobileFirst />} />
+      {/* Mobile Routes */}
+      <Route
+        path="/mobile/home"
+        element={
+          <ProtectedRoute>
+            <MobileHomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/scan"
+        element={
+          <ProtectedRoute>
+            <MobileScanPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/waste-entry"
+        element={
+          <ProtectedRoute>
+            <MobileWasteEntryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/assign-hospital"
+        element={
+          <ProtectedRoute>
+            <MobileAssignHospitalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/hcf-master"
+        element={
+          <ProtectedRoute>
+            <MobileHCFMasterPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />
@@ -83,6 +148,46 @@ const App = () => (
         element={
           <ProtectedRoute>
             <BarcodeGenerationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/route-assignment"
+        element={
+          <ProtectedRoute>
+            <RouteAssignmentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/waste-collection"
+        element={
+          <ProtectedRoute>
+            <WasteCollectionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/waste-transaction-data"
+        element={
+          <ProtectedRoute>
+            <WasteTransactionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/vehicle-wise-waste-collection"
+        element={
+          <ProtectedRoute>
+            <VehicleWasteCollectionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/waste-processing"
+        element={
+          <ProtectedRoute>
+            <WasteProcessPage />
           </ProtectedRoute>
         }
       />
@@ -215,6 +320,14 @@ const App = () => (
         }
       />
       <Route
+        path="/master/roles-permissions"
+        element={
+          <ProtectedRoute>
+            <RolesPermissionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/master/hcf-master"
         element={
           <ProtectedRoute>
@@ -262,11 +375,43 @@ const App = () => (
           </ProtectedRoute>
         }
       />
+        <Route
+          path="/finance/invoice-management"
+          element={
+            <ProtectedRoute>
+              <InvoiceManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/finance/payment"
+          element={
+            <ProtectedRoute>
+              <PaymentPage />
+            </ProtectedRoute>
+          }
+        />
       <Route
-        path="/finance/invoice-management"
+        path="/finance/payment-success"
         element={
           <ProtectedRoute>
-            <InvoiceManagementPage />
+            <PaymentSuccessPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/receipt-management"
+        element={
+          <ProtectedRoute>
+            <ReceiptManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/financial-balance-summary"
+        element={
+          <ProtectedRoute>
+            <FinancialBalanceSummaryPage />
           </ProtectedRoute>
         }
       />

@@ -2,14 +2,59 @@ import { User } from '../context/AuthContext';
 
 type Role = User['roles'][number];
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+}
+
+interface LoginResponse {
+  userId: string;
+  userName: string;
+  email?: string;
+  companyId: string;
+  userRoleId: string | null;
+  status: string;
+  requiresOTP: boolean;
+  forcePasswordChange: boolean;
+  token?: string;
+}
+
+// Helper function for API requests
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
+    throw new Error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+  }
+
+  const data: ApiResponse<T> = await response.json();
+  return data.data;
+}
 
 const demoUsers: Array<User> = [
   {
     id: 'u-superadmin',
     name: 'SuperAdmin',
     email: 'superadmin@medi-waste.io',
-    roles: ['admin'],
+    roles: ['superadmin'],
     token: 'demo-token-superadmin',
   },
   {
@@ -36,34 +81,58 @@ const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Static OTP for SuperAdmin
+// Static OTP for SuperAdmin (should match backend SUPER_ADMIN_STATIC_OTP env variable)
 const SUPERADMIN_STATIC_OTP = '123456';
 
 // Send OTP via email (mock)
 export const sendOTPEmail = async (email: string): Promise<string> => {
-  await delay(500);
+  const normalizedEmail = email.toLowerCase();
+  const isSuperAdmin = normalizedEmail === 'superadmin@medi-waste.io' || normalizedEmail === 'superadmin';
   
-  // Use static OTP for SuperAdmin
-  const isSuperAdmin = email.toLowerCase() === 'superadmin@medi-waste.io' || email.toLowerCase() === 'superadmin';
-  const otp = isSuperAdmin ? SUPERADMIN_STATIC_OTP : generateOTP();
+  // For super admin, use static OTP (should match backend config)
+  
+  if (isSuperAdmin) {
+    // Super admin uses static OTP - no need to store, just return it
+    console.log(`[SUPER ADMIN] Static OTP: ${SUPERADMIN_STATIC_OTP}`);
+    return SUPERADMIN_STATIC_OTP;
+  }
+  
+  // For other users, generate OTP
+  await delay(500);
+  const otp = generateOTP();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
   
-  otpStore.set(email.toLowerCase(), { otp, expiresAt });
+  otpStore.set(normalizedEmail, { otp, expiresAt });
   
-  // In production, send actual email here
-  if (isSuperAdmin) {
-    console.log(`[MOCK] Static OTP for SuperAdmin: ${otp}`);
-  } else {
-    console.log(`[MOCK] OTP sent to ${email}: ${otp}`);
-  }
+  console.log(`[MOCK] OTP sent to ${email}: ${otp}`);
   
   return otp; // Return OTP for testing purposes
 };
 
-// Verify OTP
+// Verify OTP - calls backend API for super admin, uses mock for others
 export const verifyOTP = async (email: string, otp: string): Promise<boolean> => {
-  await delay(300);
   const normalizedEmail = email.toLowerCase();
+  const isSuperAdmin = normalizedEmail === 'superadmin' || normalizedEmail === 'superadmin@medi-waste.io';
+  
+  // For super admin, call backend API
+  if (isSuperAdmin) {
+    try {
+      const result = await apiRequest<LoginResponse>('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          usernameOrEmail: email,
+          otp,
+        }),
+      });
+      return !!result.userId; // If we get a user ID, OTP is valid
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      return false;
+    }
+  }
+  
+  // For other users, use mock implementation (until backend OTP is implemented)
+  await delay(300);
   
   // Handle SuperAdmin case - normalize to full email
   const lookupEmail = normalizedEmail === 'superadmin' 
@@ -94,31 +163,96 @@ export const verifyOTP = async (email: string, otp: string): Promise<boolean> =>
   return true;
 };
 
-export const loginRequest = async (email: string, password: string): Promise<{ requiresOTP: boolean; email?: string }> => {
-  await delay(450);
-  
-  // Check for SuperAdmin credentials
-  if (email.toLowerCase() === 'superadmin' || email.toLowerCase() === 'superadmin@medi-waste.io') {
-    if (password === 'admin') {
-      // Send OTP and return that OTP is required
-      await sendOTPEmail('superadmin@medi-waste.io');
-      return { requiresOTP: true, email: 'superadmin@medi-waste.io' };
+// Login request - calls backend API
+export const loginRequest = async (
+  usernameOrEmail: string,
+  password: string,
+): Promise<{ requiresOTP: boolean; email?: string; user?: User; forcePasswordChange?: boolean }> => {
+  try {
+    const result = await apiRequest<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        usernameOrEmail: usernameOrEmail.trim(),
+        password,
+      }),
+    });
+
+    // Map backend response to frontend User format
+    const normalizedEmail = (result.email || result.userName)?.toLowerCase();
+    const isSuperAdmin = normalizedEmail === 'superadmin@medi-waste.io' || normalizedEmail === 'superadmin';
+    
+    const user: User = {
+      id: result.userId,
+      name: result.userName,
+      email: result.email || result.userName,
+      // If SuperAdmin, set role to 'superadmin', otherwise use backend role
+      roles: isSuperAdmin ? ['superadmin'] : (result.userRoleId ? [result.userRoleId] : ['user']),
+      token: result.token || `token-${result.userId}`,
+    };
+
+    // If OTP is required, send OTP and return that info
+    if (result.requiresOTP) {
+      await sendOTPEmail(result.email || result.userName);
+      return {
+        requiresOTP: true,
+        email: result.email || result.userName,
+        user,
+        forcePasswordChange: result.forcePasswordChange,
+      };
     }
-    throw new Error('Invalid credentials');
+
+    // If password change is forced, return that info
+    if (result.forcePasswordChange) {
+      return {
+        requiresOTP: false,
+        user,
+        forcePasswordChange: true,
+      };
+    }
+
+    // Normal login success
+    return {
+      requiresOTP: false,
+      user,
+    };
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
   }
-  
-  // Check other users
-  const found = demoUsers.find((u) => u.email === email.toLowerCase());
-  if (!found || password.length < 6) {
-    throw new Error('Invalid credentials');
-  }
-  
-  // For other users, also require OTP
-  await sendOTPEmail(found.email);
-  return { requiresOTP: true, email: found.email };
 };
 
 export const loginWithOTP = async (email: string, otp: string): Promise<User> => {
+  const normalizedEmail = email.toLowerCase();
+  const isSuperAdmin = normalizedEmail === 'superadmin' || normalizedEmail === 'superadmin@medi-waste.io';
+  
+  // For super admin, call backend API
+  if (isSuperAdmin) {
+    try {
+      const result = await apiRequest<LoginResponse>('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          usernameOrEmail: email,
+          otp,
+        }),
+      });
+
+      // Map backend response to frontend User format
+      const user: User = {
+        id: result.userId,
+        name: result.userName,
+        email: result.email || result.userName,
+        roles: ['superadmin'], // Super admin role
+        token: result.token || `token-${result.userId}`,
+      };
+
+      return user;
+    } catch (error) {
+      console.error('OTP login error:', error);
+      throw new Error('Invalid or expired OTP');
+    }
+  }
+  
+  // For other users, use mock implementation (until backend OTP is implemented)
   await delay(300);
   
   const isValidOTP = await verifyOTP(email, otp);

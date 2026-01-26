@@ -1,20 +1,26 @@
 .barcode-generation-page {
   min-height: calc(100vh - 64px);
   background: #f8fafc;
-  padding: 24px;
+  padding: 20px;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .barcode-generation-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .barcode-generation-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #1e293b;
-  margin: 0;
+  margin: 0 0 4px 0;
   line-height: 1.2;
+}
+
+.barcode-generation-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
 }
 
 /* Actions Bar */
@@ -22,21 +28,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
+  margin-bottom: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .barcode-search-box {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 8px 12px;
   flex: 1;
-  max-width: 400px;
+  max-width: 500px;
 }
 
 .barcode-search-box svg {
@@ -57,51 +63,42 @@
   color: #94a3b8;
 }
 
-.status-filter-select {
-  padding: 10px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1e293b;
-  background: #ffffff;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  padding-right: 40px;
-}
-
-.generate-btn,
-.bulk-generate-btn {
+.generate-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: 6px;
+  padding: 8px 16px;
   background: #3b82f6;
   color: #ffffff;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.generate-btn:hover,
-.bulk-generate-btn:hover {
+.generate-btn:hover {
   background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-.bulk-generate-btn {
-  background: #10b981;
+.barcode-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 13px;
+  margin-bottom: 16px;
 }
 
-.bulk-generate-btn:hover {
-  background: #059669;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+.barcode-error-banner svg {
+  flex-shrink: 0;
 }
 
 /* Table */
@@ -110,7 +107,7 @@
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .barcode-table {
@@ -123,9 +120,9 @@
 }
 
 .barcode-table th {
-  padding: 10px 14px;
+  padding: 10px 12px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #475569;
   text-transform: uppercase;
@@ -134,7 +131,7 @@
 }
 
 .barcode-table td {
-  padding: 12px 14px;
+  padding: 10px 12px;
   font-size: 13px;
   color: #1e293b;
   border-bottom: 1px solid #f1f5f9;
@@ -146,6 +143,17 @@
 
 .barcode-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.sequence-cell {
+  font-weight: 600;
+  color: #3b82f6;
+  font-family: 'Courier New', monospace;
+}
+
+.hcf-code-cell {
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .barcode-value-cell {
@@ -161,34 +169,48 @@
   font-style: italic;
 }
 
-/* Barcode Status Badge */
-.barcode-status-badge {
+/* Badges */
+.barcode-type-badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 
-.barcode-status-badge--available {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.barcode-status-badge--assigned {
+.barcode-type-badge--barcode {
   background: #dbeafe;
   color: #1e40af;
 }
 
-.barcode-status-badge--used {
+.barcode-type-badge--qr-code {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.color-block-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.color-block-badge--yellow {
   background: #fef3c7;
   color: #92400e;
 }
 
-.barcode-status-badge--blocked {
+.color-block-badge--red {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.color-block-badge--white {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 /* Action Buttons */
@@ -211,15 +233,6 @@
   transition: all 0.2s ease;
 }
 
-.action-btn--preview {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.action-btn--preview:hover {
-  background: #c7d2fe;
-}
-
 .action-btn--print {
   background: #fef3c7;
   color: #92400e;
@@ -229,65 +242,16 @@
   background: #fde68a;
 }
 
-.action-btn--assign {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.action-btn--assign:hover {
-  background: #bbf7d0;
-}
-
-.action-btn--unassign {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.action-btn--unassign:hover {
-  background: #fecaca;
-}
-
-.action-btn--scan {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.action-btn--scan:hover {
-  background: #bfdbfe;
-}
-
-.action-btn--track {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-
-.action-btn--track:hover {
-  background: #c7d2fe;
-}
-
-.action-btn--block {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.action-btn--block:hover {
-  background: #fecaca;
-}
-
-.action-btn--unblock {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.action-btn--unblock:hover {
-  background: #a7f3d0;
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Pagination Info */
 .barcode-pagination-info {
   font-size: 12px;
   color: #64748b;
-  padding: 12px 0;
+  padding: 10px 0;
 }
 
 /* Modal */
@@ -303,24 +267,23 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 0;
+  padding: 20px;
 }
 
 .modal-content {
   background: #ffffff;
   border-radius: 8px;
   width: 100%;
-  max-width: 1000px;
-  max-height: 95vh;
+  max-width: 700px;
+  max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(226, 232, 240, 0.8);
-  margin: 0;
 }
 
-.modal-content--view {
+.modal-content--preview {
   max-width: 900px;
 }
 
@@ -332,7 +295,6 @@
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
   flex-shrink: 0;
-  margin: 0;
 }
 
 .modal-title {
@@ -353,7 +315,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   width: 32px;
   height: 32px;
 }
@@ -361,11 +323,6 @@
 .modal-close-btn:hover {
   background: #f1f5f9;
   color: #0f172a;
-  transform: rotate(90deg);
-}
-
-.modal-close-btn:active {
-  transform: rotate(90deg) scale(0.95);
 }
 
 /* Form */
@@ -396,7 +353,6 @@
   color: #0f172a;
   margin: 0 0 14px 0;
   padding: 0;
-  border: none;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   display: flex;
@@ -416,17 +372,11 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
   align-items: start;
-  margin: 0;
-  padding: 0;
-  width: 100%;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  margin: 0;
-  padding: 0;
-  width: 100%;
 }
 
 .form-group--full {
@@ -438,40 +388,23 @@
   font-weight: 700;
   color: #334155;
   margin: 0 0 7px 0;
-  padding: 0;
-  line-height: 1.4;
-  display: block;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  width: 100%;
 }
 
 .form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 10px 12px;
+.form-group select {
+  padding: 8px 12px;
   border: 1.5px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   color: #0f172a;
   font-family: inherit;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   width: 100%;
   box-sizing: border-box;
-  height: 40px;
+  height: 38px;
   background-color: #ffffff;
-  line-height: 1.4;
-  margin: 0;
-  vertical-align: top;
-}
-
-.form-group textarea {
-  height: auto;
-  min-height: 85px;
-  resize: vertical;
-  line-height: 1.5;
-  padding: 10px 12px;
-  margin: 0;
 }
 
 .form-group select {
@@ -481,7 +414,6 @@
   background-position: right 14px center;
   padding-right: 40px;
   cursor: pointer;
-  background-color: #ffffff;
 }
 
 .form-group select:disabled {
@@ -491,23 +423,10 @@
 }
 
 .form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-group select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
-  background-color: #ffffff;
-}
-
-.form-group input:hover:not(:focus),
-.form-group select:hover:not(:focus),
-.form-group textarea:hover:not(:focus) {
-  border-color: #cbd5e1;
-}
-
-.form-group select:hover:not(:disabled) {
-  border-color: #cbd5e1;
-  background-color: #fafbfc;
 }
 
 .modal-footer {
@@ -516,20 +435,18 @@
   gap: 10px;
   padding: 14px 18px;
   border-top: 1px solid #e2e8f0;
-  margin: 0;
   background: #fafbfc;
   flex-shrink: 0;
 }
 
 .btn {
-  padding: 10px 20px;
+  padding: 8px 18px;
   border: none;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  letter-spacing: 0.3px;
+  transition: all 0.15s ease;
   min-width: 100px;
   display: inline-flex;
   align-items: center;
@@ -537,20 +454,20 @@
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: #3b82f6;
   color: #ffffff;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
-.btn--primary:hover {
-  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
-  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.15);
+.btn--primary:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
   transform: translateY(-1px);
 }
 
-.btn--primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.1);
+.btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn--secondary {
@@ -559,150 +476,321 @@
   border: 1.5px solid #e2e8f0;
 }
 
-.btn--secondary:hover {
+.btn--secondary:hover:not(:disabled) {
   background: #f8fafc;
   border-color: #cbd5e1;
-  color: #334155;
 }
 
-.btn--success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+.btn--secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.btn--success:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15);
-  transform: translateY(-1px);
-}
-
-/* Barcode View Styles */
-.barcode-view-content {
+/* Preview Modal */
+.preview-content {
   padding: 18px;
   overflow-y: auto;
   flex: 1;
 }
 
-.barcode-view-section {
-  margin-bottom: 24px;
+.preview-info {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.barcode-view-section:last-child {
-  margin-bottom: 0;
+.preview-info p {
+  margin: 4px 0;
+  color: #1e293b;
 }
 
-.barcode-view-section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.barcode-view-grid {
+.preview-labels-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
-.barcode-view-field {
+.preview-label {
+  width: 100%;
+  aspect-ratio: 1.66;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  background: #ffffff;
+  position: relative;
 }
 
-.barcode-view-field label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
+.preview-label-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.preview-color-block-square {
+  width: 50px;
+  height: 24px;
+  border: 1px solid #000;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: bold;
+  color: #000;
+  font-family: Arial, sans-serif;
   text-transform: uppercase;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.preview-color-block-square--yellow {
+  background: #FFEB3B;
+}
+
+.preview-color-block-square--red {
+  background: #F44336;
+  color: #FFFFFF;
+}
+
+.preview-color-block-square--white {
+  background: #FFFFFF;
+  border: 1px solid #000;
+}
+
+.preview-sequence-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: #000;
+  font-family: Arial, sans-serif;
+}
+
+.preview-barcode-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin: 8px 0;
+  min-height: 60px;
+}
+
+.preview-barcode-value {
+  font-size: 10px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 8px;
+}
+
+.preview-label-footer {
+  border-top: 1px solid #000;
+  padding-top: 4px;
+  margin-top: auto;
+}
+
+.preview-type-label {
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  color: #000;
+  text-transform: uppercase;
+  font-family: Arial, sans-serif;
+}
+
+.preview-more-info {
+  text-align: center;
+  color: #64748b;
+  font-size: 12px;
+  margin-top: 12px;
+  font-style: italic;
+}
+
+/* Print Container - Hidden by default, visible when printing */
+.print-container {
+  display: none;
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 210mm;
+  background: white;
+}
+
+.print-label {
+  width: 63mm;
+  height: 38mm;
+  border: 1px solid #000;
+  padding: 3mm;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  page-break-after: always;
+  page-break-inside: avoid;
+  margin: 0;
+  position: relative;
+  background: #ffffff;
+}
+
+.print-label-header {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  margin-bottom: 3mm;
+}
+
+.print-color-block-square {
+  width: 12mm;
+  height: 6mm;
+  border: 1px solid #000;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7pt;
+  font-weight: bold;
+  color: #000;
+  font-family: Arial, sans-serif;
+  text-transform: uppercase;
+  padding: 0.5mm;
+  box-sizing: border-box;
+}
+
+.print-color-block-square--yellow {
+  background-color: #FFEB3B;
+}
+
+.print-color-block-square--red {
+  background-color: #F44336;
+  color: #FFFFFF;
+}
+
+.print-color-block-square--white {
+  background-color: #FFFFFF;
+  border: 1px solid #000;
+}
+
+.print-sequence-text {
+  font-size: 9pt;
+  font-weight: 500;
+  color: #000;
+  font-family: Arial, sans-serif;
+}
+
+.print-barcode-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 2mm 0;
+}
+
+.print-barcode-container .barcode-svg {
+  max-width: 100%;
+  max-height: 18mm;
+  margin: 0 auto;
+}
+
+.print-barcode-container .qr-canvas {
+  max-width: 100%;
+  max-height: 18mm;
+  margin: 0 auto;
+}
+
+.print-barcode-value {
+  font-size: 9pt;
+  font-weight: 600;
+  margin-top: 2mm;
+  text-align: center;
+  color: #000;
+  font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
 }
 
-.barcode-view-field span {
-  font-size: 14px;
-  color: #1e293b;
-  font-weight: 500;
+.print-label-footer {
+  border-top: 1px solid #000;
+  padding-top: 1.5mm;
+  margin-top: auto;
 }
 
-.barcode-view-field--highlight {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-}
-
-.barcode-view-field--highlight label {
-  color: #3b82f6;
-}
-
-.barcode-view-field--highlight span {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-/* Barcode Preview Display */
-.barcode-preview-section {
-  padding: 24px;
-  background: #f8fafc;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.barcode-preview-display {
+.print-type-label {
+  font-size: 10pt;
+  font-weight: bold;
   text-align: center;
-  padding: 32px;
-  background: #ffffff;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  min-width: 300px;
-}
-
-.barcode-preview-value {
-  font-family: 'Courier New', monospace;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 12px;
-  letter-spacing: 2px;
-}
-
-.barcode-preview-type {
-  font-size: 14px;
-  color: #64748b;
-  margin-bottom: 8px;
+  color: #000;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  font-family: Arial, sans-serif;
 }
 
-.barcode-preview-company {
-  font-size: 12px;
-  color: #94a3b8;
-}
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
 
-.barcode-value-display {
-  font-family: 'Courier New', monospace;
-  font-weight: 600;
-  color: #3b82f6;
-  font-size: 16px;
+  .print-container,
+  .print-container * {
+    visibility: visible;
+  }
+
+  .print-container {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .print-label {
+    width: 63mm;
+    height: 38mm;
+    margin: 0;
+    padding: 3mm;
+    border: 1px solid #000;
+    page-break-after: always;
+    page-break-inside: avoid;
+    break-after: page;
+    break-inside: avoid;
+    background: #ffffff;
+  }
+
+  .print-label:last-child {
+    page-break-after: auto;
+  }
+
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  /* Ensure each label is on a separate page */
+  .print-label {
+    page-break-after: always;
+  }
+
+  .print-label:last-child {
+    page-break-after: auto;
+  }
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .barcode-generation-page {
-    padding: 16px;
+    padding: 12px;
   }
 
   .form-grid,
-  .barcode-view-grid {
+  .preview-labels-grid {
     grid-template-columns: 1fr;
   }
 
@@ -713,9 +801,5 @@
 
   .barcode-search-box {
     max-width: 100%;
-  }
-
-  .barcode-action-buttons {
-    flex-wrap: wrap;
   }
 }

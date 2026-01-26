@@ -1,6 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { canCreateMasterData, canEditMasterData, canDeleteMasterData } from '../../utils/permissions';
+import { hcfService, HcfResponse } from '../../services/hcfService';
+import { companyService, CompanyResponse } from '../../services/companyService';
+import { areaService, AreaResponse } from '../../services/areaService';
+import { stateService, StateResponse } from '../../services/stateService';
+import { categoryService, CategoryResponse } from '../../services/categoryService';
+import { routeService, RouteResponse } from '../../services/routeService';
+import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
+import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
 import './hcfMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -101,108 +110,234 @@ interface Route {
 }
 
 const HCFMasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
+  const canCreate = canCreateMasterData(user);
+  const canEdit = canEditMasterData(user);
+  const canDelete = canDeleteMasterData(user);
+  
+  // Debug: Log permissions (remove in production)
+  useEffect(() => {
+    if (user) {
+      console.log('HCF Master - User:', { id: user.id, email: user.email, name: user.name, roles: user.roles });
+      console.log('HCF Master - Permissions:', { canCreate, canEdit, canDelete });
+    }
+  }, [user, canCreate, canEdit]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingHCF, setEditingHCF] = useState<HCF | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Master data - Load from respective masters
-  const [companies] = useState<Company[]>([
-    { id: '1', companyCode: 'COMP001', companyName: 'Sample Company', status: 'Active' },
-    { id: '2', companyCode: 'COMP002', companyName: 'ABC Industries', status: 'Active' },
-    { id: '3', companyCode: 'COMP003', companyName: 'XYZ Corporation', status: 'Active' },
-  ]);
+  // Master data - Load from API
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [pcbZones, setPcbZones] = useState<PCBZone[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [hcfTypes, setHcfTypes] = useState<HcfTypeResponse[]>([]);
+  const [hcfs, setHcfs] = useState<HCF[]>([]);
 
-  const [areas] = useState<Area[]>([
-    { id: '1', areaName: 'Area A', status: 'Active' },
-    { id: '2', areaName: 'Area B', status: 'Active' },
-    { id: '3', areaName: 'Area C', status: 'Active' },
-  ]);
+  // Load master data functions
+  const loadCompanies = useCallback(async () => {
+    try {
+      const data = await companyService.getAllCompanies(undefined, true);
+      setCompanies(data.map(c => ({
+        id: c.id,
+        companyCode: c.companyCode,
+        companyName: c.companyName,
+        status: c.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load companies:', err);
+    }
+  }, []);
 
-  const [states] = useState<State[]>([
-    { id: '1', stateCode: 'MH', stateName: 'Maharashtra', status: 'Active' },
-    { id: '2', stateCode: 'DL', stateName: 'Delhi', status: 'Active' },
-    { id: '3', stateCode: 'KA', stateName: 'Karnataka', status: 'Active' },
-  ]);
+  const loadAreas = useCallback(async () => {
+    try {
+      const data = await areaService.getAllAreas(true);
+      setAreas(data.map(a => ({
+        id: a.id,
+        areaName: a.areaName,
+        status: a.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load areas:', err);
+    }
+  }, []);
 
-  const [pcbZones] = useState<PCBZone[]>([
-    { id: '1', pcbZoneName: 'Zone A', status: 'Active' },
-    { id: '2', pcbZoneName: 'Zone B', status: 'Active' },
-    { id: '3', pcbZoneName: 'Zone C', status: 'Active' },
-  ]);
+  const loadStates = useCallback(async () => {
+    try {
+      const data = await stateService.getAllStates(true);
+      setStates(data.map(s => ({
+        id: s.id,
+        stateCode: s.stateCode,
+        stateName: s.stateName,
+        status: s.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load states:', err);
+    }
+  }, []);
 
-  const [categories] = useState<Category[]>([
-    { id: '1', categoryName: 'Category A', status: 'Active' },
-    { id: '2', categoryName: 'Category B', status: 'Active' },
-    { id: '3', categoryName: 'Category C', status: 'Active' },
-  ]);
+  const loadPcbZones = useCallback(async () => {
+    try {
+      const data = await pcbZoneService.getAllPcbZones(true);
+      setPcbZones(data.map(z => ({
+        id: z.id,
+        pcbZoneName: z.pcbZoneName,
+        status: z.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load PCB zones:', err);
+    }
+  }, []);
 
-  const [routes] = useState<Route[]>([
-    { id: '1', routeName: 'Route 1', status: 'Active' },
-    { id: '2', routeName: 'Route 2', status: 'Active' },
-    { id: '3', routeName: 'Route 3', status: 'Active' },
-  ]);
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await categoryService.getAllCategories(undefined, true);
+      setCategories(data.map(c => ({
+        id: c.id,
+        categoryName: c.categoryName,
+        status: c.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load categories:', err);
+    }
+  }, []);
 
-  const [hcfs, setHcfs] = useState<HCF[]>([
-    {
-      id: '1',
-      companyName: 'Sample Company',
-      companyID: 'COMP001',
-      hcfCode: 'HCF001',
-      password: '********',
-      hcfTypeCode: 'TYPE001',
-      hcfName: 'City Hospital',
-      hcfShortName: 'CH',
-      areaID: 'Area A',
-      pincode: '400001',
-      district: 'Mumbai',
-      stateCode: 'MH',
-      groupCode: 'GRP001',
-      pcbZone: 'Zone A',
-      billingName: 'City Hospital Billing',
-      billingAddress: '123 Hospital Street',
-      serviceAddress: '123 Hospital Street',
-      gstin: '27ABCDE1234F1Z5',
-      regnNum: 'REG001',
-      hospRegnDate: '2020-01-15',
-      billingType: 'Monthly',
-      advAmount: '50000',
-      billingOption: 'Per Bed',
-      bedCount: '100',
-      bedRate: '500',
-      kgRate: '50',
-      lumpsum: '100000',
-      accountsLandline: '022-12345678',
-      accountsMobile: '+91-9876543210',
-      accountsEmail: 'accounts@cityhospital.com',
-      contactName: 'John Doe',
-      contactDesignation: 'Manager',
-      contactMobile: '+91-9876543211',
-      contactEmail: 'contact@cityhospital.com',
-      agrSignAuthName: 'Jane Smith',
-      agrSignAuthDesignation: 'Director',
-      drName: 'Dr. Robert Wilson',
-      drPhNo: '+91-9876543212',
-      drEmail: 'doctor@cityhospital.com',
-      serviceStartDate: '2020-01-01',
-      serviceEndDate: '2025-12-31',
-      category: 'Category A',
-      route: 'Route 1',
-      executive_Assigned: 'Executive 1',
-      submitBy: 'Admin',
-      agrID: 'AGR001',
-      sortOrder: '1',
-      isGovt: false,
-      isGSTExempt: false,
-      autoGen: true,
-      status: 'Active',
-      createdBy: 'System',
-      createdOn: '2023-01-01',
-      modifiedBy: 'System',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  const loadRoutes = useCallback(async () => {
+    try {
+      const data = await routeService.getAllRoutes(true);
+      setRoutes(data.map(r => ({
+        id: r.id,
+        routeName: r.routeName,
+        status: r.status,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load routes:', err);
+    }
+  }, []);
+
+  const loadHcfTypes = useCallback(async () => {
+    try {
+      const data = await hcfTypeService.getAllHcfTypes(undefined, true);
+      setHcfTypes(data);
+    } catch (err: any) {
+      console.error('Failed to load HCF types:', err);
+    }
+  }, []);
+
+  // Load HCFs from API
+  const loadHcfs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await hcfService.getAllHcfs();
+      
+      // Map backend data to frontend format
+      const mappedHcfs: HCF[] = data.map(hcf => {
+        const company = companies.find(c => c.id === hcf.companyId);
+        const area = areas.find(a => a.id === hcf.areaId);
+        const state = states.find(s => s.stateCode === hcf.stateCode);
+        const pcbZone = pcbZones.find(z => z.id === hcf.pcbZone);
+        const category = categories.find(c => c.id === hcf.category);
+        const route = routes.find(r => r.id === hcf.route);
+        
+        return {
+          id: hcf.id,
+          companyName: company?.companyName || '',
+          companyID: hcf.companyId,
+          hcfCode: hcf.hcfCode,
+          password: hcf.password || '',
+          hcfTypeCode: hcf.hcfTypeCode || '',
+          hcfName: hcf.hcfName,
+          hcfShortName: hcf.hcfShortName || '',
+          areaID: hcf.areaId || '',
+          pincode: hcf.pincode || '',
+          district: hcf.district || '',
+          stateCode: hcf.stateCode || '',
+          groupCode: hcf.groupCode || '',
+          pcbZone: hcf.pcbZone || '',
+          billingName: hcf.billingName || '',
+          billingAddress: hcf.billingAddress || '',
+          serviceAddress: hcf.serviceAddress || '',
+          gstin: hcf.gstin || '',
+          regnNum: hcf.regnNum || '',
+          hospRegnDate: hcf.hospRegnDate || '',
+          billingType: hcf.billingType || '',
+          advAmount: hcf.advAmount || '',
+          billingOption: hcf.billingOption || '',
+          bedCount: hcf.bedCount || '',
+          bedRate: hcf.bedRate || '',
+          kgRate: hcf.kgRate || '',
+          lumpsum: hcf.lumpsum || '',
+          accountsLandline: hcf.accountsLandline || '',
+          accountsMobile: hcf.accountsMobile || '',
+          accountsEmail: hcf.accountsEmail || '',
+          contactName: hcf.contactName || '',
+          contactDesignation: hcf.contactDesignation || '',
+          contactMobile: hcf.contactMobile || '',
+          contactEmail: hcf.contactEmail || '',
+          agrSignAuthName: hcf.agrSignAuthName || '',
+          agrSignAuthDesignation: hcf.agrSignAuthDesignation || '',
+          drName: hcf.drName || '',
+          drPhNo: hcf.drPhNo || '',
+          drEmail: hcf.drEmail || '',
+          serviceStartDate: hcf.serviceStartDate || '',
+          serviceEndDate: hcf.serviceEndDate || '',
+          category: hcf.category || '',
+          route: hcf.route || '',
+          executive_Assigned: hcf.executive_Assigned || '',
+          submitBy: hcf.submitBy || '',
+          agrID: hcf.agrID || '',
+          sortOrder: hcf.sortOrder || '',
+          isGovt: hcf.isGovt || false,
+          isGSTExempt: hcf.isGSTExempt || false,
+          autoGen: hcf.autoGen || false,
+          status: hcf.status,
+          createdBy: hcf.createdBy || '',
+          createdOn: hcf.createdOn,
+          modifiedBy: hcf.modifiedBy || '',
+          modifiedOn: hcf.modifiedOn,
+        };
+      });
+      
+      setHcfs(mappedHcfs);
+    } catch (err: any) {
+      console.error('Failed to load HCFs:', err);
+      setError(err.message || 'Failed to load HCFs');
+      setHcfs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [companies, areas, states, pcbZones, categories, routes]);
+
+  // Initial load
+  useEffect(() => {
+    const initialize = async () => {
+      await Promise.all([
+        loadCompanies(),
+        loadAreas(),
+        loadStates(),
+        loadPcbZones(),
+        loadCategories(),
+        loadRoutes(),
+        loadHcfTypes(),
+      ]);
+    };
+    initialize();
+  }, [loadCompanies, loadAreas, loadStates, loadPcbZones, loadCategories, loadRoutes, loadHcfTypes]);
+
+  // Reload HCFs when master data is loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadHcfs();
+    }
+  }, [companies.length, loadHcfs]);
 
   const filteredHCFs = hcfs.filter(hcf =>
     hcf.hcfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -210,6 +345,43 @@ const HCFMasterPage = () => {
     hcf.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     hcf.hcfShortName.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Debug: Verify button rendering (moved after state declarations)
+  useEffect(() => {
+    // Use setTimeout to ensure DOM is rendered after table data loads
+    const timer = setTimeout(() => {
+      const addButton = document.querySelector('.add-hcf-btn');
+      const actionButtons = document.querySelectorAll('.action-btn');
+      
+      // Check computed styles
+      const addButtonStyles = addButton ? window.getComputedStyle(addButton) : null;
+      const firstActionButton = actionButtons[0];
+      const firstActionButtonStyles = firstActionButton ? window.getComputedStyle(firstActionButton) : null;
+      
+      console.log('HCF Master - Button Check:', {
+        addButtonExists: !!addButton,
+        addButtonVisible: addButton ? addButtonStyles?.display !== 'none' && addButtonStyles?.visibility !== 'hidden' : false,
+        addButtonStyles: addButton ? {
+          display: addButtonStyles?.display,
+          visibility: addButtonStyles?.visibility,
+          opacity: addButtonStyles?.opacity,
+          width: addButtonStyles?.width,
+          height: addButtonStyles?.height
+        } : null,
+        actionButtonsCount: actionButtons.length,
+        firstActionButtonStyles: firstActionButton ? {
+          display: firstActionButtonStyles?.display,
+          visibility: firstActionButtonStyles?.visibility,
+          opacity: firstActionButtonStyles?.opacity
+        } : null,
+        canCreate,
+        canEdit,
+        hcfsCount: hcfs.length,
+        filteredHCFsCount: filteredHCFs.length
+      });
+    }, 500); // Increased timeout to ensure table is rendered
+    return () => clearTimeout(timer);
+  }, [canCreate, canEdit, hcfs.length, filteredHCFs.length]);
 
   const handleAdd = () => {
     setEditingHCF(null);
@@ -221,28 +393,152 @@ const HCFMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this HCF?')) {
-      setHcfs(hcfs.filter(hcf => hcf.id !== id));
+      try {
+        setLoading(true);
+        await hcfService.deleteHcf(id);
+        await loadHcfs();
+      } catch (err: any) {
+        console.error('Failed to delete HCF:', err);
+        setError(err.message || 'Failed to delete HCF');
+        alert(err.message || 'Failed to delete HCF');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (data: Partial<HCF>) => {
-    if (editingHCF) {
-      setHcfs(hcfs.map(hcf => hcf.id === editingHCF.id ? { ...hcf, ...data } : hcf));
-    } else {
-      const newHCF: HCF = {
-        ...data as HCF,
-        id: Date.now().toString(),
-        createdBy: 'System',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'System',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setHcfs([...hcfs, newHCF]);
+  const handleSave = async (data: Partial<HCF>) => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      if (editingHCF) {
+        // Update existing HCF
+        const updateData: any = {
+          hcfName: data.hcfName,
+          hcfShortName: data.hcfShortName,
+          areaId: data.areaID,
+          pincode: data.pincode,
+          district: data.district,
+          stateCode: data.stateCode,
+          groupCode: data.groupCode,
+          pcbZone: data.pcbZone,
+          billingName: data.billingName,
+          billingAddress: data.billingAddress,
+          serviceAddress: data.serviceAddress,
+          gstin: data.gstin,
+          regnNum: data.regnNum,
+          hospRegnDate: data.hospRegnDate,
+          billingType: data.billingType,
+          advAmount: data.advAmount,
+          billingOption: data.billingOption,
+          bedCount: data.bedCount,
+          bedRate: data.bedRate,
+          kgRate: data.kgRate,
+          lumpsum: data.lumpsum,
+          accountsLandline: data.accountsLandline,
+          accountsMobile: data.accountsMobile,
+          accountsEmail: data.accountsEmail,
+          contactName: data.contactName,
+          contactDesignation: data.contactDesignation,
+          contactMobile: data.contactMobile,
+          contactEmail: data.contactEmail,
+          agrSignAuthName: data.agrSignAuthName,
+          agrSignAuthDesignation: data.agrSignAuthDesignation,
+          drName: data.drName,
+          drPhNo: data.drPhNo,
+          drEmail: data.drEmail,
+          serviceStartDate: data.serviceStartDate,
+          serviceEndDate: data.serviceEndDate,
+          category: data.category,
+          route: data.route,
+          executive_Assigned: data.executive_Assigned,
+          submitBy: data.submitBy,
+          agrID: data.agrID,
+          sortOrder: data.sortOrder,
+          isGovt: data.isGovt,
+          isGSTExempt: data.isGSTExempt,
+          autoGen: data.autoGen,
+          status: data.status,
+        };
+
+        await hcfService.updateHcf(editingHCF.id, updateData);
+      } else {
+        // Create new HCF
+        if (!data.companyID) {
+          throw new Error('Company is required');
+        }
+        if (!data.hcfCode) {
+          throw new Error('HCF Code is required');
+        }
+        if (!data.hcfName) {
+          throw new Error('HCF Name is required');
+        }
+
+        await hcfService.createHcf({
+          companyId: data.companyID,
+          hcfCode: data.hcfCode!,
+          password: data.password,
+          hcfTypeCode: data.hcfTypeCode,
+          hcfName: data.hcfName!,
+          hcfShortName: data.hcfShortName,
+          areaId: data.areaID,
+          pincode: data.pincode,
+          district: data.district,
+          stateCode: data.stateCode,
+          groupCode: data.groupCode,
+          pcbZone: data.pcbZone,
+          billingName: data.billingName,
+          billingAddress: data.billingAddress,
+          serviceAddress: data.serviceAddress,
+          gstin: data.gstin,
+          regnNum: data.regnNum,
+          hospRegnDate: data.hospRegnDate,
+          billingType: data.billingType,
+          advAmount: data.advAmount,
+          billingOption: data.billingOption,
+          bedCount: data.bedCount,
+          bedRate: data.bedRate,
+          kgRate: data.kgRate,
+          lumpsum: data.lumpsum,
+          accountsLandline: data.accountsLandline,
+          accountsMobile: data.accountsMobile,
+          accountsEmail: data.accountsEmail,
+          contactName: data.contactName,
+          contactDesignation: data.contactDesignation,
+          contactMobile: data.contactMobile,
+          contactEmail: data.contactEmail,
+          agrSignAuthName: data.agrSignAuthName,
+          agrSignAuthDesignation: data.agrSignAuthDesignation,
+          drName: data.drName,
+          drPhNo: data.drPhNo,
+          drEmail: data.drEmail,
+          serviceStartDate: data.serviceStartDate,
+          serviceEndDate: data.serviceEndDate,
+          category: data.category,
+          route: data.route,
+          executive_Assigned: data.executive_Assigned,
+          submitBy: data.submitBy,
+          agrID: data.agrID,
+          sortOrder: data.sortOrder,
+          isGovt: data.isGovt,
+          isGSTExempt: data.isGSTExempt,
+          autoGen: data.autoGen,
+        });
+      }
+
+      await loadHcfs();
+      setShowModal(false);
+      setEditingHCF(null);
+    } catch (err: any) {
+      console.error('Failed to save HCF:', err);
+      setError(err.message || 'Failed to save HCF');
+      alert(err.message || 'Failed to save HCF');
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
-    setEditingHCF(null);
   };
 
   const navItems = [
@@ -285,6 +581,17 @@ const HCFMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -304,12 +611,31 @@ const HCFMasterPage = () => {
         </header>
 
         <div className="hcf-master-page">
+          {error && (
+            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
+              {error}
+            </div>
+          )}
+          {loading && hcfs.length === 0 && (
+            <div className="loading-message" style={{ padding: '10px', marginBottom: '20px', textAlign: 'center' }}>
+              Loading HCFs...
+            </div>
+          )}
           <div className="hcf-master-header">
             <h1 className="hcf-master-title">HCF Master</h1>
           </div>
 
-          <div className="hcf-master-actions">
-            <div className="hcf-search-box">
+
+          <div className="hcf-master-actions" style={{ 
+            display: 'flex', 
+            width: '100%', 
+            justifyContent: 'flex-start', 
+            alignItems: 'center',
+            gap: '16px',
+            marginBottom: '20px',
+            flexWrap: 'nowrap'
+          }}>
+            <div className="hcf-search-box" style={{ flex: '0 1 auto', maxWidth: '400px', minWidth: '200px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
@@ -322,7 +648,33 @@ const HCFMasterPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="add-hcf-btn" onClick={handleAdd}>
+            <button 
+              className="add-hcf-btn" 
+              onClick={handleAdd}
+              disabled={!canCreate}
+              style={{ 
+                display: 'flex !important',
+                visibility: 'visible !important',
+                opacity: canCreate ? 1 : 0.6,
+                cursor: canCreate ? 'pointer' : 'not-allowed',
+                position: 'relative',
+                zIndex: 10,
+                minWidth: '120px',
+                minHeight: '40px',
+                backgroundColor: '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 20px',
+                fontSize: '13px',
+                fontWeight: 600,
+                flexShrink: 0,
+                alignItems: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap'
+              }}
+              title={!canCreate ? 'No permission to create HCF' : 'Add new HCF'}
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -332,22 +684,35 @@ const HCFMasterPage = () => {
           </div>
 
           <div className="hcf-table-container">
-            <table className="hcf-table">
+            <table className="hcf-table" style={{ width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th>Company Name</th>
-                  <th>HCF Code</th>
-                  <th>HCF Name</th>
-                  <th>HCF Short Name</th>
-                  <th>State Code</th>
-                  <th>District</th>
-                  <th>Pincode</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th style={{ width: '12%' }}>Company Name</th>
+                  <th style={{ width: '8%' }}>HCF Code</th>
+                  <th style={{ width: '12%' }}>HCF Name</th>
+                  <th style={{ width: '10%' }}>HCF Short Name</th>
+                  <th style={{ width: '7%' }}>State Code</th>
+                  <th style={{ width: '10%' }}>District</th>
+                  <th style={{ width: '8%' }}>Pincode</th>
+                  <th style={{ width: '8%' }}>Status</th>
+                  <th style={{ 
+                    width: '120px',
+                    minWidth: '120px',
+                    maxWidth: '120px',
+                    padding: '10px 8px',
+                    textAlign: 'left',
+                    backgroundColor: '#f1f5f9'
+                  }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredHCFs.length === 0 ? (
+                {loading && hcfs.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="empty-message">
+                      Loading HCFs...
+                    </td>
+                  </tr>
+                ) : filteredHCFs.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="empty-message">
                       No HCF records found
@@ -368,27 +733,84 @@ const HCFMasterPage = () => {
                           {hcf.status}
                         </span>
                       </td>
-                      <td>
-                        <button
-                          className="action-btn action-btn--edit"
-                          onClick={() => handleEdit(hcf)}
-                          title="Edit"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="action-btn action-btn--delete"
-                          onClick={() => handleDelete(hcf.id)}
-                          title="Delete"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                          </svg>
-                        </button>
+                      <td style={{ 
+                        width: '120px',
+                        minWidth: '120px',
+                        maxWidth: '120px',
+                        padding: '8px',
+                        whiteSpace: 'nowrap',
+                        backgroundColor: '#ffffff'
+                      }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '8px', 
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          width: '100%',
+                          visibility: 'visible',
+                          flexWrap: 'nowrap'
+                        }}>
+                          <button
+                            className="action-btn action-btn--edit"
+                            onClick={() => canEdit && handleEdit(hcf)}
+                            title={canEdit ? "Edit" : "No permission to edit"}
+                            disabled={!canEdit}
+                            style={{ 
+                              display: 'flex',
+                              visibility: 'visible',
+                              opacity: canEdit ? 1 : 0.5,
+                              cursor: canEdit ? 'pointer' : 'not-allowed',
+                              width: '32px',
+                              height: '32px',
+                              minWidth: '32px',
+                              minHeight: '32px',
+                              backgroundColor: canEdit ? '#3b82f6' : '#e5e7eb',
+                              color: canEdit ? '#ffffff' : '#6b7280',
+                              border: 'none',
+                              borderRadius: '6px',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              padding: 0,
+                              margin: 0
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => canDelete && handleDelete(hcf.id)}
+                            title={canDelete ? "Delete" : "No permission to delete"}
+                            disabled={!canDelete}
+                            style={{ 
+                              display: 'flex',
+                              visibility: 'visible',
+                              opacity: canDelete ? 1 : 0.5,
+                              cursor: canDelete ? 'pointer' : 'not-allowed',
+                              width: '32px',
+                              height: '32px',
+                              minWidth: '32px',
+                              minHeight: '32px',
+                              backgroundColor: canDelete ? '#ef4444' : '#e5e7eb',
+                              color: canDelete ? '#ffffff' : '#6b7280',
+                              border: 'none',
+                              borderRadius: '6px',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              padding: 0,
+                              margin: 0
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -412,6 +834,8 @@ const HCFMasterPage = () => {
           pcbZones={pcbZones.filter(z => z.status === 'Active')}
           categories={categories.filter(c => c.status === 'Active')}
           routes={routes.filter(r => r.status === 'Active')}
+          hcfTypes={hcfTypes.filter(t => t.status === 'Active')}
+          saving={saving}
           onClose={() => {
             setShowModal(false);
             setEditingHCF(null);
@@ -432,13 +856,18 @@ interface HCFFormModalProps {
   pcbZones: PCBZone[];
   categories: Category[];
   routes: Route[];
+  hcfTypes: HcfTypeResponse[];
+  saving: boolean;
   onClose: () => void;
   onSave: (data: Partial<HCF>) => void;
 }
 
-const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, routes, onClose, onSave }: HCFFormModalProps) => {
-  const [formData, setFormData] = useState<Partial<HCF>>(
-    hcf || {
+const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, routes, hcfTypes, saving, onClose, onSave }: HCFFormModalProps) => {
+  const getInitialFormData = useCallback(() => {
+    if (hcf) {
+      return { ...hcf };
+    }
+    return {
       companyName: '',
       companyID: '',
       hcfCode: '',
@@ -488,9 +917,16 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
       isGovt: false,
       isGSTExempt: false,
       autoGen: false,
-      status: 'Active',
-    }
-  );
+      status: 'Active' as 'Active' | 'Inactive',
+    };
+  }, [hcf]);
+
+  const [formData, setFormData] = useState<Partial<HCF>>(getInitialFormData);
+
+  // Update formData when hcf prop changes
+  useEffect(() => {
+    setFormData(getInitialFormData());
+  }, [hcf, getInitialFormData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,7 +957,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                   value={formData.companyName || ''}
                   onChange={(e) => {
                     const selectedCompany = companies.find(c => c.companyName === e.target.value);
-                    setFormData({ ...formData, companyName: e.target.value, companyID: selectedCompany?.companyCode || '' });
+                    setFormData({ ...formData, companyName: e.target.value, companyID: selectedCompany?.id || '' });
                   }}
                   required
                 >
@@ -562,11 +998,17 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
               </div>
               <div className="form-group">
                 <label>HCF Type Code</label>
-                <input
-                  type="text"
+                <select
                   value={formData.hcfTypeCode || ''}
                   onChange={(e) => setFormData({ ...formData, hcfTypeCode: e.target.value })}
-                />
+                >
+                  <option value="">Select HCF Type</option>
+                  {hcfTypes.map((type) => (
+                    <option key={type.id} value={type.hcfTypeCode}>
+                      {type.hcfTypeCode} - {type.hcfTypeName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>HCF Name *</label>
@@ -609,7 +1051,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                 >
                   <option value="">Select Area</option>
                   {areas.map((area) => (
-                    <option key={area.id} value={area.areaName}>
+                    <option key={area.id} value={area.id}>
                       {area.areaName}
                     </option>
                   ))}
@@ -656,7 +1098,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                 >
                   <option value="">Select PCB Zone</option>
                   {pcbZones.map((zone) => (
-                    <option key={zone.id} value={zone.pcbZoneName}>
+                    <option key={zone.id} value={zone.id}>
                       {zone.pcbZoneName}
                     </option>
                   ))}
@@ -978,7 +1420,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                 >
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.categoryName}>
+                    <option key={cat.id} value={cat.id}>
                       {cat.categoryName}
                     </option>
                   ))}
@@ -992,7 +1434,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                 >
                   <option value="">Select Route</option>
                   {routes.map((r) => (
-                    <option key={r.id} value={r.routeName}>
+                    <option key={r.id} value={r.id}>
                       {r.routeName}
                     </option>
                   ))}
@@ -1053,11 +1495,11 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
           </div>
 
           <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              {hcf ? 'Update' : 'Save'}
+            <button type="submit" className="btn btn--primary" disabled={saving}>
+              {saving ? 'Saving...' : (hcf ? 'Update' : 'Save')}
             </button>
           </div>
         </form>

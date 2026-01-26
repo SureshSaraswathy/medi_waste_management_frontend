@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { areaService, AreaResponse } from '../../services/areaService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
@@ -25,30 +26,41 @@ const AreaMasterPage = () => {
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
-  const [areas, setAreas] = useState<Area[]>([
-    {
-      id: '1',
-      areaCode: 'AREA001',
-      areaName: 'Downtown',
-      areaPincode: '400001',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-    {
-      id: '2',
-      areaCode: 'AREA002',
-      areaName: 'Suburban',
-      areaPincode: '400002',
-      status: 'Active',
-      createdBy: 'Admin',
-      createdOn: '2023-01-01',
-      modifiedBy: 'Admin',
-      modifiedOn: '2023-01-01',
-    },
-  ]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load areas from API
+  const loadAreas = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiAreas = await areaService.getAllAreas(true); // Get only active areas
+      const mappedAreas: Area[] = apiAreas.map((apiArea: AreaResponse) => ({
+        id: apiArea.id,
+        areaCode: apiArea.areaCode,
+        areaName: apiArea.areaName,
+        areaPincode: apiArea.areaPincode,
+        status: apiArea.status,
+        createdBy: apiArea.createdBy || '',
+        createdOn: apiArea.createdOn,
+        modifiedBy: apiArea.modifiedBy || '',
+        modifiedOn: apiArea.modifiedOn,
+      }));
+      setAreas(mappedAreas);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load areas';
+      setError(errorMessage);
+      console.error('Error loading areas:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load areas on component mount
+  useEffect(() => {
+    loadAreas();
+  }, []);
 
   const navItems = [
     { 
@@ -152,35 +164,60 @@ const AreaMasterPage = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this area?')) {
-      setAreas(areas.filter(a => a.id !== id));
+      try {
+        setLoading(true);
+        await areaService.deleteArea(id);
+        await loadAreas(); // Reload areas after deletion
+        alert('Area deleted successfully');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete area';
+        alert(`Error: ${errorMessage}`);
+        console.error('Error deleting area:', err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Partial<Area>) => {
-    if (editingArea) {
-      // Update existing
-      setAreas(areas.map(a => 
-        a.id === editingArea.id 
-          ? { ...a, ...formData, modifiedOn: new Date().toISOString().split('T')[0] }
-          : a
-      ));
-    } else {
-      // Add new
-      const newArea: Area = {
-        id: Date.now().toString(),
-        ...formData as Area,
-        status: 'Active',
-        createdBy: 'Current User',
-        createdOn: new Date().toISOString().split('T')[0],
-        modifiedBy: 'Current User',
-        modifiedOn: new Date().toISOString().split('T')[0],
-      };
-      setAreas([...areas, newArea]);
+  const handleSave = async (formData: Partial<Area>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (editingArea) {
+        // Update existing - only areaPincode and status can be updated (areaCode and areaName are immutable)
+        await areaService.updateArea(editingArea.id, {
+          areaPincode: formData.areaPincode,
+          status: formData.status,
+        });
+        alert('Area updated successfully');
+      } else {
+        // Add new
+        if (!formData.areaCode || !formData.areaName || !formData.areaPincode) {
+          alert('Please fill in all required fields');
+          return;
+        }
+        await areaService.createArea({
+          areaCode: formData.areaCode,
+          areaName: formData.areaName,
+          areaPincode: formData.areaPincode,
+        });
+        alert('Area created successfully');
+      }
+      
+      setShowModal(false);
+      setEditingArea(null);
+      await loadAreas(); // Reload areas after save
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save area';
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      console.error('Error saving area:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
-    setEditingArea(null);
   };
 
   // Define columns for the table
@@ -238,6 +275,17 @@ const AreaMasterPage = () => {
             </svg>
             <span className="notification-badge">3</span>
           </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile</span>
+          </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -257,6 +305,27 @@ const AreaMasterPage = () => {
             <span className="breadcrumb">/ Masters / Area Master</span>
           </div>
         </header>
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '6px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && !areas.length && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            Loading areas...
+          </div>
+        )}
 
         {/* Area Master Content using reusable template */}
         <MasterPageLayout
@@ -342,6 +411,8 @@ const AreaFormModal = ({ area, onClose, onSave }: AreaFormModalProps) => {
                   value={formData.areaCode || ''}
                   onChange={(e) => setFormData({ ...formData, areaCode: e.target.value })}
                   required
+                  disabled={!!area} // Disable when editing (immutable field)
+                  style={area ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
@@ -351,6 +422,8 @@ const AreaFormModal = ({ area, onClose, onSave }: AreaFormModalProps) => {
                   value={formData.areaName || ''}
                   onChange={(e) => setFormData({ ...formData, areaName: e.target.value })}
                   required
+                  disabled={!!area} // Disable when editing (immutable field)
+                  style={area ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                 />
               </div>
               <div className="form-group">
