@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import {
   getFinBalances,
   createFinBalance,
@@ -44,6 +45,8 @@ interface PreviewRecord {
 }
 
 const FinancialBalanceSummaryPage = () => {
+  const { logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -55,6 +58,11 @@ const FinancialBalanceSummaryPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -103,7 +111,7 @@ const FinancialBalanceSummaryPage = () => {
       const hcfsData = await hcfService.getAllHcfs(undefined, false);
       setHcfs(
         hcfsData.map((h: HcfResponse) => ({
-          id: h.hcfId,
+          id: h.id,
           hcfCode: h.hcfCode,
           hcfName: h.hcfName,
           companyId: h.companyId,
@@ -290,234 +298,261 @@ const FinancialBalanceSummaryPage = () => {
     ? hcfs.filter(h => h.companyId === formData.companyId)
     : [];
 
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
+    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
+    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
+    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname === '/commercial-agreements' },
+    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname === '/compliance-training' },
+    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
+    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
+  ];
+
   return (
-    <div className="master-page-container">
-      <div className="master-page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-          <button
-            onClick={() => navigate('/finance')}
-            style={{
-              padding: '8px 12px',
-              background: '#f1f5f9',
-              color: '#475569',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="15 18 9 12 15 6"></polyline>
+    <div className="dashboard-page">
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-brand">
+          <div className="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            Back
-          </button>
-          <h1 style={{ margin: 0 }}>Financial Balance Summary</h1>
-        </div>
-        <p>Manage HCF opening balances with flexible setup mode</p>
-      </div>
-
-      {error && (
-        <div className="error-banner" style={{ marginBottom: '20px' }}>
-          {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="success-banner" style={{ marginBottom: '20px', background: '#d1fae5', color: '#065f46', padding: '12px 16px', borderRadius: '6px' }}>
-          {successMessage}
-        </div>
-      )}
-
-      {/* Action Bar */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button
-          onClick={handleCreate}
-          style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Add Balance
-        </button>
-        <label
-          style={{
-            padding: '10px 20px',
-            background: '#10b981',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          Upload Excel
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-        </label>
-      </div>
-
-      {/* Filters */}
-      <div className="filters-section" style={{ marginBottom: '20px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1', minWidth: '200px' }}>
-          <input
-            type="text"
-            placeholder="Search by company, HCF code, or name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontSize: '14px',
-            }}
-          />
-        </div>
-        <div style={{ minWidth: '200px' }}>
-          <select
-            value={companyFilter}
-            onChange={(e) => setCompanyFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontSize: '14px',
-            }}
-          >
-            <option value="">All Companies</option>
-            {companies
-              .filter((c) => c.status === 'Active')
-              .map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.companyName}
-                </option>
-              ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Balances Table */}
-      <div className="table-container">
-        {loading && balances.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading balances...</div>
-        ) : filteredBalances.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-            {balances.length === 0
-              ? 'No financial balance records found'
-              : 'No records match your search criteria'}
           </div>
-        ) : (
-          <table className="master-table">
-            <thead>
-              <tr>
-                <th>Company</th>
-                <th>HCF Code</th>
-                <th>HCF Name</th>
-                <th>Opening Balance</th>
-                <th>Current Balance</th>
-                <th>Is Manual</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBalances.map((balance) => (
-                <tr key={balance.finBalanceId}>
-                  <td>{balance.companyName || '-'}</td>
-                  <td>{balance.hcfCode || '-'}</td>
-                  <td>{balance.hcfName || '-'}</td>
-                  <td style={{ fontWeight: 600 }}>₹{Number(balance.openingBalance).toFixed(2)}</td>
-                  <td style={{ fontWeight: 600, color: balance.currentBalance < 0 ? '#dc2626' : '#059669' }}>
-                    ₹{Number(balance.currentBalance).toFixed(2)}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        background: balance.isManual ? '#dbeafe' : '#f3f4f6',
-                        color: balance.isManual ? '#1e40af' : '#6b7280',
-                      }}
-                    >
-                      {balance.isManual ? 'Manual' : 'Auto'}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => handleEdit(balance)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#3b82f6',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(balance.finBalanceId)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#ef4444',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
+        </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
+        <button
+          className="sidebar-toggle"
+          onClick={toggleSidebar}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {isSidebarCollapsed ? (
+              <polyline points="9 18 15 12 9 6"></polyline>
+            ) : (
+              <polyline points="15 18 9 12 15 6"></polyline>
+            )}
+          </svg>
+        </button>
+
+        <nav className="sidebar-nav">
+          <ul className="nav-list">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="sidebar-notification-btn" aria-label="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span className="notification-badge">3</span>
+          </button>
+          <Link
+            to="/profile"
+            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
+            title="My Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            {!isSidebarCollapsed && <span>Profile</span>}
+          </Link>
+          <button onClick={logout} className="sidebar-logout-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            {!isSidebarCollapsed && <span>Logout</span>}
+          </button>
+        </div>
+      </aside>
+
+      <main className="dashboard-main">
+        <header className="dashboard-header">
+          <div className="header-left">
+            <span className="breadcrumb">/ Finance / Financial Balance Summary</span>
+          </div>
+        </header>
+
+        <div className="invoice-management-page">
+          <div className="invoice-management-header">
+            <h1 className="invoice-management-title">Financial Balance Summary</h1>
+          </div>
+
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="alert alert-error" style={{ margin: '16px', padding: '12px', background: '#fee', color: '#c33', borderRadius: '4px' }}>
+              {error}
+              <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            </div>
+          )}
+          {successMessage && (
+            <div className="alert alert-success" style={{ margin: '16px', padding: '12px', background: '#efe', color: '#3c3', borderRadius: '4px' }}>
+              {successMessage}
+              <button onClick={() => setSuccessMessage(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            </div>
+          )}
+
+          {/* Action Bar */}
+          <div className="invoice-management-actions">
+            <div className="invoice-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                className="invoice-search-input"
+                placeholder="Search by company, HCF code, or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <select
+              className="status-filter-select"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+            >
+              <option value="">All Companies</option>
+              {companies
+                .filter((c) => c.status === 'Active')
+                .map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+            </select>
+            <label
+              className="export-btn"
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Upload Excel
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <button className="add-invoice-btn" onClick={handleCreate} disabled={loading}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Balance
+            </button>
+          </div>
+
+          {/* Balances Table */}
+          <div className="invoice-table-container">
+            {loading && balances.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>Loading balances...</div>
+            ) : filteredBalances.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                {balances.length === 0
+                  ? 'No financial balance records found'
+                  : 'No records match your search criteria'}
+              </div>
+            ) : (
+              <table className="invoice-table">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th>HCF Code</th>
+                    <th>HCF Name</th>
+                    <th>Opening Balance</th>
+                    <th>Current Balance</th>
+                    <th>Is Manual</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBalances.map((balance) => (
+                    <tr key={balance.finBalanceId}>
+                      <td>{balance.companyName || '-'}</td>
+                      <td>{balance.hcfCode || '-'}</td>
+                      <td>{balance.hcfName || '-'}</td>
+                      <td style={{ fontWeight: 600 }}>₹{Number(balance.openingBalance).toFixed(2)}</td>
+                      <td style={{ fontWeight: 600, color: balance.currentBalance < 0 ? '#dc2626' : '#059669' }}>
+                        ₹{Number(balance.currentBalance).toFixed(2)}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            background: balance.isManual ? '#dbeafe' : '#f3f4f6',
+                            color: balance.isManual ? '#1e40af' : '#6b7280',
+                          }}
+                        >
+                          {balance.isManual ? 'Manual' : 'Auto'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleEdit(balance)}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#3b82f6',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(balance.finBalanceId)}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#ef4444',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Create Modal */}
+          {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
@@ -669,8 +704,8 @@ const FinancialBalanceSummaryPage = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
-      {showEditModal && editingBalance && (
+          {/* Edit Modal */}
+          {showEditModal && editingBalance && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className="modal-header">
@@ -835,8 +870,8 @@ const FinancialBalanceSummaryPage = () => {
         </div>
       )}
 
-      {/* Preview Modal */}
-      {showPreviewModal && previewData && (
+          {/* Preview Modal */}
+          {showPreviewModal && previewData && (
         <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
             <div className="modal-header">
@@ -995,6 +1030,8 @@ const FinancialBalanceSummaryPage = () => {
           </div>
         </div>
       )}
+        </div>
+      </main>
     </div>
   );
 };

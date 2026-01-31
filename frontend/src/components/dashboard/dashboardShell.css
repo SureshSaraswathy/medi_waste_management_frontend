@@ -1,0 +1,534 @@
+/**
+ * Dashboard Shell Styles
+ * 
+ * Styles for the shared dashboard layout component.
+ * Provides responsive sidebar, header, and content area.
+ */
+
+.dashboard-shell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f8fafc;
+}
+
+/* Minimal, clean design - no flashy elements */
+.dashboard-shell__header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-shell__sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Mobile Toggle Button */
+.dashboard-shell__mobile-toggle {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dashboard-shell__mobile-toggle:hover {
+  background: #f8fafc;
+}
+
+.dashboard-shell__mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+}
+
+/* Sidebar */
+.dashboard-shell__sidebar {
+  width: 260px;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  transition: width 0.3s ease, transform 0.3s ease;
+  z-index: 999;
+}
+
+.dashboard-shell__sidebar.collapsed {
+  width: 72px;
+}
+
+.dashboard-shell__sidebar.collapsed .dashboard-shell__brand-name,
+.dashboard-shell__sidebar.collapsed .dashboard-shell__nav-label,
+.dashboard-shell__sidebar.collapsed .dashboard-shell__sidebar-profile span,
+.dashboard-shell__sidebar.collapsed .dashboard-shell__sidebar-logout span {
+  display: none;
+}
+
+.dashboard-shell__sidebar.collapsed .dashboard-shell__nav-link,
+.dashboard-shell__sidebar.collapsed .dashboard-shell__sidebar-profile,
+.dashboard-shell__sidebar.collapsed .dashboard-shell__sidebar-logout {
+  justify-content: center;
+  padding: 10px;
+}
+
+/* Mobile Sidebar */
+@media (max-width: 768px) {
+  .dashboard-shell__sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .dashboard-shell__sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+.dashboard-shell__sidebar-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  box-sizing: border-box;
+  height: 64px;
+  min-height: 64px;
+}
+
+.dashboard-shell__brand-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.dashboard-shell__brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dashboard-shell__sidebar-toggle {
+  position: absolute;
+  top: 16px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.dashboard-shell__sidebar-toggle:hover {
+  background: #e2e8f0;
+}
+
+.dashboard-shell__sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.dashboard-shell__nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-shell__nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dashboard-shell__nav-link:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.dashboard-shell__nav-link.active {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 600;
+  border-left: 3px solid #475569;
+  padding-left: 9px;
+}
+
+.dashboard-shell__nav-link:disabled {
+  opacity: 1;
+  cursor: default;
+  pointer-events: none;
+}
+
+.dashboard-shell__nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-shell__nav-label {
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* Submenu Styles */
+.dashboard-shell__nav-item.has-children .dashboard-shell__nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-shell__submenu-arrow {
+  transition: transform 0.2s;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.dashboard-shell__submenu-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.dashboard-shell__submenu {
+  list-style: none;
+  padding: 4px 0;
+  margin: 4px 0 0 0;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 8px;
+}
+
+.dashboard-shell__submenu .dashboard-shell__nav-item {
+  margin: 0;
+}
+
+.dashboard-shell__submenu .dashboard-shell__nav-link {
+  font-size: 13px;
+  padding: 8px 12px;
+  min-height: 36px;
+}
+
+.dashboard-shell__submenu .dashboard-shell__nav-link.active {
+  background: #e2e8f0;
+  border-left: 2px solid #475569;
+  padding-left: 10px;
+}
+
+.dashboard-shell__submenu .dashboard-shell__nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.dashboard-shell__sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-shell__sidebar-profile,
+.dashboard-shell__sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.dashboard-shell__sidebar-profile:hover,
+.dashboard-shell__sidebar-logout:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.dashboard-shell__sidebar-profile.active {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+/* Loading Menu */
+.dashboard-shell__loading-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.skeleton-menu-item {
+  height: 44px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Main Content Area */
+.dashboard-shell__main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+/* Header */
+.dashboard-shell__header {
+  height: 64px;
+  min-height: 64px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-shell__header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Header Brand Section */
+.dashboard-shell__header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.dashboard-shell__header-brand svg {
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.dashboard-shell__breadcrumb {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dashboard-shell__header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Preview Mode Banner */
+.dashboard-shell__preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #92400e;
+}
+
+.dashboard-shell__exit-preview-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+  background: #fbbf24;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dashboard-shell__exit-preview-btn:hover {
+  background: #f59e0b;
+}
+
+/* Role Badge */
+.dashboard-shell__role-badge {
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Notifications */
+.dashboard-shell__notification-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.dashboard-shell__notification-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.dashboard-shell__notification-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+}
+
+/* Profile */
+.dashboard-shell__profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-shell__profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #475569;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.dashboard-shell__profile-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+/* Content Area - Efficient vertical flow */
+.dashboard-shell__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #f8fafc;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-shell__header {
+    padding: 0 16px;
+    padding-left: 60px; /* Space for mobile toggle */
+  }
+
+  .dashboard-shell__content {
+    padding: 16px;
+  }
+
+  .dashboard-shell__header-right {
+    gap: 8px;
+  }
+
+  .dashboard-shell__preview-banner {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .dashboard-shell__profile-name {
+    display: none;
+  }
+}

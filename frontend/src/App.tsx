@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
+import DashboardLayout from './components/layout/DashboardLayout';
+import { AuthProvider, useAuthContext } from './context/AuthContext';
+import { DashboardProvider } from './context/DashboardContext';
 import LoginPage from './pages/desktop/LoginPage';
 import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
@@ -52,6 +54,7 @@ import TrainingCertificateReportPage from './pages/desktop/reports/TrainingCerti
 import PaymentReportPage from './pages/desktop/reports/PaymentReportPage';
 import AgreementReportPage from './pages/desktop/reports/AgreementReportPage';
 import BarcodeReportPage from './pages/desktop/reports/BarcodeReportPage';
+import BarcodeUsageReportPage from './pages/desktop/reports/BarcodeUsageReportPage';
 import UserReportPage from './pages/desktop/reports/UserReportPage';
 import FleetReportPage from './pages/desktop/reports/FleetReportPage';
 import RevenueReportPage from './pages/desktop/reports/RevenueReportPage';
@@ -71,9 +74,12 @@ import MobileWasteEntryPage from './pages/mobile/MobileWasteEntryPage';
 import MobileAssignHospitalPage from './pages/mobile/MobileAssignHospitalPage';
 import MobileHCFMasterPage from './pages/mobile/MobileHCFMasterPage';
 
-const App = () => (
-  <AuthProvider>
-    <Routes>
+// Wrapper component to provide Dashboard context
+const AppWithDashboard = () => {
+  const { user } = useAuthContext();
+  return (
+    <DashboardProvider user={user}>
+      <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-otp" element={<OTPVerificationPage />} />
@@ -119,6 +125,7 @@ const App = () => (
           </ProtectedRoute>
         }
       />
+      {/* Desktop routes */}
       <Route
         path="/dashboard"
         element={
@@ -475,7 +482,15 @@ const App = () => (
         path="/report/barcode"
         element={
           <ProtectedRoute>
-            <BarcodeReportPage />
+            <BarcodeUsageReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/barcode-usage"
+        element={
+          <ProtectedRoute>
+            <BarcodeUsageReportPage />
           </ProtectedRoute>
         }
       />
@@ -644,7 +659,14 @@ const App = () => (
           </AppShell>
         }
       />
-    </Routes>
+      </Routes>
+    </DashboardProvider>
+  );
+};
+
+const App = () => (
+  <AuthProvider>
+    <AppWithDashboard />
   </AuthProvider>
 );
 

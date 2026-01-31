@@ -1,8 +1,16 @@
 .master-page {
-  min-height: calc(100vh - 64px);
-  background: #f8fafc;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  background: #f1f5f9;
   padding: 24px;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .master-header {
@@ -71,8 +79,56 @@
 
 .master-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Ensure grid adapts when sidebar collapses - use container queries if available */
+@supports (container-type: inline-size) {
+  .app-layout__content {
+    container-type: inline-size;
+    container-name: main-content;
+  }
+  
+  @container main-content (max-width: 1600px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+  }
+  
+  @container main-content (max-width: 1400px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+  }
+  
+  @container main-content (max-width: 1200px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+  }
+  
+  @container main-content (max-width: 1000px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+  }
+  
+  @container main-content (max-width: 800px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+  }
+  
+  @container main-content (max-width: 600px) {
+    .master-grid {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+  }
 }
 
 .master-card {
@@ -87,6 +143,10 @@
   transition: all 0.2s ease;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .master-card:hover {
@@ -114,6 +174,9 @@
   color: #1e293b;
   margin: 0 0 4px;
   line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
 }
 
 .master-card-description {
@@ -121,12 +184,70 @@
   color: #64748b;
   margin: 0;
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
 }
 
-/* Responsive Design */
+/* Responsive Design - Viewport-based breakpoints with sidebar collapse detection */
+/* More aggressive breakpoints to handle DevTools opening */
+@media (max-width: 1800px) {
+  .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 1600px) {
+  .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 1400px) {
+  .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
 @media (max-width: 1200px) {
   .master-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+  
+  .app-layout__sidebar.collapsed ~ .app-layout__content .master-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 
@@ -148,7 +269,7 @@
   }
 
   .master-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 16px;
   }
 
@@ -171,7 +292,12 @@
 }
 
 @media (max-width: 480px) {
+  /* Small mobile: Single column layout */
   .master-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .master-page {
+    padding: 16px;
   }
 }

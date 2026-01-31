@@ -8,9 +8,11 @@ const TransactionPage = () => {
   const { logout } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [reportSubmenuOpen, setReportSubmenuOpen] = useState(
-    location.pathname.startsWith('/report')
-  );
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
 
   const transactionItems = [
     {
@@ -170,30 +172,23 @@ const TransactionPage = () => {
     },
     { 
       path: '/report', 
-      label: 'Report', 
+      label: 'Reports', 
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
           <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ), 
-      active: location.pathname.startsWith('/report'),
-      hasSubmenu: true,
-      submenuItems: [
-        { path: '/report/billing-finance', label: 'Billing & Finance Reports' },
-        { path: '/report/operations-logistics', label: 'Operations & Logistics' },
-        { path: '/report/hcf-compliance', label: 'HCF & Compliance' },
-      ]
+      active: location.pathname.startsWith('/report')
     },
   ];
 
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
           <div className="brand-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -201,57 +196,34 @@ const TransactionPage = () => {
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
         </div>
+
+        <button
+          className="sidebar-toggle"
+          onClick={toggleSidebar}
+          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {isSidebarCollapsed ? (
+              <polyline points="9 18 15 12 9 6"></polyline>
+            ) : (
+              <polyline points="15 18 9 12 15 6"></polyline>
+            )}
+          </svg>
+        </button>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
             {navItems.map((item) => (
-              <li key={item.path} className={item.hasSubmenu ? 'nav-item--has-submenu' : ''}>
-                {item.hasSubmenu ? (
-                  <>
-                    <button
-                      onClick={() => setReportSubmenuOpen(!reportSubmenuOpen)}
-                      className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
-                    >
-                      <span className="nav-icon">{item.icon}</span>
-                      <span className="nav-label">{item.label}</span>
-                      <svg 
-                        className={`nav-arrow ${reportSubmenuOpen ? 'nav-arrow--open' : ''}`}
-                        width="16" 
-                        height="16" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2"
-                      >
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </button>
-                    {item.submenuItems && (
-                      <ul className={`nav-submenu ${reportSubmenuOpen ? 'nav-submenu--open' : ''}`}>
-                        {item.submenuItems.map((subItem) => (
-                          <li key={subItem.path}>
-                            <Link
-                              to={subItem.path}
-                              className={`nav-submenu-link ${location.pathname === subItem.path ? 'nav-submenu-link--active' : ''}`}
-                            >
-                              {subItem.label}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
-                  >
-                    <span className="nav-icon">{item.icon}</span>
-                    <span className="nav-label">{item.label}</span>
-                  </Link>
-                )}
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
+                </Link>
               </li>
             ))}
           </ul>
@@ -274,7 +246,7 @@ const TransactionPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -282,7 +254,7 @@ const TransactionPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>

@@ -494,7 +494,7 @@ const UserManagementPage = () => {
       path: '/dashboard', 
       label: 'Dashboard', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
@@ -505,7 +505,7 @@ const UserManagementPage = () => {
       path: '/transaction', 
       label: 'Transaction', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
           <line x1="1" y1="10" x2="23" y2="10"></line>
         </svg>
@@ -516,7 +516,7 @@ const UserManagementPage = () => {
       path: '/finance', 
       label: 'Finance', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23"></line>
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
@@ -527,7 +527,7 @@ const UserManagementPage = () => {
       path: '/commercial-agreements', 
       label: 'Commercial / Agreements', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -540,7 +540,7 @@ const UserManagementPage = () => {
       path: '/compliance-training', 
       label: 'Compliance & Training', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <path d="M9 15l2 2 4-4"></path>
@@ -550,28 +550,27 @@ const UserManagementPage = () => {
     },
     { 
       path: '/master', 
-      label: 'Master', 
+      label: 'Masters', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
         </svg>
       ), 
-      active: location.pathname === '/master' || location.pathname.startsWith('/master') 
+      active: location.pathname.startsWith('/master') 
     },
     { 
       path: '/report', 
-      label: 'Report', 
+      label: 'Reports', 
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
           <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ), 
-      active: location.pathname === '/report' 
+      active: location.pathname.startsWith('/report') 
     },
   ];
 
@@ -1496,6 +1495,29 @@ const UserManagementPage = () => {
           {/* Roles Table */}
           {activeTab === 'roles' && (
             <>
+              {/* Search and Add Button for Roles */}
+              <div className="user-management-actions">
+                <div className="user-management-search-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                  <input
+                    type="text"
+                    className="user-management-search-input"
+                    placeholder="Search roles..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button 
+                  className="add-btn" 
+                  onClick={handleAddRole}
+                >
+                  Add
+                </button>
+              </div>
+
               <div className="user-management-table-container">
                 <table className="user-management-table">
                   <thead>
@@ -1511,7 +1533,7 @@ const UserManagementPage = () => {
                     {filteredRoles.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="empty-message">
-                          No roles found
+                          {loading ? 'Loading roles...' : 'No roles found'}
                         </td>
                       </tr>
                     ) : (
@@ -1536,16 +1558,16 @@ const UserManagementPage = () => {
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
                           </button>
-                            <button
-                              className="action-btn action-btn--permissions"
-                              onClick={() => {
-                                setSelectedRoleForPermissions(role);
-                                setShowPermissionsModal(true);
-                              }}
-                              title="Manage Permissions"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                          <button
+                            className="action-btn action-btn--permissions"
+                            onClick={() => {
+                              setSelectedRoleForPermissions(role);
+                              setShowPermissionsModal(true);
+                            }}
+                            title="Manage Permissions"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                             </svg>
                           </button>
                           <button

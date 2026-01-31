@@ -19,6 +19,16 @@ const LoginPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(0);
 
+  // Add class to body/html for CSS targeting
+  useEffect(() => {
+    document.body.classList.add('login-page-active');
+    document.documentElement.classList.add('login-page-active');
+    return () => {
+      document.body.classList.remove('login-page-active');
+      document.documentElement.classList.remove('login-page-active');
+    };
+  }, []);
+
   // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user && !loading) {

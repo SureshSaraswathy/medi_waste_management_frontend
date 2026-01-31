@@ -17,6 +17,22 @@ body {
   min-height: 100vh;
 }
 
+/* Ensure login page has correct background - use class-based selector for better browser support */
+body.login-page-active,
+html.login-page-active {
+  background: #f5f5f5 !important;
+  height: 100% !important;
+  overflow: auto !important;
+}
+
+/* Fallback for browsers with :has() support */
+body:has(.login-page-template),
+html:has(.login-page-template) {
+  background: #f5f5f5 !important;
+  height: 100% !important;
+  overflow: auto !important;
+}
+
 main {
   width: 100%;
 }

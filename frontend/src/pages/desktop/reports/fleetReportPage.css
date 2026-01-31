@@ -1,0 +1,2157 @@
+/* ============================================
+   REPORT TEMPLATE - REUSABLE UI STRUCTURE
+   ============================================ */
+
+.invoice-report-page {
+  background: #F7F8FA;
+  padding: 16px; /* Standard padding - max 16px on all sides */
+  margin: 0; /* No margin */
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent page-level scrolling */
+  height: 100%; /* Take full height of parent */
+  max-height: 100%; /* Ensure it doesn't exceed parent */
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  flex: 1 1 auto !important; /* Take available space and shrink when needed */
+  min-height: 0 !important; /* Allow flex shrinking */
+  min-width: 0 !important; /* Allow horizontal shrinking */
+}
+
+/* Breadcrumb Navigation */
+.report-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.back-button svg {
+  flex-shrink: 0;
+}
+
+.breadcrumb-separator {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.breadcrumb-item {
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* Enterprise Wireframe Layout - Full Height Flex */
+.report-content-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden; /* Prevent page-level scrolling */
+  height: 100%;
+  max-height: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  position: relative;
+  flex: 1 1 auto !important; /* Take available space and shrink when needed */
+  min-height: 0 !important; /* Allow flex shrinking */
+  min-width: 0 !important; /* Allow horizontal shrinking */
+}
+
+/* ============================================
+   HEADER SECTION (5-8% HEIGHT)
+   ============================================ */
+.page-header {
+  background: transparent;
+  padding: 0;
+  margin-bottom: 12px; /* Reduced from 16px to 12px for tighter spacing */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+  /* No card, no shadow - compact header */
+}
+
+.breadcrumb-nav {
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 400;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.page-context-subtitle {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 400;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* ============================================
+   SEARCH + ACTION BAR (44px HEIGHT)
+   ============================================ */
+.search-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0;
+  flex-shrink: 0;
+  margin-bottom: 0; /* Removed bottom spacing - no extra white space */
+  flex-wrap: wrap;
+}
+
+.search-container {
+  width: 360px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Scoped to search-container only - prevents affecting sidebar icons */
+.search-container .search-icon {
+  position: absolute;
+  left: 12px;
+  color: #6B7280;
+  pointer-events: none;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.global-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.global-search-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.global-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.clear-search-btn:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* .search-actions removed - buttons are now direct children of search-actions-row */
+
+/* Button Styles - Template */
+.btn-filters-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-filters-toggle:hover {
+  background: #F9FAFB;
+  border-color: #9CA3AF;
+  color: #111827;
+}
+
+.btn-filters-toggle.active {
+  background: #F3F4F6;
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.btn-action--export {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #D1D5DB;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #a855f7;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+/* ============================================
+   FILTER PANEL - FLOATING POPOVER (320px)
+   ============================================ */
+.filter-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  z-index: 9999;
+  padding: 0;
+  animation: fadeIn 0.2s ease-out;
+  pointer-events: auto;
+}
+
+.filter-modal-content {
+  background: #FFFFFF;
+  border-radius: 8px;
+  width: 320px;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+  overflow-x: hidden; /* Disable horizontal overflow */
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  margin: 0;
+  animation: slideDown 0.2s ease-out;
+  position: fixed;
+  z-index: 10000;
+  /* Position will be set dynamically via inline styles */
+  max-width: calc(100vw - 32px);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.filter-modal-title {
+  text-align: left; /* Explicitly left-align Filters title */
+  flex: 0 0 auto; /* Don't grow or shrink */
+}
+
+.filter-modal-actions {
+  display: flex;
+  align-items: center; /* Vertically center X icon with header */
+  gap: 12px;
+  flex: 0 0 auto; /* Don't grow or shrink */
+  margin-left: auto; /* Push to the right */
+}
+
+/* Filter modal title moved above */
+
+.filter-clear-link {
+  background: none;
+  border: none;
+  color: #DC2626;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.filter-clear-link:hover {
+  color: #B91C1C;
+  text-decoration: underline;
+}
+
+.filter-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  width: 32px;
+  height: 32px;
+}
+
+.filter-modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.filter-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden; /* Disable horizontal overflow */
+  flex: 1;
+}
+
+.filter-modal-grid {
+  display: flex;
+  flex-direction: column; /* Single vertical column layout */
+  gap: 12px; /* Equal spacing between fields */
+}
+
+.filter-modal-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start; /* Align all labels and inputs left */
+}
+
+.filter-modal-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+  text-align: left; /* Explicitly left-align labels */
+  width: 100%; /* Full width for proper alignment */
+}
+
+.filter-modal-input,
+.filter-modal-select {
+  width: 100%; /* Equal width for all inputs */
+  height: 36px; /* Same height for all inputs */
+  padding: 8px 12px; /* Consistent padding - no extra left/right padding differences */
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  text-align: left; /* Left-align input text */
+}
+
+.filter-modal-input:focus,
+.filter-modal-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.filter-modal-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center; /* Caret icons aligned vertically center */
+  padding-right: 36px; /* Consistent padding for caret icon */
+  cursor: pointer;
+}
+
+.filter-date-range {
+  display: flex;
+  align-items: center; /* Icons vertically centered inside inputs */
+  gap: 8px; /* Gap between From and To inputs: 8px */
+  width: 100%; /* Full width container */
+}
+
+.filter-date-range .filter-modal-input {
+  flex: 1; /* Equal width for both date inputs */
+  min-width: 0; /* Allow inputs to shrink if needed */
+}
+
+.filter-date-separator {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  flex-shrink: 0;
+  align-self: center; /* Vertically center separator */
+}
+
+.filter-modal-footer {
+  padding: 16px; /* 16px padding above and below button */
+  border-top: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  display: flex;
+  justify-content: stretch;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.filter-modal-footer .btn-primary-cta {
+  width: 100%; /* Full width button */
+  height: 44px; /* Height: 44px */
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px; /* Border radius: 8px */
+  background: #2F2F2F; /* Background: light black / dark gray */
+  color: #FFFFFF; /* Text color: white */
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.filter-modal-footer .btn-primary-cta:hover:not(:disabled) {
+  background: #444; /* Hover: slightly lighter gray */
+}
+
+.filter-modal-footer .btn-primary-cta:active:not(:disabled) {
+  background: #333333;
+}
+
+.filter-modal-footer .btn-primary-cta:disabled {
+  background: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ensure modal doesn't go off-screen on mobile */
+@media (max-width: 768px) {
+  .filter-modal-content {
+    max-width: calc(100vw - 32px) !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+  }
+}
+
+/* Old filter panel styles removed - now using modal */
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.filter-input,
+.filter-select {
+  padding: 6px 10px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #1e293b;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  background-color: #ffffff;
+  height: 32px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.filter-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Action Bar */
+
+.btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 120px;
+  height: 32px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-reset {
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #e2e8f0;
+}
+
+.btn-reset:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-primary-cta {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  font-weight: 600;
+  padding: 6px 20px;
+  min-width: 140px;
+  height: 32px;
+}
+
+.btn-primary-cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary-cta svg {
+  animation: none;
+}
+
+.btn-primary-cta .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Summary Strip */
+.summary-strip {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  line-height: 1.2;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.summary-value--paid {
+  color: #10b981;
+}
+
+.summary-value--balance {
+  color: #f59e0b;
+}
+
+/* ============================================
+   RESULTS SECTION (80% SPACE) - CARD CONTAINER
+   ============================================ */
+.results-section {
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E6E8EC;
+  box-shadow: none;
+  padding: 0; /* No padding - table container spans full width */
+  margin: 0; /* No margin - removed all spacing */
+  display: flex;
+  flex-direction: column;
+  height: auto; /* Content-driven height */
+  position: relative;
+  width: 100% !important; /* Full width of parent - no side gutters */
+  max-width: 100% !important; /* Prevent overflow beyond parent */
+  overflow: hidden; /* Prevent page-level scrolling - only table scrolls */
+  min-width: 0 !important; /* Allow flex children to shrink below their content size */
+  z-index: 1; /* Ensure section is above background */
+  pointer-events: auto; /* Ensure section is interactive */
+  flex: 1 1 auto !important; /* Allow flex growth and shrinking - adapts to available space */
+  min-height: 0 !important; /* Allow flex shrinking */
+  max-height: 100% !important; /* Don't exceed parent height */
+  /* Remove any fixed heights - let content determine height */
+}
+
+/* Ensure scrollbar area is not blocked by any child elements */
+.results-section > .table-scroll-container {
+  position: relative !important;
+  z-index: 10 !important;
+  pointer-events: auto !important;
+  overflow-x: scroll !important;
+  overflow-y: hidden !important; /* Hide vertical scrollbar by default */
+}
+
+/* Prevent any child elements from blocking scrollbar interaction */
+.results-section .table-scroll-container * {
+  pointer-events: auto;
+}
+
+.results-container {
+  height: auto;
+}
+
+/* Results Header */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px; /* Reduced top/bottom padding, max 16px horizontal */
+  border-bottom: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.results-header-left {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.results-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.results-helper-text {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.results-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+
+.results-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: 36px;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+
+.btn-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  height: 40px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-action--export {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.btn-action--print {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.btn-action--print:hover:not(:disabled) {
+  background: #ecfdf5;
+  border-color: #059669;
+  color: #059669;
+}
+
+.btn-action svg {
+  flex-shrink: 0;
+}
+
+/* Table Scroll Container - Horizontal and Vertical Scroll Wrapper */
+.table-scroll-container {
+  width: 100% !important;
+  overflow-x: auto !important; /* Show horizontal scrollbar only when needed */
+  overflow-y: hidden !important; /* Hide vertical scrollbar by default */
+  background: #ffffff;
+  padding: 0 !important;
+  margin: 0 !important;
+  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on mobile */
+  position: relative !important;
+  max-width: 100% !important; /* Ensure container doesn't exceed parent */
+  height: auto !important; /* Content-driven height - no fixed height */
+  max-height: 100% !important; /* Take available space within results-section */
+  box-sizing: border-box !important; /* Include padding/border in width calculation */
+  z-index: 10 !important; /* Higher z-index to ensure scrollbar is above other elements */
+  pointer-events: auto !important; /* Ensure scrollbar is clickable */
+  isolation: isolate !important; /* Create new stacking context */
+  display: block !important; /* Ensure it's a block element */
+  /* Force scrollbar to be interactive */
+  touch-action: pan-x pan-y !important; /* Enable touch scrolling */
+  will-change: scroll-position; /* Optimize for scrolling */
+  /* Ensure scrolling works */
+  scroll-behavior: auto !important; /* Allow immediate scrolling */
+  /* Prevent any interference */
+  user-select: none; /* Prevent text selection during scroll */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  /* Enhanced styling */
+  border-radius: 0 0 12px 12px; /* Rounded bottom corners to match results-section */
+  /* Allow flex growth and shrinking - adapts to available space */
+  flex: 1 1 auto !important; /* Grow and shrink with available space */
+  min-height: 0 !important; /* Allow flex shrinking */
+  min-width: 0 !important; /* Allow container to shrink - table will auto-adjust */
+  flex-shrink: 1 !important; /* Force auto-shrink when space is limited */
+}
+
+/* Show vertical scrollbar ONLY when table has data rows and exceeds available space */
+.table-scroll-container:has(.table-body tr:not(.table-row-empty):not(.table-row-skeleton)) {
+  overflow-y: auto !important; /* Enable vertical scrolling when rows exist and exceed container */
+  max-height: 100%; /* Use available space within results-section */
+}
+
+/* When table has no data, make container compact - do NOT stretch */
+.table-scroll-container:has(.table-empty-state),
+.table-scroll-container:has(.table-row-empty),
+.results-section:has(.table-empty-state) .table-scroll-container {
+  height: auto !important; /* Content-driven height */
+  min-height: unset !important; /* Remove any min-height */
+  max-height: 200px !important; /* Compact max-height for empty state - reduced from 240px */
+  overflow-y: hidden !important; /* Hide vertical scrollbar when empty */
+  flex: none !important; /* Do not grow to fill space */
+}
+
+/* Re-enable text selection for table content */
+.table-scroll-container .invoice-table {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Ensure table always maintains its fixed width to trigger scrollbar */
+.table-scroll-container > .invoice-table,
+.table-scroll-container .invoice-table {
+  width: 100% !important; /* Auto-adjust to content */
+  min-width: fit-content !important; /* Minimum width based on content */
+  max-width: 100% !important; /* Don't exceed container */
+  display: table !important; /* Force table display */
+  table-layout: auto !important; /* Auto layout - columns adjust based on content */
+  flex-shrink: 1 !important; /* Allow table to shrink if needed */
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important; /* Include padding/border in width */
+}
+
+/* Show scrollbar when content overflows - Both horizontal and vertical */
+.table-scroll-container::-webkit-scrollbar {
+  height: 16px !important; /* Horizontal scrollbar height - optimized for better appearance */
+  width: 16px !important; /* Vertical scrollbar width - optimized for better appearance */
+  display: block !important; /* Ensure scrollbar is ALWAYS displayed */
+  -webkit-appearance: none !important; /* Remove default styling */
+  background: transparent !important; /* Transparent background */
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9 !important; /* Lighter track for better visibility */
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  pointer-events: auto !important; /* Make track clickable */
+  cursor: pointer !important; /* Show pointer cursor */
+  margin: 2px; /* Add margin for better visibility */
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #64748b !important; /* Medium color for better visibility */
+  border-radius: 8px;
+  border: 2px solid #f1f5f9;
+  min-height: 24px !important; /* Minimum thumb height - optimized */
+  min-width: 24px !important; /* Minimum thumb width - optimized */
+  cursor: grab !important; /* Show grab cursor */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important; /* Enhanced shadow for visibility */
+  transition: background-color 0.2s ease; /* Smooth color transition */
+}
+
+/* Ensure scrollbar thumb is always interactive */
+.table-scroll-container::-webkit-scrollbar-thumb,
+.table-scroll-container::-webkit-scrollbar-track {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:active {
+  background: #1f2937 !important; /* Darker when clicked */
+  cursor: grabbing !important; /* Show grabbing cursor */
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #374151 !important; /* Even darker on hover */
+  cursor: grab !important; /* Show grab cursor on hover */
+}
+
+.table-scroll-container::-webkit-scrollbar-corner {
+  background: #e5e7eb !important; /* Corner where scrollbars meet */
+  pointer-events: auto !important; /* Make corner clickable */
+}
+
+/* For Firefox - Always show scrollbar */
+.table-scroll-container {
+  scrollbar-width: auto !important; /* Use auto (not thin) for better visibility */
+  scrollbar-color: #475569 #f1f5f9 !important;
+  /* Force scrollbar to be interactive */
+  touch-action: pan-x pan-y !important; /* Enable touch scrolling */
+  will-change: scroll-position; /* Optimize for scrolling */
+}
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.table-wrapper {
+  height: auto;
+  min-height: unset;
+}
+
+.table-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.export-dropdown-wrapper {
+  position: relative;
+}
+
+.export-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.export-dropdown-hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.export-dropdown {
+  padding: 6px 32px 6px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  background: #ffffff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.15s ease;
+  height: 32px;
+  min-width: 160px;
+}
+
+.export-dropdown:hover:not(:disabled) {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.export-dropdown:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.export-dropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+/* Generic table rule removed - using .invoice-table specific styles */
+
+.invoice-table {
+  width: 100% !important; /* Auto-adjust to content - no fixed width */
+  min-width: fit-content !important; /* Minimum width based on content */
+  max-width: 100% !important; /* Don't exceed container width */
+  border-collapse: collapse; /* Collapse borders for clean appearance */
+  font-size: 13px;
+  table-layout: auto !important; /* Auto layout - columns adjust based on content */
+  display: table !important; /* Ensure table display */
+  margin: 0 !important; /* Remove any default margins */
+  flex-shrink: 1 !important; /* Allow table to shrink if needed */
+  position: relative !important; /* Ensure proper positioning */
+  /* Ensure table is scrollable */
+  overflow: visible !important; /* Table itself doesn't scroll, container does */
+  /* Enhanced styling for better appearance */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+}
+
+/* Fixed column widths using pixel values for consistent sizing - Optimized for 100% zoom */
+/* First column - Invoice No - Fixed on left */
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1) {
+  width: auto; /* Invoice No - auto width based on content */
+  min-width: 100px; /* Minimum width for readability at 80% zoom */
+  max-width: none; /* Allow expansion if needed */
+  position: sticky;
+  left: 0;
+  z-index: 20; /* Higher than body cells, lower than header */
+  background: #F9FAFB; /* Match header background */
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08); /* Enhanced shadow for better visibility */
+}
+
+.invoice-table th:nth-child(1) {
+  z-index: 30; /* Highest z-index for header + fixed column */
+}
+
+.invoice-table td:nth-child(1) {
+  background: #FFFFFF; /* Match body background */
+}
+
+.invoice-table tr:hover td:nth-child(1) {
+  background: #f8fafc; /* Match hover background */
+}
+
+.invoice-table tr.table-row-even td:nth-child(1) {
+  background: #FFFFFF;
+}
+
+.invoice-table tr.table-row-odd td:nth-child(1) {
+  background: #ffffff;
+}
+
+.invoice-table th:nth-child(2),
+.invoice-table td:nth-child(2) {
+  width: auto; /* Company - auto width based on content */
+  min-width: 140px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(3),
+.invoice-table td:nth-child(3) {
+  width: auto; /* HCF - auto width based on content */
+  min-width: 100px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(4),
+.invoice-table td:nth-child(4) {
+  width: auto; /* Invoice Date - auto width based on content */
+  min-width: 110px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(5),
+.invoice-table td:nth-child(5) {
+  width: auto; /* Billing Type - auto width based on content */
+  min-width: 100px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(6),
+.invoice-table td:nth-child(6) {
+  width: auto; /* Invoice Amount - auto width based on content */
+  min-width: 130px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(7),
+.invoice-table td:nth-child(7) {
+  width: auto; /* Paid Amount - auto width based on content */
+  min-width: 130px; /* Minimum width for readability at 80% zoom */
+}
+
+.invoice-table th:nth-child(8),
+.invoice-table td:nth-child(8) {
+  width: auto; /* Balance - auto width based on content */
+  min-width: 130px; /* Minimum width for readability at 80% zoom */
+}
+
+/* Last column - Status - Fixed on right */
+.invoice-table th:nth-child(9),
+.invoice-table td:nth-child(9) {
+  width: auto; /* Status - auto width based on content */
+  min-width: 100px; /* Minimum width for readability at 80% zoom */
+  max-width: none; /* Allow expansion if needed */
+  position: sticky;
+  right: 0;
+  z-index: 20; /* Higher than body cells, lower than header */
+  background: #F9FAFB; /* Match header background */
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.08); /* Enhanced shadow for better visibility */
+}
+
+.invoice-table th:nth-child(9) {
+  z-index: 30; /* Highest z-index for header + fixed column */
+}
+
+.invoice-table td:nth-child(9) {
+  background: #FFFFFF; /* Match body background */
+}
+
+.invoice-table tr:hover td:nth-child(9) {
+  background: #f8fafc; /* Match hover background */
+}
+
+.invoice-table tr.table-row-even td:nth-child(9) {
+  background: #FFFFFF;
+}
+
+.invoice-table tr.table-row-odd td:nth-child(9) {
+  background: #ffffff;
+}
+
+.table-header {
+  background: #F8FAFC; /* Light background for clarity */
+}
+
+.table-header th {
+  padding: 12px 14px; /* Reduced horizontal padding from 16px to 14px */
+  text-align: left;
+  font-weight: 600; /* Already set to 600 */
+  font-size: 13px; /* Same as body */
+  color: #374151;
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 2px solid #D1D5DB; /* Stronger border - changed from 1px solid #E5E7EB */
+  white-space: nowrap; /* Prevent text wrapping */
+  background: #F8FAFC; /* Ensure light background */
+  height: 44px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: sticky; /* Fixed position when scrolling vertically */
+  top: 0;
+  z-index: 10;
+}
+
+/* Ensure fixed columns have higher z-index in header */
+.table-header th:nth-child(1),
+.table-header th:nth-child(9) {
+  z-index: 30; /* Higher z-index for fixed columns in header (both horizontal and vertical) */
+}
+
+/* Column alignment - Amount columns right-aligned, Status/Actions center-aligned */
+.table-header th.text-right,
+.table-body td.text-right {
+  text-align: right;
+}
+
+.table-header th.text-center,
+.table-body td.text-center {
+  text-align: center;
+}
+
+.table-header th.text-right {
+  text-align: right;
+}
+
+.table-header th.text-center {
+  text-align: center;
+}
+
+.table-body {
+  background: #ffffff;
+}
+
+.table-body tr {
+  border-bottom: 1px solid #F3F4F6;
+  transition: background-color 0.1s ease;
+  height: 44px;
+}
+
+.table-body td {
+  padding: 12px 14px; /* Reduced horizontal padding from 16px to 14px */
+  height: 44px;
+  box-sizing: border-box;
+  color: #1e293b;
+  font-size: 13px; /* Same as header */
+  vertical-align: middle;
+  border-bottom: 1px solid #F3F4F6;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0; /* Allow column to shrink if needed */
+  position: relative; /* For proper z-index stacking */
+  z-index: 1; /* Default z-index for body cells */
+}
+
+/* Ensure fixed columns maintain proper styling and z-index */
+.table-body tr:hover td:nth-child(1),
+.table-body tr:hover td:nth-child(9) {
+  background: #f8fafc;
+}
+
+.table-body td:nth-child(1),
+.table-body td:nth-child(9) {
+  z-index: 20; /* Higher z-index for fixed columns in body */
+}
+
+/* Ensure fixed columns have proper borders */
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1) {
+  border-right: 1px solid #E5E7EB;
+}
+
+.invoice-table th:nth-child(9),
+.invoice-table td:nth-child(9) {
+  border-left: 1px solid #E5E7EB;
+}
+
+.table-row-even {
+  background: #FFFFFF;
+}
+
+.table-row-odd {
+  background: #ffffff;
+}
+
+.table-body tr:hover {
+  background: #f8fafc;
+}
+
+.table-body td.text-center {
+  text-align: center;
+}
+
+.table-body td.text-right {
+  text-align: right;
+}
+
+.text-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Inter', 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+.invoice-number-cell {
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Inter', 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+/* Table Actions */
+.table-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.action-btn--view:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.action-btn--print:hover {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.action-btn svg {
+  flex-shrink: 0;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-badge--paid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge--partial {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge--generated {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-badge--draft {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-badge--due {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge--cancelled {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status-badge--active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge--inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge--compliant {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge--expiring {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge--expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Empty State */
+/* Empty State Inside Table */
+/* ============================================
+   EMPTY STATE (TEMPLATE)
+   ============================================ */
+.table-row-empty {
+  height: auto;
+}
+
+.table-empty-state {
+  max-height: 200px; /* Compact container for empty state - reduced from 240px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0; /* Reduced vertical padding */
+}
+
+.empty-state-cell {
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
+  display: table-cell;
+  height: auto; /* Auto height based on content */
+  max-height: 200px; /* Compact container - reduced from 240px */
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #6B7280;
+}
+
+.empty-state-icon {
+  margin-bottom: 10px; /* Reduced from 12px */
+  color: #9CA3AF;
+  opacity: 0.5;
+}
+
+.empty-state-icon svg {
+  display: block;
+  width: 36px; /* Reduced from 40px */
+  height: 36px; /* Reduced from 40px */
+}
+
+.empty-state-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  margin: 0 0 4px 0; /* Reduced from 6px */
+}
+
+.empty-state-text {
+  font-size: 12px;
+  font-weight: 400;
+  margin: 0 0 12px 0; /* Added bottom margin for Clear Filters button */
+  color: #6B7280;
+  line-height: 1.4;
+  max-width: 400px;
+}
+
+.empty-state-action {
+  margin-top: 8px;
+}
+
+.empty-state-action button {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #FFFFFF;
+  background: #3B82F6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.empty-state-action button:hover {
+  background: #2563EB;
+}
+
+.empty-state-action button:active {
+  background: #1D4ED8;
+}
+
+/* Loading Skeleton */
+.table-row-skeleton {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Loading skeleton for search/filter actions */
+.search-container.loading,
+.btn-filters-toggle.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.search-container.loading::after,
+.btn-filters-toggle.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #E5E7EB;
+  border-top-color: #3B82F6;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.skeleton-cell {
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.skeleton-badge {
+  width: 80px;
+  height: 24px;
+}
+
+.skeleton-actions {
+  width: 60px;
+  height: 24px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+   PAGINATION - ALWAYS VISIBLE IN FOOTER
+   ============================================ */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between; /* Space between info and controls */
+  align-items: center;
+  padding: 6px 16px; /* Compact padding - max 16px horizontal */
+  border-top: 1px solid #D1D5DB; /* Subtle top border - slightly darker for better visibility */
+  background: #FFFFFF;
+  flex-shrink: 0;
+  width: 100%; /* Full width - no side gutters */
+  min-height: 36px; /* Compact height */
+  margin-bottom: 0; /* Removed bottom margin - no extra white space */
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1; /* Lower than scroll container */
+  pointer-events: auto; /* Ensure pagination is clickable */
+}
+
+.pagination-info {
+  font-size: 12px; /* Slightly smaller for compact design */
+  color: #374151; /* Darker for better contrast */
+  font-weight: 500; /* Medium weight for better readability */
+  white-space: nowrap; /* Prevent wrapping */
+  min-width: fit-content; /* Ensure full text is visible */
+  text-align: left; /* Explicitly align to left */
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Further reduced gap for maximum compact design */
+  flex-shrink: 0; /* Prevent shrinking */
+  min-width: fit-content; /* Ensure all controls are visible */
+  overflow: visible; /* Ensure page numbers are not hidden */
+  margin-left: auto; /* Push to the right */
+}
+
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Small gap between page numbers */
+  flex-wrap: nowrap; /* Prevent wrapping to ensure all page numbers are visible */
+  min-width: fit-content; /* Ensure all page numbers fit */
+}
+
+
+.rows-per-page-select {
+  padding: 3px 24px 3px 8px;
+  height: 28px;
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #ffffff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.15s ease;
+  height: 36px; /* Match pagination button height */
+  min-width: 80px; /* Smaller width to show just the number */
+}
+
+.rows-per-page-select:hover {
+  border-color: #a855f7;
+}
+
+.rows-per-page-select:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+}
+
+.rows-per-page-select:hover {
+  border-color: #cbd5e1;
+}
+
+.rows-per-page-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Pagination Page Number Buttons */
+.pagination-page-btn {
+  padding: 3px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 28px; /* Further reduced button size */
+  height: 28px;
+  display: inline-flex; /* Changed to inline-flex for better display */
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  visibility: visible !important; /* Ensure page numbers are always visible */
+  opacity: 1 !important; /* Ensure full opacity */
+}
+
+.pagination-page-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1f2937;
+}
+
+.pagination-page-btn:active:not(:disabled) {
+  background: #f1f5f9;
+  transform: translateY(1px);
+}
+
+.pagination-page-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+  font-weight: 600;
+}
+
+.pagination-page-btn.active:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.pagination-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
+/* Pagination Arrow Buttons */
+.pagination-arrow-btn {
+  padding: 3px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.pagination-arrow-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1f2937;
+}
+
+.pagination-arrow-btn:active:not(:disabled) {
+  background: #f1f5f9;
+  transform: translateY(1px);
+}
+
+.pagination-arrow-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f9fafb;
+  color: #d1d5db;
+}
+
+/* Pagination Ellipsis */
+.pagination-ellipsis {
+  padding: 6px 8px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex; /* Changed to inline-flex for better display */
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  visibility: visible !important; /* Ensure ellipsis is always visible */
+  opacity: 1 !important; /* Ensure full opacity */
+}
+
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-right: 16px;
+}
+
+.back-button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .invoice-report-page {
+    padding: 16px; /* Consistent 16px padding on mobile too */
+  }
+
+  .page-header {
+    padding: 16px;
+    gap: 6px;
+  }
+
+  .breadcrumb-nav {
+    font-size: 11px;
+  }
+
+  .page-title {
+    font-size: 20px;
+    letter-spacing: -0.5px;
+  }
+
+  .page-context-subtitle {
+    font-size: 13px;
+  }
+
+  .search-actions-row {
+    flex-direction: row;
+    gap: 8px;
+    border-bottom: none;
+    padding-bottom: 8px;
+  }
+
+  .search-container {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .btn-filters-toggle {
+    flex-shrink: 0;
+  }
+
+  .filter-modal-content {
+    width: calc(100% - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: 90vh !important; /* Use viewport height but allow for dev tools */
+    margin: 0;
+    left: 16px !important;
+    right: 16px !important;
+  }
+
+  .filter-modal-header {
+    padding: 14px 16px;
+  }
+
+  .filter-modal-title {
+    font-size: 16px;
+  }
+
+  .filter-modal-body {
+    padding: 16px;
+  }
+
+  .filter-modal-footer {
+    padding: 14px 16px;
+  }
+
+  .filter-date-range {
+    flex-direction: row; /* Keep From and To in one row on mobile */
+    gap: 8px; /* Maintain 8px gap */
+    align-items: center; /* Keep icons vertically centered */
+  }
+
+  .filter-date-separator {
+    display: inline; /* Show separator on mobile */
+  }
+
+  .results-section {
+    height: auto; /* Remove fixed heights */
+    margin-top: 0; /* No margin - removed extra white space */
+  }
+
+  .filter-input,
+  .filter-select {
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .results-header {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .results-header-left {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .results-header-center {
+    width: 100%;
+    text-align: left;
+    padding: 0;
+    justify-content: flex-start;
+  }
+
+  .results-header-right {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .results-title {
+    font-size: 16px;
+  }
+
+  .results-count {
+    font-size: 14px;
+  }
+
+  .results-filter-summary-lightweight {
+    font-size: 11px;
+  }
+
+  .results-filter-summary {
+    font-size: 12px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .results-header-right {
+    justify-content: flex-start;
+  }
+
+  .table-scroll-container {
+    overflow-x: scroll !important; /* Force scrollbar on mobile too */
+    overflow-y: hidden !important; /* Hide vertical scrollbar by default */
+    height: auto; /* Content-driven height */
+    max-height: 100%; /* Use available space within results-section */
+    min-height: unset; /* Remove fixed min-height */
+    flex: none !important; /* Removed flex-grow - content-based height only */
+    min-height: 0; /* Allow flex shrinking */
+  }
+  
+  /* Show vertical scrollbar ONLY when table has data rows */
+  .table-scroll-container:has(.table-body tr:not(.table-row-empty):not(.table-row-skeleton)) {
+    overflow-y: auto !important; /* Enable vertical scrolling when rows exist */
+    max-height: 100%; /* Use available space within results-section */
+  }
+  
+  /* Compact empty state on mobile - do NOT stretch */
+  .table-scroll-container:has(.table-empty-state),
+  .table-scroll-container:has(.table-row-empty),
+  .results-section:has(.table-empty-state) .table-scroll-container {
+    height: auto !important; /* Content-driven height */
+    min-height: unset !important; /* Remove any min-height */
+    max-height: 200px !important; /* Compact max-height for empty state - reduced from 240px */
+    overflow-y: hidden !important; /* Hide vertical scrollbar when empty */
+    flex: none !important; /* Do not grow to fill space */
+  }
+  
+  .results-section {
+    height: auto; /* Content-driven height */
+    margin-bottom: 0; /* Remove bottom margin from results section */
+  }
+
+  .pagination-controls {
+    padding: 6px 16px; /* Further reduced padding for maximum compact design */
+    border-top: 1px solid #E5E7EB;
+    min-height: 36px; /* Further reduced height for maximum space allocation to table */
+    margin-bottom: 8px; /* Further reduced bottom margin */
+  }
+  
+  .pagination-numbers {
+    flex-wrap: wrap; /* Allow wrapping on mobile if needed */
+    gap: 3px; /* Slightly smaller gap on mobile */
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-strip {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .summary-value {
+    font-size: 16px;
+  }
+
+  .summary-strip {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .filter-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .table-header-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .results-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .export-dropdown {
+    width: 100%;
+  }
+
+  .btn-action {
+    width: 100%;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pagination-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pagination-buttons {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .table-scroll-container {
+    overflow-x: scroll !important; /* Force scrollbar on mobile */
+    overflow-y: hidden !important; /* Hide vertical scrollbar by default */
+    height: auto; /* Content-driven height */
+    max-height: 100%; /* Use available space within results-section */
+    flex: none !important; /* Removed flex-grow - content-based height only */
+    min-height: 0; /* Allow flex shrinking */
+  }
+  
+  /* Show vertical scrollbar ONLY when table has data rows */
+  .table-scroll-container:has(.table-body tr:not(.table-row-empty):not(.table-row-skeleton)) {
+    overflow-y: auto !important; /* Enable vertical scrolling when rows exist */
+    max-height: 100%; /* Use available space within results-section */
+  }
+  
+  /* Compact empty state - do NOT stretch */
+  .table-scroll-container:has(.table-empty-state),
+  .table-scroll-container:has(.table-row-empty),
+  .results-section:has(.table-empty-state) .table-scroll-container {
+    height: auto !important; /* Content-driven height */
+    min-height: unset !important; /* Remove any min-height */
+    max-height: 200px !important; /* Compact max-height for empty state - reduced from 240px */
+    overflow-y: hidden !important; /* Hide vertical scrollbar when empty */
+    flex: none !important; /* Do not grow to fill space */
+  }
+
+  .invoice-table {
+    width: 100% !important; /* Auto-adjust to content */
+    min-width: fit-content !important; /* Minimum width based on content */
+    max-width: 100% !important; /* Don't exceed container */
+  }
+  
+  .table-scroll-container > .invoice-table,
+  .table-scroll-container .invoice-table {
+    width: 100% !important; /* Auto-adjust to content */
+    min-width: fit-content !important; /* Minimum width based on content */
+    max-width: 100% !important; /* Don't exceed container */
+  }
+  
+  .results-section {
+    height: auto; /* Content-driven height */
+  }
+  
+  .pagination-controls {
+    padding: 6px 12px;
+    border-top: 1px solid #E5E7EB;
+    min-height: 34px;
+    margin-bottom: 8px;
+  }
+
+  .pagination-info {
+    flex-direction: row;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .table-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+}

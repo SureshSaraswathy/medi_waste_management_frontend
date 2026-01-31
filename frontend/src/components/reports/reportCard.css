@@ -1,0 +1,221 @@
+/* Clean Enterprise Report Card Component - Clickable Navigation */
+
+.report-card-modern {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  min-height: 140px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+}
+
+.report-card-modern:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+  text-decoration: none;
+  color: inherit;
+}
+
+.report-card-modern:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.report-card-modern:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #f1f5f9;
+}
+
+/* Card Header */
+.report-card-modern-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.report-card-modern-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #495057;
+  transition: all 0.15s ease;
+  margin-right: 10px;
+  vertical-align: top;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Icon color - dark grey outline icons (border only, white inside) */
+.report-card-modern-icon svg {
+  fill: none;
+  stroke: #495057;
+  stroke-width: 2;
+  color: #495057;
+  width: 18px;
+  height: 18px;
+}
+
+.report-card-modern:hover .report-card-modern-icon {
+  background: #f8f9fa;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.report-card-modern-title-section {
+  display: inline-block;
+  vertical-align: top;
+  min-width: 0;
+  width: calc(100% - 42px);
+  overflow: hidden;
+}
+
+.report-card-modern-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: top;
+  max-width: calc(100% - 60px);
+}
+
+.report-card-modern-indicators {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.indicator-icon {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-block;
+  cursor: help;
+  transition: transform 0.15s ease;
+}
+
+.indicator-icon:hover {
+  transform: scale(1.1);
+}
+
+/* Card Body */
+.report-card-modern-body {
+  display: block;
+}
+
+/* Description */
+.report-card-modern-description {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 18px;
+}
+
+/* Parameters Line */
+.report-card-modern-parameters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 8px 0 0 0;
+  margin-top: auto;
+  flex-shrink: 0;
+  min-height: 20px;
+}
+
+.parameters-label {
+  font-weight: 500;
+  color: #94a3b8;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.parameters-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .report-card-modern {
+    padding: 12px;
+  }
+
+  .report-card-modern-title {
+    font-size: 13px;
+  }
+
+  .report-card-modern-description {
+    font-size: 11px;
+  }
+
+  .report-card-modern-parameters {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .report-card-modern {
+    padding: 10px;
+  }
+
+  .report-card-modern-title {
+    font-size: 12px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .report-card-modern {
+    transition: none;
+  }
+
+  .indicator-icon {
+    transition: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .report-card-modern {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

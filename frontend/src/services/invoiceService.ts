@@ -209,7 +209,7 @@ const apiRequest = async <T>(
   return data.data;
 };
 
-// Get all invoices
+// Get all invoices (legacy endpoint - use getInvoiceReport for reports)
 export const getInvoices = async (filters?: {
   companyId?: string;
   hcfId?: string;
@@ -228,6 +228,116 @@ export const getInvoices = async (filters?: {
 
   const queryString = queryParams.toString();
   return apiRequest<InvoiceResponse[]>(`/invoices${queryString ? `?${queryString}` : ''}`);
+};
+
+// Invoice Report Response Interface
+export interface InvoiceReportItem {
+  invoiceId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  billingType: string;
+  invoiceValue: number;
+  totalPaidAmount: number;
+  balanceAmount: number;
+  status: string;
+  companyId: string;
+  companyName: string;
+  companyCode: string;
+  hcfId: string;
+  hcfName: string;
+  hcfCode: string;
+}
+
+export interface InvoiceReportMeta {
+  page: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  state: 'NO_FILTER' | 'NO_RESULTS' | 'HAS_RESULTS';
+}
+
+export interface InvoiceReportResponse {
+  data: InvoiceReportItem[];
+  meta: InvoiceReportMeta;
+}
+
+/**
+ * Unified Invoice Report Filter Interface
+ * Used for: Table load, Apply Filters, Pagination, Export
+ */
+export interface InvoiceReportFilters {
+  // Pagination
+  page?: number;
+  pageSize?: number;
+  
+  // Date Range Filters
+  invoiceFromDate?: string;
+  invoiceToDate?: string;
+  
+  // Entity Filters
+  companyId?: string;
+  hcfId?: string;
+  
+  // Status Filters
+  status?: string;
+  billingType?: string;
+  
+  // Search
+  searchText?: string;
+  
+  // Sorting
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+  
+  // Export
+  export?: 'pdf' | 'excel' | 'csv';
+  
+  // Legacy field mappings (for backward compatibility)
+  fromDate?: string;
+  toDate?: string;
+  search?: string;
+  sortDir?: 'ASC' | 'DESC';
+}
+
+/**
+ * Get invoice report using POST endpoint with unified filter object
+ * Reusable for: Table load, Apply Filters, Pagination, Export
+ */
+export const getInvoiceReport = async (
+  filters?: InvoiceReportFilters
+): Promise<InvoiceReportResponse> => {
+  // Normalize filters - map legacy fields to new fields
+  const normalizedFilters: InvoiceReportFilters = filters ? { ...filters } : {};
+  
+  // Map legacy fields to new fields if present
+  if (normalizedFilters.fromDate && !normalizedFilters.invoiceFromDate) {
+    normalizedFilters.invoiceFromDate = normalizedFilters.fromDate;
+  }
+  if (normalizedFilters.toDate && !normalizedFilters.invoiceToDate) {
+    normalizedFilters.invoiceToDate = normalizedFilters.toDate;
+  }
+  if (normalizedFilters.search && !normalizedFilters.searchText) {
+    normalizedFilters.searchText = normalizedFilters.search;
+  }
+  if (normalizedFilters.sortDir && !normalizedFilters.sortOrder) {
+    normalizedFilters.sortOrder = normalizedFilters.sortDir;
+  }
+  
+  // Remove undefined values to keep request clean
+  const cleanFilters: Record<string, any> = {};
+  Object.keys(normalizedFilters).forEach((key) => {
+    const value = normalizedFilters[key as keyof InvoiceReportFilters];
+    if (value !== undefined && value !== null && value !== '') {
+      cleanFilters[key] = value;
+    }
+  });
+  
+  // Use POST endpoint with body
+  return apiRequest<InvoiceReportResponse>('/reports/invoices', {
+    method: 'POST',
+    body: JSON.stringify(cleanFilters),
+  });
 };
 
 // Get invoice by ID
