@@ -72,7 +72,19 @@ const apiRequest = async <T>(
     const responseData = await response.json();
     return responseData;
   } catch (error) {
-    console.error('[dashboardService] Request failed:', error);
+    // Enhanced error logging
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('[dashboardService] Network error - Backend server may not be running:', {
+        url,
+        error: error.message,
+        hint: 'Please ensure the backend server is running on http://localhost:3000',
+      });
+    } else {
+      console.error('[dashboardService] Request failed:', {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
     throw error;
   }
 };
@@ -88,7 +100,37 @@ export const dashboardService = {
   getDashboardConfig: async (role: Role): Promise<DashboardConfig> => {
     try {
       const response = await apiRequest<{ success: boolean; data: DashboardConfig }>(`/dashboard/config/${role}`);
-      return response.data;
+      
+      // Normalize the response data to ensure widgets is always an array of objects
+      const config = response.data || {};
+      
+      // Ensure widgets is an array and filter out invalid entries
+      let widgets: any[] = [];
+      if (Array.isArray(config.widgets)) {
+        widgets = config.widgets.filter((w: any) => {
+          // Filter out empty arrays, null, undefined, and non-objects
+          if (!w || Array.isArray(w) || typeof w !== 'object') {
+            return false;
+          }
+          return true;
+        });
+      } else if (config.widgets && typeof config.widgets === 'object' && !Array.isArray(config.widgets)) {
+        // If widgets is a single object, wrap it in an array
+        widgets = [config.widgets];
+      }
+      
+      // Ensure menuItems is an array
+      const menuItems = Array.isArray(config.menuItems) ? config.menuItems : [];
+      
+      // Ensure permissions is an object
+      const permissions = config.permissions && typeof config.permissions === 'object' ? config.permissions : {};
+
+      return {
+        role: config.role || role,
+        widgets,
+        menuItems,
+        permissions,
+      };
     } catch (error) {
       console.error('[dashboardService] Failed to fetch dashboard config:', error);
       // Return default configuration if API fails
@@ -204,6 +246,69 @@ export const dashboardService = {
       return [];
     }
   },
+
+  /**
+   * Get dashboard API catalog
+   * Returns all available KPIs, Charts, Tables, Tasks, and Alerts
+   */
+  getCatalog: async (): Promise<{
+    kpis: any[];
+    charts: any[];
+    tables: any[];
+    tasks: any[];
+    alerts: any[];
+  }> => {
+    try {
+      const response = await apiRequest<{ success: boolean; data: any }>('/dashboard/catalog');
+      return response.data;
+    } catch (error) {
+      console.error('[dashboardService] Failed to fetch catalog:', error);
+      return { kpis: [], charts: [], tables: [], tasks: [], alerts: [] };
+    }
+  },
+
+  /**
+   * Save dashboard configuration
+   * Configuration-only screen - no impact on existing application logic
+   */
+  saveDashboardConfig: async (config: DashboardConfig): Promise<DashboardConfig> => {
+    try {
+      const requestBody = JSON.stringify(config);
+      const response = await apiRequest<{ success: boolean; data: DashboardConfig; message?: string }>(
+        '/dashboard/config',
+        {
+          method: 'POST',
+          body: requestBody,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('[dashboardService] Failed to save dashboard config:', error);
+      console.error('[dashboardService] Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        config: config,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get dashboard configuration by target (role or department)
+   * Configuration-only screen - no impact on existing application logic
+   */
+  getDashboardConfigByTarget: async (target: string): Promise<DashboardConfig> => {
+    try {
+      const response = await apiRequest<{ success: boolean; data: DashboardConfig }>(
+        `/dashboard/config?target=${encodeURIComponent(target)}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('[dashboardService] Failed to fetch dashboard config:', error);
+      // Return default configuration if API fails
+      return getDefaultDashboardConfig(target as Role);
+    }
+  },
 };
 
 /**
@@ -219,61 +324,61 @@ function getDefaultDashboardConfig(role: Role): DashboardConfig {
       role,
       widgets: [
         {
-          id: 'metric-total-users',
-          type: 'metric',
-          title: 'Total Users',
-          gridColumn: 1,
-          dataSource: { endpoint: '/api/v1/users/count' },
-          props: { unit: '', label: 'Active users' },
-        },
-        {
-          id: 'metric-total-companies',
-          type: 'metric',
-          title: 'Total Companies',
-          gridColumn: 1,
-          dataSource: { endpoint: '/api/v1/companies/count' },
-          props: { unit: '', label: 'Registered companies' },
-        },
-        {
-          id: 'metric-total-hcfs',
-          type: 'metric',
-          title: 'Total HCFs',
-          gridColumn: 1,
-          dataSource: { endpoint: '/api/v1/hcfs/count' },
-          props: { unit: '', label: 'Healthcare facilities' },
-        },
-        {
           id: 'metric-total-invoices',
           type: 'metric',
           title: 'Total Invoices',
           gridColumn: 1,
-          dataSource: { endpoint: '/api/v1/invoices/count' },
-          props: { unit: '', label: 'This month' },
+          dataSource: { endpoint: '/dashboard/kpi/total-invoices' },
+          props: { unit: '', label: 'Total count' },
         },
         {
-          id: 'chart-revenue-trend',
+          id: 'metric-pending-invoices',
+          type: 'metric',
+          title: 'Pending Invoices',
+          gridColumn: 1,
+          dataSource: { endpoint: '/dashboard/kpi/pending-invoices' },
+          props: { unit: '', label: 'Pending approval' },
+        },
+        {
+          id: 'metric-total-revenue',
+          type: 'metric',
+          title: 'Total Revenue',
+          gridColumn: 1,
+          dataSource: { endpoint: '/dashboard/kpi/total-revenue' },
+          props: { unit: 'INR', label: 'Total revenue' },
+        },
+        {
+          id: 'metric-pending-payments',
+          type: 'metric',
+          title: 'Pending Payments',
+          gridColumn: 1,
+          dataSource: { endpoint: '/dashboard/kpi/pending-payments' },
+          props: { unit: '', label: 'Pending count' },
+        },
+        {
+          id: 'chart-monthly-revenue',
           type: 'chart',
-          title: 'Revenue Trend',
+          title: 'Monthly Revenue',
           gridColumn: 2,
           gridRow: 1,
           chartConfig: { type: 'line', xAxis: 'month', yAxis: 'revenue' },
-          dataSource: { endpoint: '/api/v1/reports/revenue' },
+          dataSource: { endpoint: '/dashboard/chart/monthly-revenue' },
         },
         {
-          id: 'table-recent-activities',
-          type: 'activity-timeline',
-          title: 'Recent Activities',
+          id: 'table-recent-invoices',
+          type: 'table',
+          title: 'Recent Invoices',
           gridColumn: 2,
           gridRow: 1,
-          dataSource: { endpoint: '/api/v1/activities/recent' },
-          props: { maxItems: 10 },
+          dataSource: { endpoint: '/dashboard/table/recent-invoices' },
+          props: { maxRows: 10 },
         },
         {
           id: 'approval-queue',
           type: 'approval-queue',
           title: 'Pending Approvals',
           gridColumn: 2,
-          dataSource: { endpoint: '/api/v1/approvals/pending' },
+          dataSource: { endpoint: '/dashboard/tasks/pending-approvals' },
           permissions: {
             view: 'APPROVAL_VIEW',
             actions: { approve: 'APPROVAL_APPROVE', view: 'APPROVAL_VIEW' },

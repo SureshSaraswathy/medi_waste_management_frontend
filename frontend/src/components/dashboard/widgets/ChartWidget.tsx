@@ -5,14 +5,29 @@
  * Supports dynamic data loading from API endpoints.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChartType } from '../../../types/dashboard';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from 'recharts';
 import './widgets.css';
 
 interface ChartWidgetProps {
   title: string;
   type: ChartType;
-  data?: any[];
+  data?: any[] | { labels?: string[]; data?: number[] };
   loading?: boolean;
   xAxis?: string;
   yAxis?: string;
@@ -28,11 +43,42 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
   yAxis,
   series,
 }) => {
-  const [chartData, setChartData] = useState(data);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartLabels, setChartLabels] = useState<string[]>([]);
+
+  const resolvedXAxis = xAxis || 'label';
+  const resolvedYAxis = yAxis || 'value';
 
   useEffect(() => {
-    setChartData(data);
-  }, [data]);
+    // Handle different data formats from backend
+    if (Array.isArray(data)) {
+      setChartData(data);
+      setChartLabels(data.map((item, index) => item.label || item[resolvedXAxis] || `Item ${index + 1}`));
+    } else if (data && typeof data === 'object' && 'labels' in data && 'data' in data) {
+      // Backend format: { labels: [...], data: [...] }
+      setChartLabels(data.labels || []);
+      setChartData((data.data || []).map((value: number, index: number) => ({
+        label: data.labels?.[index] || `Item ${index + 1}`,
+        value,
+      })));
+    } else {
+      setChartData([]);
+      setChartLabels([]);
+    }
+  }, [data, resolvedXAxis]);
+
+  const seriesKeys = useMemo(() => {
+    // If caller provided explicit series keys, respect it.
+    if (Array.isArray(series) && series.length > 0) return series;
+
+    // Default to a single-series `value` (matches widgetDataService output).
+    return [resolvedYAxis];
+  }, [resolvedYAxis, series]);
+
+  const pieColors = useMemo(
+    () => ['#2563eb', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#64748b'],
+    []
+  );
 
   if (loading) {
     return (
@@ -49,8 +95,6 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
     );
   }
 
-  // For now, we'll render a placeholder chart
-  // In production, you would integrate a charting library like Chart.js, Recharts, or D3
   return (
     <div className="widget-panel widget-panel--chart">
       <div className="widget-panel__header">
@@ -68,16 +112,63 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
             <p>No data available</p>
           </div>
         ) : (
-          <div className="chart-placeholder">
-            <div className="chart-placeholder__info">
-              <p>Chart Type: {type}</p>
-              <p>Data Points: {chartData.length}</p>
-              <p className="chart-placeholder__note">
-                Chart visualization will be rendered here.
-                <br />
-                Integrate Chart.js, Recharts, or D3.js for production use.
-              </p>
-            </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={260}>
+              {type === 'line' ? (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={resolvedXAxis} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {seriesKeys.map((key) => (
+                    <Line key={key} type="monotone" dataKey={key} stroke="#2563eb" strokeWidth={2} dot={false} />
+                  ))}
+                </LineChart>
+              ) : type === 'bar' ? (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={resolvedXAxis} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {seriesKeys.map((key) => (
+                    <Bar key={key} dataKey={key} fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  ))}
+                </BarChart>
+              ) : type === 'pie' || type === 'doughnut' ? (
+                <PieChart>
+                  <Tooltip />
+                  <Legend />
+                  <Pie
+                    data={chartData}
+                    dataKey={resolvedYAxis}
+                    nameKey={resolvedXAxis}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    innerRadius={type === 'doughnut' ? 55 : 0}
+                    paddingAngle={2}
+                  >
+                    {chartData.map((_, idx) => (
+                      <Cell key={`cell-${idx}`} fill={pieColors[idx % pieColors.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              ) : (
+                // Fallback: default to line chart
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey={resolvedXAxis} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {seriesKeys.map((key) => (
+                    <Line key={key} type="monotone" dataKey={key} stroke="#2563eb" strokeWidth={2} dot={false} />
+                  ))}
+                </LineChart>
+              )}
+            </ResponsiveContainer>
           </div>
         )}
       </div>

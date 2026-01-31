@@ -134,6 +134,11 @@
   color: #94a3b8;
 }
 
+.chart-container {
+  width: 100%;
+  min-height: 260px;
+}
+
 /* Table Widget */
 .widget-panel--table .widget-panel__body {
   overflow-x: auto;

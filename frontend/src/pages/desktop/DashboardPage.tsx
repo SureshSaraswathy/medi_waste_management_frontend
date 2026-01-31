@@ -13,9 +13,10 @@
  */
 
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { dashboardService } from '../../services/dashboardService';
+import { fetchWidgetData } from '../../services/widgetDataService';
 import { isSuperAdmin } from '../../services/permissionService';
 import { WidgetConfig, Role } from '../../types/dashboard';
 import { MetricWidget } from '../../components/dashboard/widgets/MetricWidget';
@@ -37,15 +38,61 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Validate widget before processing
+  if (!widget || typeof widget !== 'object' || Array.isArray(widget)) {
+    console.error('[WidgetRenderer] Invalid widget passed:', widget);
+    return null;
+  }
+
+  if (!widget.id || !widget.type) {
+    console.error('[WidgetRenderer] Widget missing required properties (id or type):', widget);
+    return null;
+  }
+
   // Check if user has permission to view this widget
   const canView = useMemo(() => {
     if (!widget.permissions?.view) return true;
     return permissions[widget.permissions.view] === true;
   }, [widget.permissions, permissions]);
 
-  // Load widget data from API
+  // Load widget data from backend API
   useEffect(() => {
-    if (!widget.dataSource?.endpoint || !canView) {
+    // Validate widget again in useEffect
+    if (!widget || !widget.id || !widget.type) {
+      console.error('[WidgetRenderer] Widget validation failed in useEffect:', widget);
+      setLoading(false);
+      return;
+    }
+
+    // Debug: Log widget configuration
+    console.log(`[WidgetRenderer] Widget ${widget.id} check:`, {
+      hasDataSource: !!widget.dataSource,
+      hasEndpoint: !!widget.dataSource?.endpoint,
+      endpoint: widget.dataSource?.endpoint,
+      canView,
+      permissions: widget.permissions,
+      widgetType: widget.type,
+    });
+    
+    if (!widget.dataSource?.endpoint) {
+      console.warn(`[WidgetRenderer] Widget ${widget.id} has no dataSource.endpoint, skipping API call`, {
+        widgetId: widget.id,
+        widgetTitle: widget.title,
+        widgetType: widget.type,
+        dataSource: widget.dataSource,
+        fullWidget: widget,
+      });
+      setLoading(false);
+      return;
+    }
+    
+    if (!canView) {
+      console.warn(`[WidgetRenderer] Widget ${widget.id} cannot be viewed (permission check failed)`, {
+        widgetId: widget.id,
+        widgetTitle: widget.title,
+        requiredPermission: widget.permissions?.view,
+        permissions: permissions,
+      });
       setLoading(false);
       return;
     }
@@ -55,32 +102,71 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
         setLoading(true);
         setError(null);
         
-        // In production, this would call the actual API endpoint
-        // For now, we'll simulate data loading
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        console.log(`[WidgetRenderer] Loading data for widget:`, {
+          id: widget.id,
+          type: widget.type,
+          endpoint: widget.dataSource?.endpoint,
+          fullWidget: widget,
+        });
         
-        // Mock data based on widget type
-        const mockData = generateMockData(widget);
-        setWidgetData(mockData);
-      } catch (err) {
-        console.error(`Failed to load data for widget ${widget.id}:`, err);
+        // Fetch data from backend dashboard API
+        const data = await fetchWidgetData(widget);
+        
+        console.log(`[WidgetRenderer] Data loaded for widget ${widget.id}:`, {
+          data,
+          hasValue: data?.value !== undefined,
+          value: data?.value,
+          fullData: data,
+        });
+        
+        // Validate data before setting
+        if (data === null || data === undefined) {
+          console.warn(`[WidgetRenderer] Widget ${widget.id} returned null/undefined data`);
+          setWidgetData({ value: 0 });
+        } else {
+          setWidgetData(data);
+        }
+      } catch (err: any) {
+        console.error(`[WidgetRenderer] Failed to load data for widget ${widget.id}:`, err);
+        console.error(`[WidgetRenderer] Error type:`, typeof err);
+        console.error(`[WidgetRenderer] Error message:`, err?.message);
+        console.error(`[WidgetRenderer] Error stack:`, err?.stack);
+        console.error(`[WidgetRenderer] Widget config:`, widget);
         setError('Failed to load data');
+        // Set default data on error to prevent widget from breaking
+        setWidgetData({ value: 0 });
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
+
+    // Auto-refresh if refreshInterval is configured
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (widget.dataSource.refreshInterval && widget.dataSource.refreshInterval > 0) {
+      refreshInterval = setInterval(loadData, widget.dataSource.refreshInterval * 1000);
+    }
+
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, [widget, canView]);
 
   if (!canView) {
     return null;
   }
 
+  // Normalize widget type (handle variations from backend)
+  const normalizedType = (widget.type?.toLowerCase().trim() || 'metric');
+  
   // Render widget based on type
   // All widget rendering is configuration-driven - no hardcoded role checks
-  switch (widget.type) {
+  switch (normalizedType) {
     case 'metric':
+    case 'kpi':
       return (
         <MetricWidget
           title={widget.title}
@@ -97,7 +183,7 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
         <ChartWidget
           title={widget.title}
           type={widget.chartConfig?.type || 'line'}
-          data={widgetData?.data || []}
+          data={widgetData?.data || widgetData || []}
           loading={loading}
           xAxis={widget.chartConfig?.xAxis}
           yAxis={widget.chartConfig?.yAxis}
@@ -165,116 +251,47 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
       );
 
     default:
+      console.warn(`[WidgetRenderer] Unknown widget type: "${widget.type}" (normalized: "${normalizedType}")`, widget);
       return (
         <div className="dashboard-widget-error">
-          <p>Unknown widget type: {widget.type}</p>
+          <p>Unknown widget type: {widget.type || 'undefined'}</p>
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+            Widget ID: {widget.id || 'N/A'}
+          </p>
         </div>
       );
   }
 };
 
-/**
- * Generate mock data for widgets (for demonstration)
- * In production, this would be replaced with actual API calls based on widget.dataSource
- */
-function generateMockData(widget: WidgetConfig): any {
-  switch (widget.type) {
-    case 'metric':
-      return {
-        value: Math.floor(Math.random() * 10000),
-        unit: widget.props?.unit || '',
-        label: widget.props?.label || 'Total count',
-        trend: {
-          value: Math.floor(Math.random() * 20) - 10,
-          isPositive: Math.random() > 0.5,
-          period: 'vs last month',
-        },
-      };
-
-    case 'chart':
-      return {
-        data: Array.from({ length: 12 }, (_, i) => ({
-          month: `Month ${i + 1}`,
-          value: Math.floor(Math.random() * 1000),
-        })),
-      };
-
-    case 'table':
-      return {
-        columns: [
-          { key: 'id', label: 'ID' },
-          { key: 'name', label: 'Name' },
-          { key: 'status', label: 'Status' },
-        ],
-        data: Array.from({ length: 5 }, (_, i) => ({
-          id: `#${i + 1}`,
-          name: `Item ${i + 1}`,
-          status: ['Active', 'Pending', 'Completed'][Math.floor(Math.random() * 3)],
-        })),
-      };
-
-    case 'task-list':
-      return {
-        tasks: Array.from({ length: 5 }, (_, i) => ({
-          id: `task-${i + 1}`,
-          title: `Task ${i + 1}`,
-          description: `Description for task ${i + 1}`,
-          status: ['pending', 'in-progress', 'completed'][Math.floor(Math.random() * 3)] as any,
-          dueDate: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-        })),
-      };
-
-    case 'approval-queue':
-      return {
-        items: Array.from({ length: 5 }, (_, i) => ({
-          id: `approval-${i + 1}`,
-          title: `Pending Approval ${i + 1}`,
-          description: `Description for approval ${i + 1}`,
-          submittedBy: `User ${i + 1}`,
-          submittedOn: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          amount: Math.floor(Math.random() * 100000),
-          priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as any,
-          type: 'Invoice',
-        })),
-      };
-
-    case 'activity-timeline':
-      return {
-        activities: Array.from({ length: 10 }, (_, i) => ({
-          id: `activity-${i + 1}`,
-          timestamp: new Date(Date.now() - i * 60 * 60 * 1000).toLocaleString(),
-          user: `User ${i + 1}`,
-          action: `Action ${i + 1} performed`,
-          description: `Details about action ${i + 1}`,
-          type: ['info', 'success', 'warning', 'error'][Math.floor(Math.random() * 4)] as any,
-        })),
-      };
-
-    case 'alert':
-      return {
-        alerts: Array.from({ length: 3 }, (_, i) => ({
-          id: `alert-${i + 1}`,
-          type: ['info', 'warning', 'error'][Math.floor(Math.random() * 3)] as any,
-          title: `Alert ${i + 1}`,
-          message: `This is an alert message ${i + 1}`,
-          timestamp: new Date().toLocaleString(),
-        })),
-      };
-
-    default:
-      return null;
-  }
-}
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [previewMode, setPreviewMode] = useState<{ enabled: boolean; role: Role | null }>({ enabled: false, role: null });
+
+  // Check for preview mode from URL or sessionStorage
+  useEffect(() => {
+    const isPreview = searchParams.get('preview') === 'true';
+    const previewConfig = sessionStorage.getItem('dashboard-preview-config');
+    const previewRole = sessionStorage.getItem('dashboard-preview-role');
+
+    if (isPreview && previewConfig && previewRole) {
+      try {
+        const config = JSON.parse(previewConfig);
+        setPreviewMode({ enabled: true, role: previewRole as Role });
+        setWidgets(config.widgets || []);
+        setPermissions(config.permissions || {});
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load preview config:', error);
+      }
+    }
+  }, [searchParams]);
 
   // Get current role (from preview mode or user)
   const currentRole: Role = previewMode.enabled && previewMode.role
@@ -378,15 +395,41 @@ const DashboardPage: React.FC = () => {
       ), 
       active: location.pathname.startsWith('/report')
     },
+    // Dashboard Configuration menu item - ONLY visible for SuperAdmin
+    // This menu item is additive and does not affect existing navigation
+    ...(isSuperAdminUser ? [{
+      path: '/admin/dashboard-configuration',
+      label: 'Dashboard Configuration',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      ),
+      active: location.pathname === '/admin/dashboard-configuration' || location.pathname.startsWith('/admin/dashboard-configuration')
+    }] : []),
   ];
 
   // Load dashboard configuration
   useEffect(() => {
+    // Skip loading if in preview mode (already loaded from sessionStorage)
+    if (previewMode.enabled) {
+      return;
+    }
+
     const loadDashboard = async () => {
       setLoading(true);
       try {
-        // Load role configuration
+        console.log('[DashboardPage] Loading dashboard for role:', currentRole);
+        
+        // Load role configuration from backend
         const roleConfig = await dashboardService.getDashboardConfig(currentRole);
+        
+        console.log('[DashboardPage] Loaded role config:', {
+          role: roleConfig.role,
+          widgetsCount: Array.isArray(roleConfig.widgets) ? roleConfig.widgets.length : 0,
+          widgets: roleConfig.widgets,
+        });
         
         // Load user overrides if available
         const userOverrides = user?.id
@@ -396,10 +439,362 @@ const DashboardPage: React.FC = () => {
         // Compute final permissions and widgets
         const computed = dashboardService.computePermissions(roleConfig, userOverrides);
         
-        setWidgets(computed.widgets);
+        console.log('[DashboardPage] Computed widgets:', {
+          widgetsCount: Array.isArray(computed.widgets) ? computed.widgets.length : 0,
+          widgets: computed.widgets,
+        });
+        
+        // Normalize widgets array - handle cases where widgets might be nested or malformed
+        let widgetsToProcess: any[] = [];
+        
+        if (Array.isArray(computed.widgets)) {
+          // Flatten widgets if they're nested in arrays
+          computed.widgets.forEach((item: any) => {
+            if (Array.isArray(item)) {
+              // If item is an array, add each element that is a valid widget object
+              item.forEach((widget: any) => {
+                if (widget && typeof widget === 'object' && !Array.isArray(widget)) {
+                  widgetsToProcess.push(widget);
+                }
+              });
+            } else if (item && typeof item === 'object' && !Array.isArray(item)) {
+              // If item is a valid widget object, add it directly
+              widgetsToProcess.push(item);
+            }
+          });
+        } else if (computed.widgets && typeof computed.widgets === 'object' && !Array.isArray(computed.widgets)) {
+          // If widgets is a single object, wrap it in an array
+          widgetsToProcess = [computed.widgets];
+        }
+        
+        console.log('[DashboardPage] Processed widgets:', {
+          originalCount: Array.isArray(computed.widgets) ? computed.widgets.length : 0,
+          processedCount: widgetsToProcess.length,
+          widgets: widgetsToProcess,
+        });
+        
+        // Validate and normalize widgets
+        const validatedWidgets = widgetsToProcess
+          .filter((widget) => {
+            // First filter: Remove invalid entries (null, undefined, arrays, non-objects)
+            if (!widget || typeof widget !== 'object' || Array.isArray(widget)) {
+              console.warn('[DashboardPage] Filtering out invalid widget entry (not an object):', widget);
+              return false;
+            }
+            return true;
+          })
+          .map((widget, index) => {
+          // Ensure widget has required fields
+          if (!widget.id) {
+            widget.id = `widget-${Date.now()}-${index}-${Math.random()}`;
+          }
+          
+          // Ensure dataSource exists
+          if (!widget.dataSource) {
+            widget.dataSource = {};
+          }
+          
+          // If endpoint is missing, try to construct it from widget ID, title, or type
+          if (!widget.dataSource.endpoint) {
+            // Try to infer endpoint from widget ID, title, or type
+            const widgetId = widget.id.toLowerCase();
+            const widgetTitle = (widget.title || '').toLowerCase();
+            const searchText = `${widgetId} ${widgetTitle}`;
+            
+            let inferredEndpoint: string | null = null;
+            
+            // Check by ID patterns first (most reliable for saved widgets)
+            // Check for common widget ID patterns
+            if (widgetId.includes('total-invoices') || widgetId.includes('totalinvoices') || widgetId.startsWith('metric-total-invoices')) {
+              inferredEndpoint = '/dashboard/kpi/total-invoices';
+            } else if (widgetId.includes('pending-invoices') || widgetId.includes('pendinginvoices') || widgetId.startsWith('metric-pending-invoices')) {
+              inferredEndpoint = '/dashboard/kpi/pending-invoices';
+            } else if (widgetId.includes('total-revenue') || widgetId.includes('totalrevenue') || widgetId.startsWith('metric-total-revenue')) {
+              inferredEndpoint = '/dashboard/kpi/total-revenue';
+            } else if (widgetId.includes('pending-payments') || widgetId.includes('pendingpayments') || widgetId.startsWith('metric-pending-payments')) {
+              inferredEndpoint = '/dashboard/kpi/pending-payments';
+            } else if (widgetId.includes('receipts-today') || widgetId.includes('receiptstoday')) {
+              inferredEndpoint = '/dashboard/kpi/receipts-today';
+            } else if (widgetId.includes('active-users') || widgetId.includes('activeusers')) {
+              inferredEndpoint = '/dashboard/kpi/active-users';
+            } else if (widgetId.includes('errors-today') || widgetId.includes('errorstoday')) {
+              inferredEndpoint = '/dashboard/kpi/errors-today';
+            } else if (widgetId.includes('monthly-revenue') || widgetId.includes('monthlyrevenue') || widgetId.startsWith('chart-monthly-revenue')) {
+              inferredEndpoint = '/dashboard/chart/monthly-revenue';
+            } else if (widgetId.includes('payment-status') || widgetId.includes('paymentstatus')) {
+              inferredEndpoint = '/dashboard/chart/payment-status';
+            } else if (widgetId.includes('invoice-aging') || widgetId.includes('invoiceaging')) {
+              inferredEndpoint = '/dashboard/chart/invoice-aging';
+            } else if (widgetId.includes('recent-invoices') || widgetId.includes('recentinvoices') || widgetId.startsWith('table-recent-invoices')) {
+              inferredEndpoint = '/dashboard/table/recent-invoices';
+            } else if (widgetId.includes('recent-payments') || widgetId.includes('recentpayments')) {
+              inferredEndpoint = '/dashboard/table/recent-payments';
+            } else if (widgetId.includes('pending-receipts') || widgetId.includes('pendingreceipts')) {
+              inferredEndpoint = '/dashboard/table/pending-receipts';
+            } else if (widgetId.includes('pending-approvals') || widgetId.includes('pendingapprovals') || widgetId.includes('approval-queue') || widgetId.startsWith('approval-queue')) {
+              inferredEndpoint = '/dashboard/tasks/pending-approvals';
+            } else if (widgetId.includes('assigned-tasks') || widgetId.includes('assignedtasks')) {
+              inferredEndpoint = '/dashboard/tasks/assigned';
+            } else if (widgetId.includes('payment-overdue') || widgetId.includes('paymentoverdue')) {
+              inferredEndpoint = '/dashboard/alerts/payment-overdue';
+            } else if (widgetId.includes('compliance-expiry') || widgetId.includes('complianceexpiry')) {
+              inferredEndpoint = '/dashboard/alerts/compliance-expiry';
+            }
+            
+            // If not found by ID, check by title (more reliable)
+            if (!inferredEndpoint) {
+              if (searchText.includes('total invoices') || searchText.includes('totalinvoices')) {
+                inferredEndpoint = '/dashboard/kpi/total-invoices';
+              } else if (searchText.includes('pending invoices') || searchText.includes('pendinginvoices')) {
+                inferredEndpoint = '/dashboard/kpi/pending-invoices';
+              } else if (searchText.includes('total revenue') || searchText.includes('totalrevenue')) {
+                inferredEndpoint = '/dashboard/kpi/total-revenue';
+              } else if (searchText.includes('pending payments') || searchText.includes('pendingpayments')) {
+                inferredEndpoint = '/dashboard/kpi/pending-payments';
+              } else if (searchText.includes('receipts today') || searchText.includes('receiptstoday')) {
+                inferredEndpoint = '/dashboard/kpi/receipts-today';
+              } else if (searchText.includes('active users') || searchText.includes('activeusers')) {
+                inferredEndpoint = '/dashboard/kpi/active-users';
+              } else if (searchText.includes('errors today') || searchText.includes('errorstoday')) {
+                inferredEndpoint = '/dashboard/kpi/errors-today';
+              } else if (searchText.includes('monthly revenue') || searchText.includes('monthlyrevenue')) {
+                inferredEndpoint = '/dashboard/chart/monthly-revenue';
+              } else if (searchText.includes('payment status') || searchText.includes('paymentstatus')) {
+                inferredEndpoint = '/dashboard/chart/payment-status';
+              } else if (searchText.includes('invoice aging') || searchText.includes('invoiceaging')) {
+                inferredEndpoint = '/dashboard/chart/invoice-aging';
+              } else if (searchText.includes('recent invoices') || searchText.includes('recentinvoices')) {
+                inferredEndpoint = '/dashboard/table/recent-invoices';
+              } else if (searchText.includes('recent payments') || searchText.includes('recentpayments')) {
+                inferredEndpoint = '/dashboard/table/recent-payments';
+              } else if (searchText.includes('pending receipts') || searchText.includes('pendingreceipts')) {
+                inferredEndpoint = '/dashboard/table/pending-receipts';
+              } else if (searchText.includes('pending approvals') || searchText.includes('pendingapprovals') || searchText.includes('approval queue')) {
+                inferredEndpoint = '/dashboard/tasks/pending-approvals';
+              } else if (searchText.includes('assigned tasks') || searchText.includes('assignedtasks')) {
+                inferredEndpoint = '/dashboard/tasks/assigned';
+              } else if (searchText.includes('payment overdue') || searchText.includes('paymentoverdue')) {
+                inferredEndpoint = '/dashboard/alerts/payment-overdue';
+              } else if (searchText.includes('compliance expiry') || searchText.includes('complianceexpiry')) {
+                inferredEndpoint = '/dashboard/alerts/compliance-expiry';
+              }
+            }
+            
+            // If still no endpoint, use index-based assignment for different endpoints
+            if (!inferredEndpoint) {
+              // Use index to assign different endpoints to prevent all widgets from using the same endpoint
+              const endpointMap = [
+                '/dashboard/kpi/total-invoices',
+                '/dashboard/kpi/pending-invoices',
+                '/dashboard/kpi/total-revenue',
+                '/dashboard/kpi/pending-payments',
+                '/dashboard/kpi/receipts-today',
+                '/dashboard/kpi/active-users',
+                '/dashboard/kpi/errors-today',
+                '/dashboard/chart/monthly-revenue',
+              ];
+              
+              if (widget.type === 'metric' || widget.type === 'kpi') {
+                inferredEndpoint = endpointMap[index % endpointMap.length] || '/dashboard/kpi/total-invoices';
+              } else if (widget.type === 'chart') {
+                inferredEndpoint = '/dashboard/chart/monthly-revenue';
+              } else if (widget.type === 'table') {
+                inferredEndpoint = '/dashboard/table/recent-invoices';
+              } else if (widget.type === 'task-list' || widget.type === 'approval-queue') {
+                inferredEndpoint = '/dashboard/tasks/pending-approvals';
+              } else if (widget.type === 'alert') {
+                inferredEndpoint = '/dashboard/alerts/payment-overdue';
+              } else {
+                inferredEndpoint = endpointMap[index % endpointMap.length] || '/dashboard/kpi/total-invoices';
+              }
+              
+              console.log(`[DashboardPage] Widget ${widget.id} missing endpoint, using index-based assignment:`, {
+                widgetId: widget.id,
+                widgetTitle: widget.title,
+                widgetType: widget.type,
+                widgetIndex: index,
+                assignedEndpoint: inferredEndpoint,
+              });
+            } else {
+              console.log(`[DashboardPage] Widget ${widget.id} endpoint inferred from ID/title:`, {
+                widgetId: widget.id,
+                widgetTitle: widget.title,
+                inferredEndpoint: inferredEndpoint,
+              });
+            }
+            
+            // Always set the endpoint (never leave it undefined)
+            widget.dataSource.endpoint = inferredEndpoint;
+          }
+          
+          // Ensure title is set (use endpoint-based title if missing)
+          if (!widget.title) {
+            const endpoint = widget.dataSource?.endpoint || '';
+            if (endpoint.includes('total-invoices')) {
+              widget.title = 'Total Invoices';
+            } else if (endpoint.includes('pending-invoices')) {
+              widget.title = 'Pending Invoices';
+            } else if (endpoint.includes('total-revenue')) {
+              widget.title = 'Total Revenue';
+            } else if (endpoint.includes('pending-payments')) {
+              widget.title = 'Pending Payments';
+            } else if (endpoint.includes('receipts-today')) {
+              widget.title = 'Receipts Today';
+            } else if (endpoint.includes('active-users')) {
+              widget.title = 'Active Users';
+            } else if (endpoint.includes('errors-today')) {
+              widget.title = 'Errors Today';
+            } else if (endpoint.includes('monthly-revenue')) {
+              widget.title = 'Monthly Revenue';
+            } else if (endpoint.includes('payment-status')) {
+              widget.title = 'Payment Status';
+            } else if (endpoint.includes('invoice-aging')) {
+              widget.title = 'Invoice Aging';
+            } else if (endpoint.includes('recent-invoices')) {
+              widget.title = 'Recent Invoices';
+            } else if (endpoint.includes('recent-payments')) {
+              widget.title = 'Recent Payments';
+            } else if (endpoint.includes('pending-receipts')) {
+              widget.title = 'Pending Receipts';
+            } else if (endpoint.includes('pending-approvals')) {
+              widget.title = 'Pending Approvals';
+            } else if (endpoint.includes('assigned-tasks')) {
+              widget.title = 'Assigned Tasks';
+            } else if (endpoint.includes('payment-overdue')) {
+              widget.title = 'Payment Overdue';
+            } else if (endpoint.includes('compliance-expiry')) {
+              widget.title = 'Compliance Expiry';
+            } else {
+              widget.title = `Widget ${index + 1}`;
+            }
+            console.log(`[DashboardPage] Widget ${widget.id} missing title, inferred from endpoint:`, {
+              widgetId: widget.id,
+              inferredTitle: widget.title,
+              endpoint: widget.dataSource?.endpoint,
+            });
+          }
+          
+          if (!widget.type) {
+            // Try to infer type from dataSource endpoint if type is missing
+            const endpoint = widget.dataSource?.endpoint || '';
+            if (endpoint.includes('/kpi/') || endpoint.includes('/dashboard/kpi/')) {
+              widget.type = 'metric';
+            } else if (endpoint.includes('/chart/') || endpoint.includes('/dashboard/chart/')) {
+              widget.type = 'chart';
+            } else if (endpoint.includes('/table/') || endpoint.includes('/dashboard/table/')) {
+              widget.type = 'table';
+            } else if (endpoint.includes('/tasks/') || endpoint.includes('/approval') || endpoint.includes('/dashboard/tasks/')) {
+              widget.type = 'task-list';
+            } else if (endpoint.includes('/alerts/') || endpoint.includes('/dashboard/alerts/')) {
+              widget.type = 'alert';
+            } else if (endpoint.includes('/activity') || endpoint.includes('/timeline')) {
+              widget.type = 'activity-timeline';
+            } else {
+              // Only warn if we can't infer the type and it's not a default widget
+              if (widget.id && !widget.id.startsWith('widget-')) {
+                console.warn('[DashboardPage] Widget missing type and cannot infer from endpoint:', {
+                  id: widget.id,
+                  title: widget.title,
+                  endpoint: endpoint || 'none',
+                });
+              }
+              widget.type = 'metric'; // Default fallback
+            }
+          }
+          // Normalize widget type
+          const normalizedType = widget.type.toLowerCase().trim();
+          // Map common variations to standard types
+          const typeMap: Record<string, WidgetType> = {
+            'kpi': 'metric',
+            'metric': 'metric',
+            'chart': 'chart',
+            'table': 'table',
+            'task-list': 'task-list',
+            'tasklist': 'task-list',
+            'tasks': 'task-list',
+            'approval-queue': 'approval-queue',
+            'approvalqueue': 'approval-queue',
+            'approvals': 'approval-queue',
+            'alert': 'alert',
+            'alerts': 'alert',
+            'activity-timeline': 'activity-timeline',
+            'activitytimeline': 'activity-timeline',
+            'timeline': 'activity-timeline',
+            'custom': 'custom',
+          };
+          const mappedType = typeMap[normalizedType];
+          if (mappedType) {
+            widget.type = mappedType;
+          } else if (!['metric', 'chart', 'table', 'task-list', 'approval-queue', 'alert', 'activity-timeline', 'custom'].includes(normalizedType)) {
+            // Unknown type, default to metric and log warning
+            console.warn(`[DashboardPage] Unknown widget type "${widget.type}", defaulting to "metric"`, widget);
+            widget.type = 'metric';
+          }
+          
+          // Ensure gridColumn is set
+          if (!widget.gridColumn || widget.gridColumn < 1) {
+            widget.gridColumn = 1;
+          }
+          if (widget.gridColumn > 4) {
+            widget.gridColumn = 4;
+          }
+          
+          // Final check: ensure endpoint is always set
+          if (!widget.dataSource?.endpoint) {
+            console.error(`[DashboardPage] Widget ${widget.id} still missing endpoint after validation!`, widget);
+            widget.dataSource = widget.dataSource || {};
+            widget.dataSource.endpoint = '/dashboard/kpi/total-invoices'; // Emergency fallback
+          }
+          
+          // Log final widget configuration
+          console.log(`[DashboardPage] Validated widget:`, {
+            id: widget.id,
+            title: widget.title,
+            type: widget.type,
+            endpoint: widget.dataSource?.endpoint,
+            hasEndpoint: !!widget.dataSource?.endpoint,
+          });
+          
+          return widget;
+        }).filter((widget) => {
+          // Filter out invalid widgets
+          // First check if widget is a valid object
+          if (!widget || typeof widget !== 'object' || Array.isArray(widget)) {
+            console.warn('[DashboardPage] Filtering out invalid widget (not an object):', widget);
+            return false;
+          }
+          
+          // Check if widget has required properties
+          if (!widget.id || !widget.type) {
+            console.warn('[DashboardPage] Filtering out invalid widget (missing id or type):', widget);
+            return false;
+          }
+          
+          // Check if widget has valid type
+          const validTypes: WidgetType[] = ['metric', 'chart', 'table', 'task-list', 'approval-queue', 'alert', 'activity-timeline', 'custom'];
+          if (!validTypes.includes(widget.type)) {
+            console.warn('[DashboardPage] Filtering out invalid widget (invalid type):', widget);
+            return false;
+          }
+          
+          // Check if widget has dataSource with endpoint
+          if (!widget.dataSource || !widget.dataSource.endpoint) {
+            console.warn('[DashboardPage] Filtering out invalid widget (missing dataSource.endpoint):', widget);
+            return false;
+          }
+          
+          return true;
+        });
+        
+        console.log('[DashboardPage] Final validated widgets:', {
+          count: validatedWidgets.length,
+          widgets: validatedWidgets,
+        });
+        
+        setWidgets(validatedWidgets);
         setPermissions(computed.permissions);
       } catch (error) {
-        console.error('Failed to load dashboard:', error);
+        console.error('[DashboardPage] Failed to load dashboard:', error);
         setWidgets([]);
         setPermissions({});
       } finally {
@@ -408,14 +803,9 @@ const DashboardPage: React.FC = () => {
     };
 
     loadDashboard();
-  }, [currentRole, user?.id]);
+  }, [currentRole, user?.id, previewMode.enabled, location.pathname]);
 
-  // Load available roles for preview mode
-  useEffect(() => {
-    if (isSuperAdminUser) {
-      dashboardService.getAvailableRoles().then(setAvailableRoles).catch(console.error);
-    }
-  }, [isSuperAdminUser]);
+  // Removed: Load available roles for preview mode (preview selector removed)
 
 
   // Group widgets by row for grid layout
@@ -529,45 +919,38 @@ const DashboardPage: React.FC = () => {
 
         {/* Dashboard Content */}
         <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {/* SuperAdmin Preview Mode Selector */}
-          {isSuperAdminUser && !isPreviewMode && (
-            <div className="dashboard-preview-selector">
-              <label htmlFor="preview-role-select">View Dashboard As Role:</label>
-              <select
-                id="preview-role-select"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleStartPreview(e.target.value as Role);
-                  }
-                }}
-                className="dashboard-preview-select"
-              >
-                <option value="">Select a role...</option>
-                {availableRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Preview Mode Banner */}
           {isPreviewMode && (
-            <div className="dashboard-preview-selector" style={{ background: '#fef3c7', border: '1px solid #fbbf24' }}>
-              <span>Preview Mode: {previewMode.role}</span>
+            <div className="dashboard-preview-selector" style={{ 
+              background: '#fef3c7', 
+              border: '1px solid #fbbf24',
+              padding: '12px 16px',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span style={{ fontWeight: '600', color: '#92400e' }}>
+                  Preview Mode: {previewMode.role?.charAt(0).toUpperCase() + previewMode.role?.slice(1)}
+                </span>
+              </div>
               <button
                 onClick={handleExitPreview}
                 style={{
-                  marginLeft: '12px',
-                  padding: '4px 12px',
+                  padding: '6px 16px',
                   background: '#fbbf24',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600'
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#78350f'
                 }}
               >
                 Exit Preview
@@ -587,25 +970,43 @@ const DashboardPage: React.FC = () => {
           {!loading && (
             <div className="dashboard-widget-grid">
               {widgetRows.map((row, rowIndex) => (
-                <div key={rowIndex} className="dashboard-widget-row">
-                  {row.map((widget) => (
-                    <div
-                      key={widget.id}
-                      className="dashboard-widget-cell"
-                      style={{
-                        gridColumn: `span ${widget.gridColumn || 1}`,
-                        gridRow: widget.gridRow ? `span ${widget.gridRow}` : undefined,
-                      }}
-                    >
-                      <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
-                        <WidgetRenderer
-                          widget={widget}
-                          permissions={permissions}
-                          isPreviewMode={isPreviewMode}
-                        />
-                      </Suspense>
-                    </div>
-                  ))}
+                <div key={`row-${rowIndex}`} className="dashboard-widget-row">
+                  {row.map((widget, widgetIndex) => {
+                    // Validate widget before rendering
+                    if (!widget || typeof widget !== 'object' || Array.isArray(widget) || !widget.id || !widget.type) {
+                      console.error('[DashboardPage] Invalid widget in render:', widget);
+                      return (
+                        <div
+                          key={`invalid-widget-${rowIndex}-${widgetIndex}`}
+                          className="dashboard-widget-cell"
+                          style={{
+                            gridColumn: `span 1`,
+                          }}
+                        >
+                          <div className="widget-error">Invalid widget configuration</div>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div
+                        key={widget.id || `widget-${rowIndex}-${widgetIndex}`}
+                        className="dashboard-widget-cell"
+                        style={{
+                          gridColumn: `span ${widget.gridColumn || 1}`,
+                          gridRow: widget.gridRow ? `span ${widget.gridRow}` : undefined,
+                        }}
+                      >
+                        <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
+                          <WidgetRenderer
+                            widget={widget}
+                            permissions={permissions}
+                            isPreviewMode={isPreviewMode}
+                          />
+                        </Suspense>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>

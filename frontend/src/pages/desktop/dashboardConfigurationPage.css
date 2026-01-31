@@ -1,0 +1,14 @@
+/**
+ * Dashboard Configuration Page Styles
+ * 
+ * Styles for the Dashboard Configuration page.
+ * This page uses the same layout structure as other dashboard pages.
+ * Configuration-only screen - no impact on existing application logic
+ */
+
+.dashboard-configuration-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}

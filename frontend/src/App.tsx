@@ -7,6 +7,7 @@ import { DashboardProvider } from './context/DashboardContext';
 import LoginPage from './pages/desktop/LoginPage';
 import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
+import DashboardConfigurationPage from './pages/desktop/DashboardConfigurationPage';
 import TransactionPage from './pages/desktop/TransactionPage';
 import FinancePage from './pages/desktop/FinancePage';
 import CommercialAgreementsPage from './pages/desktop/CommercialAgreementsPage';
@@ -131,6 +132,16 @@ const AppWithDashboard = () => {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Dashboard Configuration route - SuperAdmin only */}
+      {/* This route is additive and does not affect existing navigation */}
+      <Route
+        path="/admin/dashboard-configuration"
+        element={
+          <ProtectedRoute>
+            <DashboardConfigurationPage />
           </ProtectedRoute>
         }
       />
