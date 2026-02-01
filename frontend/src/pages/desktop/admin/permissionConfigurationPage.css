@@ -1,0 +1,147 @@
+.perm-config-page {
+  padding: 20px 22px 40px;
+}
+
+.perm-config-header h1 {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+}
+
+.perm-config-header p {
+  margin: 0 0 18px 0;
+  color: #6b7280;
+}
+
+.perm-config-toolbar {
+  display: grid;
+  grid-template-columns: 260px 1fr 140px;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.perm-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perm-config-field span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.perm-config-field select,
+.perm-config-field input {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.perm-config-save {
+  border: none;
+  background: #111827;
+  color: white;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.perm-config-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.perm-config-error {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.perm-config-success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.perm-config-info {
+  color: #6b7280;
+  padding: 10px 0;
+}
+
+.perm-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.perm-config-module {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.perm-config-module__title {
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 800;
+  color: #111827;
+}
+
+.perm-config-module__list {
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.perm-config-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.perm-config-item:hover {
+  background: #f9fafb;
+}
+
+.perm-config-item__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.perm-config-item__name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+}
+
+.perm-config-item__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (max-width: 980px) {
+  .perm-config-grid {
+    grid-template-columns: 1fr;
+  }
+  .perm-config-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -13,7 +13,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../services/permissionService';
 import DashboardConfigurationContent from './admin/dashboard-configuration/DashboardConfigurationContent';
 import './dashboardConfigurationPage.css';
 
@@ -22,7 +21,8 @@ const DashboardConfigurationPage: React.FC = () => {
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
-  const isSuperAdminUser = permissions.includes('*') || hasPermission(permissions, 'DASHBOARD_CONFIG.VIEW');
+  // Only SUPER_ADMIN (wildcard) can access this page.
+  const isSuperAdminUser = permissions.includes('*');
 
   // Redirect if not SuperAdmin
   React.useEffect(() => {

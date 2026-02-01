@@ -2,7 +2,78 @@
   "hash": "8021a5f0",
   "configHash": "a16f0161",
   "lockfileHash": "45ee08d8",
-  "browserHash": "6ce9c506",
-  "optimized": {},
-  "chunks": {}
+  "browserHash": "c79ef723",
+  "optimized": {
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "2a112b42",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "d24a26ea",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "4b38f62d",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "88bdb4c6",
+      "needsInterop": false
+    },
+    "react-dom": {
+      "src": "../../node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "008c9ece",
+      "needsInterop": true
+    },
+    "html2pdf.js": {
+      "src": "../../node_modules/html2pdf.js/dist/html2pdf.js",
+      "file": "html2pdf__js.js",
+      "fileHash": "e43dd163",
+      "needsInterop": true
+    },
+    "jsbarcode": {
+      "src": "../../node_modules/jsbarcode/bin/JsBarcode.js",
+      "file": "jsbarcode.js",
+      "fileHash": "e182fd52",
+      "needsInterop": true
+    },
+    "qrcode": {
+      "src": "../../node_modules/qrcode/lib/browser.js",
+      "file": "qrcode.js",
+      "fileHash": "04f7c3d5",
+      "needsInterop": true
+    },
+    "@zxing/browser": {
+      "src": "../../node_modules/@zxing/browser/esm/index.js",
+      "file": "@zxing_browser.js",
+      "fileHash": "568d5d96",
+      "needsInterop": false
+    },
+    "recharts": {
+      "src": "../../node_modules/recharts/es6/index.js",
+      "file": "recharts.js",
+      "fileHash": "6c95dcdd",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-ATGQIJLN": {
+      "file": "chunk-ATGQIJLN.js"
+    },
+    "chunk-TWJRYSII": {
+      "file": "chunk-TWJRYSII.js"
+    },
+    "chunk-DC5AMYBS": {
+      "file": "chunk-DC5AMYBS.js"
+    }
+  }
 }

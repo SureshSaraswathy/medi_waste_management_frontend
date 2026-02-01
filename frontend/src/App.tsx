@@ -8,6 +8,7 @@ import LoginPage from './pages/desktop/LoginPage';
 import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
 import DashboardConfigurationPage from './pages/desktop/DashboardConfigurationPage';
+import PermissionConfigurationPage from './pages/desktop/admin/PermissionConfigurationPage';
 import TransactionPage from './pages/desktop/TransactionPage';
 import FinancePage from './pages/desktop/FinancePage';
 import CommercialAgreementsPage from './pages/desktop/CommercialAgreementsPage';
@@ -89,6 +90,8 @@ const AppWithDashboard = () => {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-otp" element={<OTPVerificationPage />} />
+      {/* Legacy route: keep for compatibility, but always route to Dashboard layout */}
+      <Route path="/welcome" element={<Navigate to="/dashboard" replace />} />
       <Route path="/mobile/login" element={<LoginPageMobileFirst />} />
       {/* Mobile Routes */}
       <Route
@@ -187,6 +190,14 @@ const AppWithDashboard = () => {
         element={
           <ProtectedRoute>
             <DashboardConfigurationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/permission-configuration"
+        element={
+          <ProtectedRoute>
+            <PermissionConfigurationPage />
           </ProtectedRoute>
         }
       />

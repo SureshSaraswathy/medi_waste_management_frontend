@@ -24,6 +24,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   permissions: string[];
+  permissionsLoaded: boolean;
   login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string }>;
   sendOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start with true to check localStorage
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -73,6 +75,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
               localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
               setUser(null);
               setPermissions([]);
+              setPermissionsLoaded(true);
             }
           } else {
             // Invalid user data, remove it
@@ -81,10 +84,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             setUser(null);
             localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
             setPermissions([]);
+            setPermissionsLoaded(true);
           }
         } else {
           setUser(null);
           setPermissions([]);
+          setPermissionsLoaded(true);
         }
       } catch (error) {
         console.error('Error loading user from storage:', error);
@@ -92,6 +97,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         setUser(null);
         localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
         setPermissions([]);
+        setPermissionsLoaded(true);
       } finally {
         setLoading(false);
       }
@@ -128,6 +134,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const loadPermissions = async () => {
       if (!user?.token) {
         setPermissions([]);
+        setPermissionsLoaded(true);
         return;
       }
       try {
@@ -140,6 +147,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         }
       } catch {
         // Keep previous permissions if fetch fails, but don't block the app.
+      } finally {
+        setPermissionsLoaded(true);
       }
     };
     loadPermissions();
@@ -214,8 +223,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   );
 
   const value = useMemo(
-    () => ({ user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole }),
-    [user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole],
+    () => ({ user, loading, permissions, permissionsLoaded, login, sendOTP, verifyOTP, logout, createUser, hasRole }),
+    [user, loading, permissions, permissionsLoaded, login, sendOTP, verifyOTP, logout, createUser, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

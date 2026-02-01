@@ -26,6 +26,7 @@ import { TaskListWidget } from '../../components/dashboard/widgets/TaskListWidge
 import { ApprovalQueueWidget } from '../../components/dashboard/widgets/ApprovalQueueWidget';
 import { AlertWidget } from '../../components/dashboard/widgets/AlertWidget';
 import { ActivityTimelineWidget } from '../../components/dashboard/widgets/ActivityTimelineWidget';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import './dashboardPage.css';
 
 // Lazy load widget components for better performance
@@ -265,7 +266,7 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
 
 
 const DashboardPage: React.FC = () => {
-  const { user, permissions: userPermissions, logout } = useAuth();
+  const { user, permissions: userPermissions, logout, permissionsLoaded } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
@@ -299,8 +300,11 @@ const DashboardPage: React.FC = () => {
     : ((user?.roles?.[0] as Role) || 'viewer');
 
   const isPreviewMode = previewMode.enabled;
-  // SUPER_ADMIN is inferred from permissions wildcard; avoids hardcoding role names.
-  const isSuperAdminUser = userPermissions.includes('*') || hasPermission(userPermissions, 'DASHBOARD_CONFIG.VIEW');
+  // SUPER_ADMIN is inferred from wildcard only.
+  const isSuperAdminUser = userPermissions.includes('*');
+  // No-access mode should only be applied AFTER permissions have loaded (prevents first-login blank screen).
+  const noAccessMode =
+    permissionsLoaded && !isSuperAdminUser && (!Array.isArray(userPermissions) || userPermissions.length === 0);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -314,7 +318,7 @@ const DashboardPage: React.FC = () => {
     setPreviewMode({ enabled: false, role: null });
   };
 
-  const navItems = [
+  const navItemsAll = [
     { 
       path: '/dashboard', 
       label: 'Dashboard', 
@@ -408,11 +412,53 @@ const DashboardPage: React.FC = () => {
         </svg>
       ),
       active: location.pathname === '/admin/dashboard-configuration' || location.pathname.startsWith('/admin/dashboard-configuration')
+    },
+    {
+      path: '/admin/permission-configuration',
+      label: 'Permission Configuration',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 1l3 5 5 .5-3.6 3.3 1.1 5.2L12 12.9 6.5 15l1.1-5.2L4 6.5 9 6z"></path>
+          <path d="M20 21v-7a2 2 0 0 0-2-2h-3"></path>
+          <path d="M4 21v-7a2 2 0 0 1 2-2h3"></path>
+        </svg>
+      ),
+      active:
+        location.pathname === '/admin/permission-configuration' ||
+        location.pathname.startsWith('/admin/permission-configuration'),
     }] : []),
   ];
 
+  // Permission-gated sidebar:
+  // - Always show Dashboard as landing page
+  // - Hide other menus unless user has relevant permissions (or '*')
+  const navItems = navItemsAll.filter((item) => {
+    if (item.path === '/dashboard') return true;
+    if (item.path === '/transaction') return canAccessDesktopModule(userPermissions, 'transaction');
+    if (item.path === '/finance') return canAccessDesktopModule(userPermissions, 'finance');
+    if (item.path === '/commercial-agreements') return canAccessDesktopModule(userPermissions, 'commercial');
+    if (item.path === '/compliance-training') return canAccessDesktopModule(userPermissions, 'compliance');
+    if (item.path === '/master') return canAccessDesktopModule(userPermissions, 'master');
+    if (item.path === '/report') return canAccessDesktopModule(userPermissions, 'report');
+    return true;
+  });
+
   // Load dashboard configuration
   useEffect(() => {
+    // Wait for permissions to load before requesting dashboard config/widgets.
+    if (!permissionsLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    // If user has no permissions mapped, keep Dashboard shell but do not call widget APIs.
+    if (noAccessMode) {
+      setWidgets([]);
+      setWidgetPermissions({});
+      setLoading(false);
+      return;
+    }
+
     // Skip loading if in preview mode (already loaded from sessionStorage)
     if (previewMode.enabled) {
       return;
@@ -804,7 +850,15 @@ const DashboardPage: React.FC = () => {
     };
 
     loadDashboard();
-  }, [currentRole, user?.id, previewMode.enabled, location.pathname]);
+  }, [
+    currentRole,
+    user?.id,
+    previewMode.enabled,
+    // Re-run when permissions arrive (fixes "SuperAdmin dashboard empty until clicking menu")
+    permissionsLoaded,
+    noAccessMode,
+    userPermissions.join('|'),
+  ]);
 
   // Removed: Load available roles for preview mode (preview selector removed)
 
@@ -920,6 +974,29 @@ const DashboardPage: React.FC = () => {
 
         {/* Dashboard Content */}
         <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+          {/* No-permission Welcome message (inside Dashboard layout) */}
+          {noAccessMode && (
+            <div
+              style={{
+                maxWidth: 720,
+                margin: '40px auto',
+                background: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+              }}
+            >
+              <h2 style={{ margin: 0, color: '#111827' }}>Welcome to MEDI‑WASTE System Management</h2>
+              <p style={{ marginTop: 10, color: '#4b5563', lineHeight: 1.6 }}>
+                Your account is active, but <strong>no permissions are assigned</strong> yet.
+              </p>
+              <p style={{ marginTop: 8, color: '#6b7280' }}>
+                Please contact your SuperAdmin to assign permissions for your role.
+              </p>
+            </div>
+          )}
+
           {/* Preview Mode Banner */}
           {isPreviewMode && (
             <div className="dashboard-preview-selector" style={{ 

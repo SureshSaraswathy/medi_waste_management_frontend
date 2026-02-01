@@ -435,30 +435,15 @@ const MasterPage = () => {
       </div>
 
       <div className="master-grid">
-        {filteredItems.map((item) => {
-          const allowed = canSeeMasterCard(item.id);
-          if (!allowed) {
-            return (
-              <div
-                key={item.id}
-                className="master-card master-card--disabled"
-                title="No access"
-                style={{ opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' }}
-              >
-                <div className="master-card-icon">{item.icon}</div>
-                <h3 className="master-card-title">{item.title}</h3>
-                <p className="master-card-description">{item.description}</p>
-              </div>
-            );
-          }
-          return (
+        {filteredItems
+          .filter((item) => canSeeMasterCard(item.id))
+          .map((item) => (
             <Link key={item.id} to={item.path} className="master-card">
               <div className="master-card-icon">{item.icon}</div>
               <h3 className="master-card-title">{item.title}</h3>
               <p className="master-card-description">{item.description}</p>
             </Link>
-          );
-        })}
+          ))}
       </div>
       </div>
       </main>

@@ -8,7 +8,7 @@ type Props = PropsWithChildren<{
 }>;
 
 const ProtectedRoute = ({ roles, children }: Props) => {
-  const { user, loading } = useAuth();
+  const { user, loading, permissions, permissionsLoaded } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
@@ -43,6 +43,30 @@ const ProtectedRoute = ({ roles, children }: Props) => {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Wait for permissions to load to avoid incorrectly redirecting users who DO have access.
+  if (!permissionsLoaded) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <p style={{ color: '#666', fontSize: '14px' }}>Loading permissions...</p>
+      </div>
+    );
+  }
+
+  // No-access routing:
+  // If the user has no mapped permissions (and is not SUPER_ADMIN), force them to the Dashboard page.
+  // Dashboard will show a "no permissions assigned" message inside the normal layout.
+  // Allowed pages in no-access mode: /dashboard, /profile (logout is a button).
+  const isSuperAdmin = Array.isArray(permissions) && permissions.includes('*');
+  const hasAnyPermission = Array.isArray(permissions) && permissions.length > 0;
+  const noAccessMode = !isSuperAdmin && !hasAnyPermission;
+
+  if (noAccessMode) {
+    const allowed = location.pathname === '/dashboard' || location.pathname === '/profile';
+    if (!allowed) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   // Safety check: ensure user.roles is an array
