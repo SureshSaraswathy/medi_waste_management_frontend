@@ -110,11 +110,11 @@ interface Route {
 }
 
 const HCFMasterPage = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(user);
-  const canEdit = canEditMasterData(user);
-  const canDelete = canDeleteMasterData(user);
+  const canCreate = canCreateMasterData(permissions);
+  const canEdit = canEditMasterData(permissions);
+  const canDelete = canDeleteMasterData(permissions);
   
   // Debug: Log permissions (remove in production)
   useEffect(() => {

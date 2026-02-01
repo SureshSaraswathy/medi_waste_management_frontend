@@ -90,7 +90,7 @@ const OTPVerificationPage = () => {
           <h2 className="otp-title">Verify Your Email</h2>
           <p className="otp-subtitle">
             {email.toLowerCase() === 'superadmin@medi-waste.io' || email.toLowerCase() === 'superadmin' ? (
-              <>Use static OTP: <strong>123456</strong></>
+              <>Use your configured SuperAdmin OTP.</>
             ) : (
               <>We've sent a 6-digit code to your email. Please enter it below.</>
             )}

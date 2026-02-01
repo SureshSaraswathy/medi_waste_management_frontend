@@ -1,0 +1,41 @@
+.mobile-analytics {
+  padding: 16px;
+}
+
+.mobile-analytics-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.mobile-analytics-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.mobile-analytics-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 14px;
+}
+
+.mobile-analytics-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  background: #111827;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.mobile-analytics-btn.secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+

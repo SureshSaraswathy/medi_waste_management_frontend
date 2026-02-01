@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { hasPermission } from '../../services/permissionService';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
 const MasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -203,7 +205,7 @@ const MasterPage = () => {
     item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const navItems = [
+  const navItemsAll = [
     { 
       path: '/dashboard', 
       label: 'Dashboard', 
@@ -287,6 +289,42 @@ const MasterPage = () => {
       active: location.pathname.startsWith('/report')
     },
   ];
+
+  const masterItemPermissionById: Record<string, string> = {
+    company: 'COMPANY_VIEW',
+    state: 'STATE_VIEW',
+    area: 'AREA_VIEW',
+    category: 'CATEGORY_VIEW',
+    'color-code': 'COLOR_VIEW',
+    'pcb-zone': 'PCB_ZONE_VIEW',
+    frequency: 'FREQUENCY_VIEW',
+    'hcf-type': 'HCF_TYPE_VIEW',
+    'user-management': 'USER_VIEW',
+    'hcf-master': 'HCF_VIEW',
+    'hcf-amendments': 'HCF_AMENDMENT_VIEW',
+    'fleet-management': 'FLEET_VIEW',
+    'route-master': 'ROUTE_VIEW',
+    'route-hcf-mapping': 'ROUTE_HCF_VIEW',
+  };
+
+  const canSeeMasterCard = (itemId: string) => {
+    const perms = Array.isArray(permissions) ? permissions : [];
+    if (perms.includes('*')) return true;
+    const required = masterItemPermissionById[itemId];
+    if (!required) return false;
+    return hasPermission(perms, required);
+  };
+
+  const navItems = navItemsAll.filter((item) => {
+    if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
+    if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
+    if (item.path === '/finance') return canAccessDesktopModule(permissions, 'finance');
+    if (item.path === '/commercial-agreements') return canAccessDesktopModule(permissions, 'commercial');
+    if (item.path === '/compliance-training') return canAccessDesktopModule(permissions, 'compliance');
+    if (item.path === '/master') return canAccessDesktopModule(permissions, 'master');
+    if (item.path === '/report') return canAccessDesktopModule(permissions, 'report');
+    return true;
+  });
 
   return (
     <div className="dashboard-page">
@@ -397,14 +435,31 @@ const MasterPage = () => {
       </div>
 
       <div className="master-grid">
-        {filteredItems.map((item) => (
-          <Link key={item.id} to={item.path} className="master-card">
-            <div className="master-card-icon">{item.icon}</div>
-            <h3 className="master-card-title">{item.title}</h3>
-            <p className="master-card-description">{item.description}</p>
-          </Link>
-        ))}
-        </div>
+        {filteredItems.map((item) => {
+          const allowed = canSeeMasterCard(item.id);
+          if (!allowed) {
+            return (
+              <div
+                key={item.id}
+                className="master-card master-card--disabled"
+                title="No access"
+                style={{ opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' }}
+              >
+                <div className="master-card-icon">{item.icon}</div>
+                <h3 className="master-card-title">{item.title}</h3>
+                <p className="master-card-description">{item.description}</p>
+              </div>
+            );
+          }
+          return (
+            <Link key={item.id} to={item.path} className="master-card">
+              <div className="master-card-icon">{item.icon}</div>
+              <h3 className="master-card-title">{item.title}</h3>
+              <p className="master-card-description">{item.description}</p>
+            </Link>
+          );
+        })}
+      </div>
       </div>
       </main>
     </div>

@@ -51,9 +51,9 @@ interface HCF {
 }
 
 const RouteHCFMappingPage = () => {
-  const { logout, user } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(user);
+  const canCreate = canCreateMasterData(permissions);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingMapping, setEditingMapping] = useState<RouteHCFMapping | null>(null);

@@ -7,7 +7,7 @@ const MobileAssignHospitalPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <MobileLayout title="Assign Hospital" showBackButton onBack={() => navigate('/mobile/home')}>
+    <MobileLayout title="Route Assignment" showBackButton onBack={() => navigate('/mobile/home')}>
       <div className="mobile-assign-hospital">
         <div className="mobile-assign-hospital-info">
           <p>Route assignment functionality will be available here.</p>

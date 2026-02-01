@@ -15,7 +15,7 @@ import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { MenuItem, PreviewMode } from '../../types/dashboard';
 import { dashboardService } from '../../services/dashboardService';
-import { isSuperAdmin } from '../../services/permissionService';
+import { hasPermission } from '../../services/permissionService';
 import './dashboardShell.css';
 
 interface DashboardShellProps {
@@ -83,7 +83,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   previewMode,
   onExitPreview,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, permissions, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -274,7 +274,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     );
   };
 
-  const isSuperAdminUser = isSuperAdmin(user);
+  const isSuperAdminUser = permissions.includes('*') || hasPermission(permissions, 'DASHBOARD_CONFIG.VIEW');
 
   return (
     <div className="dashboard-shell">

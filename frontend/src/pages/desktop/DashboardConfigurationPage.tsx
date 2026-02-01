@@ -13,16 +13,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { isSuperAdmin } from '../../services/permissionService';
+import { hasPermission } from '../../services/permissionService';
 import DashboardConfigurationContent from './admin/dashboard-configuration/DashboardConfigurationContent';
 import './dashboardConfigurationPage.css';
 
 const DashboardConfigurationPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, permissions, logout } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
-  const isSuperAdminUser = isSuperAdmin(user);
+  const isSuperAdminUser = permissions.includes('*') || hasPermission(permissions, 'DASHBOARD_CONFIG.VIEW');
 
   // Redirect if not SuperAdmin
   React.useEffect(() => {

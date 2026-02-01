@@ -2,6 +2,72 @@
   padding: 16px;
 }
 
+.mobile-scan-camera-section {
+  margin-bottom: 14px;
+}
+
+.mobile-scan-camera-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mobile-scan-camera-btn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #111827;
+  color: #fff;
+}
+
+.mobile-scan-camera-btn.stop {
+  background: #b91c1c;
+}
+
+.mobile-scan-camera-btn:disabled {
+  opacity: 0.6;
+}
+
+.mobile-scan-camera-preview {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #0b1220;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  aspect-ratio: 4 / 3;
+}
+
+.mobile-scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(transparent 45%, rgba(0, 0, 0, 0.55) 60%);
+}
+
+.mobile-scan-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .mobile-scan-input-section {
   margin-bottom: 24px;
 }

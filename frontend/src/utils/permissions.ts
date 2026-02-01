@@ -1,30 +1,31 @@
-import { User } from '../context/AuthContext';
-
 /**
- * Check if the user is a SuperAdmin
- * SuperAdmin is identified by:
- * 1. Having 'superadmin' role
- * 2. User ID matching SuperAdmin ID ('00000000-0000-0000-0000-000000000001')
- * 3. Email matching 'superadmin@medi-waste.io' or 'superadmin'
- * 4. Username/name matching 'superadmin'
+ * Frontend permission helpers
+ *
+ * IMPORTANT:
+ * - Do NOT hardcode role names on the frontend.
+ * - Use the permission_code list from the backend (`GET /permissions/me`).
+ * - Wildcard `*` means full access (SuperAdmin).
+ *
+ * Convention (recommended):
+ * - <FEATURE>.<ACTION>  e.g. INVOICE.VIEW, INVOICE.CREATE
+ * Backward compatibility:
+ * - Old underscore codes (INVOICE_VIEW) are supported by normalization.
  */
-export const isSuperAdmin = (user: User | null): boolean => {
-  if (!user) return false;
-  
-  // Check by role
-  if (user.roles.includes('superadmin')) return true;
-  
-  // Check by user ID (SuperAdmin static ID)
-  if (user.id === '00000000-0000-0000-0000-000000000001') return true;
-  
-  // Check by email
-  const email = user.email?.toLowerCase();
-  if (email === 'superadmin@medi-waste.io' || email === 'superadmin') return true;
-  
-  // Check by username/name
-  const name = user.name?.toLowerCase();
-  if (name === 'superadmin') return true;
-  
+
+export const hasPermission = (permissions: string[], requiredPermission: string): boolean => {
+  if (!Array.isArray(permissions) || permissions.length === 0) return false;
+  if (permissions.includes('*')) return true;
+
+  const req = (requiredPermission || '').trim();
+  if (!req) return false;
+
+  const variants = new Set<string>([req]);
+  if (req.includes('.')) variants.add(req.replace(/\./g, '_'));
+  if (req.includes('_')) variants.add(req.replace(/_/g, '.'));
+
+  for (const v of variants) {
+    if (permissions.includes(v)) return true;
+  }
   return false;
 };
 
@@ -32,25 +33,27 @@ export const isSuperAdmin = (user: User | null): boolean => {
  * Check if the user can create master data
  * SuperAdmin and Admin can create master data
  */
-export const canCreateMasterData = (user: User | null): boolean => {
-  if (!user) return false;
-  return isSuperAdmin(user) || user.roles.includes('admin');
+export const canCreateMasterData = (permissions: string[]): boolean => {
+  // Broad, additive helper: any create permission is considered "can create masters"
+  // (Use module-specific permissions for strict control: e.g. HCF.CREATE)
+  if (hasPermission(permissions, 'MASTERS.CREATE')) return true;
+  return permissions.includes('*') || permissions.some((p) => p.endsWith('.CREATE') || p.endsWith('_CREATE'));
 };
 
 /**
  * Check if the user can edit master data
  * SuperAdmin and Admin can edit master data
  */
-export const canEditMasterData = (user: User | null): boolean => {
-  if (!user) return false;
-  return isSuperAdmin(user) || user.roles.includes('admin');
+export const canEditMasterData = (permissions: string[]): boolean => {
+  if (hasPermission(permissions, 'MASTERS.EDIT')) return true;
+  return permissions.includes('*') || permissions.some((p) => p.endsWith('.EDIT') || p.endsWith('_EDIT') || p.endsWith('.UPDATE') || p.endsWith('_UPDATE'));
 };
 
 /**
  * Check if the user can delete master data
  * Only SuperAdmin can delete master data
  */
-export const canDeleteMasterData = (user: User | null): boolean => {
-  if (!user) return false;
-  return isSuperAdmin(user);
+export const canDeleteMasterData = (permissions: string[]): boolean => {
+  if (hasPermission(permissions, 'MASTERS.DELETE')) return true;
+  return permissions.includes('*') || permissions.some((p) => p.endsWith('.DELETE') || p.endsWith('_DELETE'));
 };

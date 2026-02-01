@@ -45,9 +45,9 @@ interface Company {
 }
 
 const FleetManagementPage = () => {
-  const { logout, user } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(user);
+  const canCreate = canCreateMasterData(permissions);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);

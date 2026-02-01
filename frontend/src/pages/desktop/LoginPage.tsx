@@ -214,7 +214,7 @@ const LoginPage = () => {
               <form className="login-form otp-form-inline" onSubmit={onSubmitOTP}>
                 <div className="otp-instruction">
                   {otpEmail.toLowerCase() === 'superadmin@medi-waste.io' || otpEmail.toLowerCase() === 'superadmin' ? (
-                    <p>Use static OTP: <strong>123456</strong></p>
+                    <p>Use your configured SuperAdmin OTP.</p>
                   ) : (
                     <p>We've sent a 6-digit code to your email. Please enter it below.</p>
                   )}

@@ -27,9 +27,9 @@ interface Company {
 }
 
 const HCFTypeMasterPage = () => {
-  const { logout, user } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(user);
+  const canCreate = canCreateMasterData(permissions);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingHCFType, setEditingHCFType] = useState<HCFType | null>(null);

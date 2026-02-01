@@ -74,6 +74,11 @@ import MobileScanPage from './pages/mobile/MobileScanPage';
 import MobileWasteEntryPage from './pages/mobile/MobileWasteEntryPage';
 import MobileAssignHospitalPage from './pages/mobile/MobileAssignHospitalPage';
 import MobileHCFMasterPage from './pages/mobile/MobileHCFMasterPage';
+import MobileSettingsPage from './pages/mobile/MobileSettingsPage';
+import MobileProfilePage from './pages/mobile/MobileProfilePage';
+import MobileWasteCollectionsPage from './pages/mobile/MobileWasteCollectionsPage';
+import MobileAssignedHcfListPage from './pages/mobile/MobileAssignedHcfListPage';
+import MobileAnalyticsPage from './pages/mobile/MobileAnalyticsPage';
 
 // Wrapper component to provide Dashboard context
 const AppWithDashboard = () => {
@@ -111,6 +116,14 @@ const AppWithDashboard = () => {
         }
       />
       <Route
+        path="/mobile/waste-collections"
+        element={
+          <ProtectedRoute>
+            <MobileWasteCollectionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/mobile/assign-hospital"
         element={
           <ProtectedRoute>
@@ -119,10 +132,42 @@ const AppWithDashboard = () => {
         }
       />
       <Route
+        path="/mobile/assigned-hcfs"
+        element={
+          <ProtectedRoute>
+            <MobileAssignedHcfListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/analytics"
+        element={
+          <ProtectedRoute>
+            <MobileAnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/mobile/hcf-master"
         element={
           <ProtectedRoute>
             <MobileHCFMasterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/profile"
+        element={
+          <ProtectedRoute>
+            <MobileProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mobile/settings"
+        element={
+          <ProtectedRoute>
+            <MobileSettingsPage />
           </ProtectedRoute>
         }
       />

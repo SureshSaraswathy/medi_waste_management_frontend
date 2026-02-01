@@ -5,6 +5,7 @@ import { stateService, StateResponse } from '../../services/stateService';
 import MasterPageLayout from '../../components/common/MasterPageLayout';
 import Tabs from '../../components/common/Tabs';
 import { Column } from '../../components/common/DataTable';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import '../desktop/dashboardPage.css';
 
 interface State {
@@ -19,7 +20,7 @@ interface State {
 }
 
 const StateMasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -65,7 +66,7 @@ const StateMasterPage = () => {
     loadStates();
   }, []);
 
-  const navItems = [
+  const navItemsAll = [
     { 
       path: '/dashboard', 
       label: 'Dashboard', 
@@ -150,6 +151,17 @@ const StateMasterPage = () => {
       active: location.pathname === '/report' 
     },
   ];
+
+  const navItems = navItemsAll.filter((item) => {
+    if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
+    if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
+    if (item.path === '/finance') return canAccessDesktopModule(permissions, 'finance');
+    if (item.path === '/commercial-agreements') return canAccessDesktopModule(permissions, 'commercial');
+    if (item.path === '/compliance-training') return canAccessDesktopModule(permissions, 'compliance');
+    if (item.path === '/master') return canAccessDesktopModule(permissions, 'master');
+    if (item.path === '/report') return canAccessDesktopModule(permissions, 'report');
+    return true;
+  });
 
   const filteredStates = states.filter(state =>
     state.stateName.toLowerCase().includes(searchQuery.toLowerCase()) ||

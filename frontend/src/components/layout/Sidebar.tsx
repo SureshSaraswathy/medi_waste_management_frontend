@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { fetchMenuConfig, canAccessMenu, MenuConfig } from '../../services/permissionService';
+import { fetchMenuConfig, canAccessMenu, MenuConfig, hasPermission } from '../../services/permissionService';
 import './sidebar.css';
 
 interface NavItem {
@@ -19,8 +19,9 @@ interface SidebarProps {
 
 const Sidebar = ({ onLogout }: SidebarProps) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const [menuConfig, setMenuConfig] = useState<MenuConfig | null>(null);
+  const [menuConfigLoaded, setMenuConfigLoaded] = useState(false);
   const [reportSubmenuOpen, setReportSubmenuOpen] = useState(
     location.pathname.startsWith('/report')
   );
@@ -33,11 +34,22 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
       if (user?.token) {
         const config = await fetchMenuConfig(user.token);
         setMenuConfig(config);
+        setMenuConfigLoaded(true);
       }
     };
 
     loadMenuConfig();
-  }, [user]);
+  }, [user?.token]);
+
+  // Helper: if menuConfig is missing (not configured / API failed), fall back to permission list.
+  // Important: DO NOT treat missing menuConfig as "allow all" (that causes every menu to show).
+  const canShow = (fallbackPermission?: string) => {
+    if (Array.isArray(permissions) && permissions.includes('*')) return true;
+    if (!menuConfigLoaded) return false; // avoid flicker: don't show everything before config loads
+    if (menuConfig) return true; // menuConfig checks will be done via canAccessMenu below
+    if (!fallbackPermission) return false;
+    return hasPermission(Array.isArray(permissions) ? permissions : [], fallbackPermission);
+  };
 
   useEffect(() => {
     setReportSubmenuOpen(location.pathname.startsWith('/report'));
@@ -49,7 +61,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     const items: NavItem[] = [];
 
     // Dashboard
-    if (!menuConfig || canAccessMenu(menuConfig, 'dashboard')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'dashboard')) || (!menuConfig && canShow('DASHBOARD_VIEW'))) {
       items.push({
         path: '/dashboard',
         label: 'Dashboard',
@@ -64,7 +76,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Transaction
-    if (!menuConfig || canAccessMenu(menuConfig, 'transaction')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'transaction')) || (!menuConfig && canShow('MENU_TRANSACTION_VIEW'))) {
       items.push({
         path: '/transaction',
         label: 'Transaction',
@@ -79,7 +91,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Finance
-    if (!menuConfig || canAccessMenu(menuConfig, 'finance')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'finance')) || (!menuConfig && canShow('FINANCE_VIEW'))) {
       items.push({
         path: '/finance',
         label: 'Finance',
@@ -94,7 +106,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Commercial / Agreements
-    if (!menuConfig || canAccessMenu(menuConfig, 'commercialAgreements')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'commercialAgreements')) || (!menuConfig && canShow('MENU_COMMERCIAL_VIEW'))) {
       items.push({
         path: '/commercial-agreements',
         label: 'Commercial / Agreements',
@@ -111,7 +123,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Compliance & Training
-    if (!menuConfig || canAccessMenu(menuConfig, 'complianceTraining')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'complianceTraining')) || (!menuConfig && canShow('MENU_COMPLIANCE_VIEW'))) {
       items.push({
         path: '/compliance-training',
         label: 'Compliance & Training',
@@ -125,43 +137,43 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Master (with submenu)
-    if (!menuConfig || canAccessMenu(menuConfig, 'master')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'master')) || (!menuConfig && canShow('MENU_MASTER_VIEW'))) {
       const masterSubmenus: { path: string; label: string }[] = [];
       
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'company')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'company')) || (!menuConfig && canShow('COMPANY_VIEW'))) {
         masterSubmenus.push({ path: '/master/company', label: 'Company Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'state')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'state')) || (!menuConfig && canShow('STATE_VIEW'))) {
         masterSubmenus.push({ path: '/master/state', label: 'State Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'area')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'area')) || (!menuConfig && canShow('AREA_VIEW'))) {
         masterSubmenus.push({ path: '/master/area', label: 'Area Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'category')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'category')) || (!menuConfig && canShow('CATEGORY_VIEW'))) {
         masterSubmenus.push({ path: '/master/category', label: 'Category Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'color')) {
-        masterSubmenus.push({ path: '/master/color', label: 'Color Master' });
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'color')) || (!menuConfig && canShow('COLOR_VIEW'))) {
+        masterSubmenus.push({ path: '/master/color-code', label: 'Color Code Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'pcbZone')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'pcbZone')) || (!menuConfig && canShow('PCB_ZONE_VIEW'))) {
         masterSubmenus.push({ path: '/master/pcb-zone', label: 'PCB Zone Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'frequency')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'frequency')) || (!menuConfig && canShow('FREQUENCY_VIEW'))) {
         masterSubmenus.push({ path: '/master/frequency', label: 'Frequency Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'hcfType')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'hcfType')) || (!menuConfig && canShow('HCF_TYPE_VIEW'))) {
         masterSubmenus.push({ path: '/master/hcf-type', label: 'HCF Type Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'hcf')) {
-        masterSubmenus.push({ path: '/master/hcf', label: 'HCF Master' });
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'hcf')) || (!menuConfig && canShow('HCF_VIEW'))) {
+        masterSubmenus.push({ path: '/master/hcf-master', label: 'HCF Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'route')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'route')) || (!menuConfig && canShow('ROUTE_VIEW'))) {
         masterSubmenus.push({ path: '/master/route', label: 'Route Master' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'fleet')) {
-        masterSubmenus.push({ path: '/master/fleet', label: 'Fleet Management' });
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'fleet')) || (!menuConfig && canShow('FLEET_VIEW'))) {
+        masterSubmenus.push({ path: '/master/fleet-management', label: 'Fleet Management' });
       }
-      if (!menuConfig || canAccessMenu(menuConfig, 'master', 'routeHcfMapping')) {
+      if ((menuConfig && canAccessMenu(menuConfig, 'master', 'routeHcfMapping')) || (!menuConfig && canShow('ROUTE_HCF_VIEW'))) {
         masterSubmenus.push({ path: '/master/route-hcf-mapping', label: 'Route-HCF Mapping' });
       }
 
@@ -183,7 +195,7 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
     }
 
     // Report (with submenu)
-    if (!menuConfig || canAccessMenu(menuConfig, 'report')) {
+    if ((menuConfig && canAccessMenu(menuConfig, 'report')) || (!menuConfig && canShow('REPORTS_VIEW'))) {
       items.push({
         path: '/report',
         label: 'Report',

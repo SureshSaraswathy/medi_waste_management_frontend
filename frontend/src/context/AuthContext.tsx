@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { loginRequest, registerUserRequest, sendOTPEmail, loginWithOTP } from '../services/authService';
+import { fetchUserPermissions } from '../services/permissionService';
 
 type Role = 'admin' | 'manager' | 'staff' | 'viewer' | 'superadmin';
 
@@ -22,6 +23,7 @@ export type User = {
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
+  permissions: string[];
   login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string }>;
   sendOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
@@ -37,10 +39,12 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const STORAGE_KEY = 'mw-auth-user';
+const PERMISSIONS_STORAGE_KEY = 'mw-auth-permissions';
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start with true to check localStorage
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -55,25 +59,39 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             const tokenParts = storedUser.token.split('.');
             if (tokenParts.length === 3) {
               setUser(storedUser);
+              // Load cached permissions if any (additive; safe fallback to empty)
+              try {
+                const rawPerms = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
+                if (rawPerms) setPermissions(JSON.parse(rawPerms) || []);
+              } catch {
+                setPermissions([]);
+              }
             } else {
               // Invalid token format, remove user data
               console.warn('Invalid token format in storage');
               localStorage.removeItem(STORAGE_KEY);
+              localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
               setUser(null);
+              setPermissions([]);
             }
           } else {
             // Invalid user data, remove it
             console.warn('Invalid user data in storage');
             localStorage.removeItem(STORAGE_KEY);
             setUser(null);
+            localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
+            setPermissions([]);
           }
         } else {
           setUser(null);
+          setPermissions([]);
         }
       } catch (error) {
         console.error('Error loading user from storage:', error);
         localStorage.removeItem(STORAGE_KEY);
         setUser(null);
+        localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
+        setPermissions([]);
       } finally {
         setLoading(false);
       }
@@ -96,14 +114,46 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       } catch (error) {
         console.error('Error removing user from storage:', error);
       }
+      try {
+        localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      setPermissions([]);
     }
   }, []);
+
+  // Fetch permissions for the logged-in user (additive, non-breaking).
+  useEffect(() => {
+    const loadPermissions = async () => {
+      if (!user?.token) {
+        setPermissions([]);
+        return;
+      }
+      try {
+        const perms = await fetchUserPermissions(user.token);
+        setPermissions(perms || []);
+        try {
+          localStorage.setItem(PERMISSIONS_STORAGE_KEY, JSON.stringify(perms || []));
+        } catch {
+          // ignore
+        }
+      } catch {
+        // Keep previous permissions if fetch fails, but don't block the app.
+      }
+    };
+    loadPermissions();
+  }, [user?.token]);
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
       const result = await loginRequest(email, password);
       if (result.requiresOTP) {
+        // If a previous session user exists in storage, LoginPage's "already logged in" effect
+        // can immediately redirect to /dashboard and skip the OTP UI.
+        // Clear any persisted user before starting the OTP flow.
+        persist(null);
         // Use the normalized email from result, not the input email
         return { requiresOTP: true, email: result.email };
       }
@@ -115,7 +165,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [persist]);
 
   const sendOTP = useCallback(async (email: string) => {
     setLoading(true);
@@ -164,8 +214,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   );
 
   const value = useMemo(
-    () => ({ user, loading, login, sendOTP, verifyOTP, logout, createUser, hasRole }),
-    [user, loading, login, sendOTP, verifyOTP, logout, createUser, hasRole],
+    () => ({ user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole }),
+    [user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

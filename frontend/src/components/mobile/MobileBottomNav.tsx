@@ -150,43 +150,12 @@ const MobileBottomNav = () => {
               </button>
             </div>
             <div className="mobile-more-content">
-              <button className="mobile-more-item" onClick={() => { navigate('/mobile/assign-hospital'); setShowMoreMenu(false); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                <span>Assign Hospital</span>
-              </button>
-              <button className="mobile-more-item" onClick={() => { navigate('/mobile/waste-entry'); setShowMoreMenu(false); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
-                <span>Waste Entry</span>
-              </button>
-              <button className="mobile-more-item" onClick={() => { navigate('/mobile/hcf-master'); setShowMoreMenu(false); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span>HCF Master</span>
-              </button>
               <button className="mobile-more-item" onClick={() => { navigate('/mobile/profile'); setShowMoreMenu(false); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
                 <span>Profile</span>
-              </button>
-              <button className="mobile-more-item" onClick={() => { navigate('/mobile/settings'); setShowMoreMenu(false); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
-                </svg>
-                <span>Settings</span>
               </button>
               <button className="mobile-more-item mobile-more-item--logout" onClick={handleLogout}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

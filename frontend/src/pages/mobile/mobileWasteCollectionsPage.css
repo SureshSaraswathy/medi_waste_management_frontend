@@ -1,0 +1,139 @@
+.mobile-wc {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-wc-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.mobile-wc-search {
+  flex: 1;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.mobile-wc-refresh {
+  width: 44px;
+  border: none;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.mobile-wc-refresh:disabled {
+  opacity: 0.6;
+}
+
+.mobile-wc-banner {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mobile-wc-banner.error {
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.mobile-wc-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mobile-wc-primary,
+.mobile-wc-secondary {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mobile-wc-primary {
+  background: #111827;
+  color: #fff;
+}
+
+.mobile-wc-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.mobile-wc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-wc-item {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.mobile-wc-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mobile-wc-barcode {
+  font-weight: 900;
+  font-size: 14px;
+  color: #111827;
+  word-break: break-all;
+}
+
+.mobile-wc-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: #f3f4f6;
+  color: #111827;
+  flex: 0 0 auto;
+}
+
+.mobile-wc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mobile-wc-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.mobile-wc-meta-row .k {
+  color: #6b7280;
+}
+
+.mobile-wc-meta-row .v {
+  color: #111827;
+  font-weight: 700;
+}
+
+.mobile-wc-empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 18px 8px;
+}
+

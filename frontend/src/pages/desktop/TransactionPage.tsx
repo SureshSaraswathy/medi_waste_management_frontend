@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { hasPermission } from '../../services/permissionService';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
 const TransactionPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -100,7 +102,7 @@ const TransactionPage = () => {
     item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const navItems = [
+  const navItemsAll = [
     { 
       path: '/dashboard', 
       label: 'Dashboard', 
@@ -184,6 +186,34 @@ const TransactionPage = () => {
       active: location.pathname.startsWith('/report')
     },
   ];
+
+  const transactionItemPermissionById: Record<string, string> = {
+    'route-assignment': 'ROUTE_ASSIGNMENT_VIEW',
+    'barcode-generation': 'BARCODE_LABEL_VIEW',
+    'waste-collection': 'WASTE_COLLECTION_VIEW',
+    'waste-transaction-data': 'WASTE_TRANSACTION_VIEW',
+    'vehicle-wise-waste-collection': 'VEHICLE_WASTE_COLLECTION_VIEW',
+    'waste-processing': 'WASTE_PROCESS_VIEW',
+  };
+
+  const canSeeTransactionCard = (itemId: string) => {
+    const perms = Array.isArray(permissions) ? permissions : [];
+    if (perms.includes('*')) return true;
+    const required = transactionItemPermissionById[itemId];
+    if (!required) return false;
+    return hasPermission(perms, required);
+  };
+
+  const navItems = navItemsAll.filter((item) => {
+    if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
+    if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
+    if (item.path === '/finance') return canAccessDesktopModule(permissions, 'finance');
+    if (item.path === '/commercial-agreements') return canAccessDesktopModule(permissions, 'commercial');
+    if (item.path === '/compliance-training') return canAccessDesktopModule(permissions, 'compliance');
+    if (item.path === '/master') return canAccessDesktopModule(permissions, 'master');
+    if (item.path === '/report') return canAccessDesktopModule(permissions, 'report');
+    return true;
+  });
 
   return (
     <div className="dashboard-page">
@@ -293,15 +323,32 @@ const TransactionPage = () => {
             </div>
           </div>
 
-          <div className="master-grid">
-            {filteredItems.map((item) => (
-              <Link key={item.id} to={item.path} className="master-card">
+      <div className="master-grid">
+        {filteredItems.map((item) => {
+          const allowed = canSeeTransactionCard(item.id);
+          if (!allowed) {
+            return (
+              <div
+                key={item.id}
+                className="master-card master-card--disabled"
+                title="No access"
+                style={{ opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' }}
+              >
                 <div className="master-card-icon">{item.icon}</div>
                 <h3 className="master-card-title">{item.title}</h3>
                 <p className="master-card-description">{item.description}</p>
-              </Link>
-            ))}
-          </div>
+              </div>
+            );
+          }
+          return (
+            <Link key={item.id} to={item.path} className="master-card">
+              <div className="master-card-icon">{item.icon}</div>
+              <h3 className="master-card-title">{item.title}</h3>
+              <p className="master-card-description">{item.description}</p>
+            </Link>
+          );
+        })}
+      </div>
         </div>
       </main>
     </div>

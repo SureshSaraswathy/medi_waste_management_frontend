@@ -1380,7 +1380,7 @@ const UserManagementPage = () => {
               <input
                 type="text"
                 className="user-management-search-input"
-                placeholder="Search"
+                placeholder={activeTab === 'roles' ? 'Search roles...' : 'Search users...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -1389,7 +1389,7 @@ const UserManagementPage = () => {
               className="add-btn" 
               onClick={activeTab === 'users' ? handleAddUser : handleAddRole}
             >
-              Add
+              {activeTab === 'users' ? 'Add User' : 'Add Role'}
             </button>
           </div>
 
@@ -1495,29 +1495,6 @@ const UserManagementPage = () => {
           {/* Roles Table */}
           {activeTab === 'roles' && (
             <>
-              {/* Search and Add Button for Roles */}
-              <div className="user-management-actions">
-                <div className="user-management-search-box">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                  </svg>
-                  <input
-                    type="text"
-                    className="user-management-search-input"
-                    placeholder="Search roles..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <button 
-                  className="add-btn" 
-                  onClick={handleAddRole}
-                >
-                  Add
-                </button>
-              </div>
-
               <div className="user-management-table-container">
                 <table className="user-management-table">
                   <thead>
@@ -1848,8 +1825,6 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
       designation: '',
       companyNameThirdParty: '',
       status: 'Draft',
-      webLogin: false,
-      mobileApp: false,
       passwordEnabled: false,
       otpEnabled: false,
       forceOtpOnNextLogin: false,

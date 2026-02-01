@@ -39,11 +39,11 @@ function MasterPageLayout<T extends Record<string, any>>({
   children,
   showAddButton,
 }: MasterPageLayoutProps<T>) {
-  const { user } = useAuth();
+  const { permissions } = useAuth();
   // Use showAddButton prop if provided, otherwise check permissions
   const canCreate = showAddButton !== undefined 
     ? showAddButton 
-    : canCreateMasterData(user);
+    : canCreateMasterData(permissions);
 
   return (
     <div className="master-page-layout">

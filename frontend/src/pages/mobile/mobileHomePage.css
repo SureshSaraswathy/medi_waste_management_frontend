@@ -13,8 +13,8 @@
   justify-content: space-between;
   margin-bottom: 0;
   padding: 12px 20px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: #1f2937; /* light black */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .mobile-home-profile-left {
@@ -48,14 +48,14 @@
 .mobile-home-profile-name {
   font-size: 18px;
   font-weight: 700;
-  color: #000000;
+  color: #f9fafb;
   line-height: 1.2;
   letter-spacing: -0.3px;
 }
 
 .mobile-home-profile-role {
   font-size: 12px;
-  color: #6b7280;
+  color: #cbd5e1;
   line-height: 1.2;
   font-weight: 400;
 }
@@ -64,7 +64,7 @@
   background: none;
   border: none;
   padding: 8px;
-  color: #374151;
+  color: #e5e7eb;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -76,7 +76,7 @@
 }
 
 .mobile-home-menu-button:active {
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Search Bar */

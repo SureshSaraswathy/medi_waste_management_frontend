@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '../../components/mobile/MobileLayout';
 import { wasteCollectionService, BarcodeLookupResponse } from '../../services/wasteCollectionService';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import './mobileScanPage.css';
 
 const MobileScanPage: React.FC = () => {
@@ -11,6 +12,9 @@ const MobileScanPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     // Auto-focus input on mount
@@ -18,6 +22,23 @@ const MobileScanPage: React.FC = () => {
       inputRef.current.focus();
     }
   }, []);
+
+  const stopScanner = useCallback(() => {
+    try {
+      readerRef.current?.reset();
+    } catch {
+      // ignore
+    } finally {
+      readerRef.current = null;
+      setIsScanning(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, [stopScanner]);
 
   const handleBarcodeLookup = async (barcode: string) => {
     if (!barcode || barcode.length < 5) {
@@ -42,6 +63,52 @@ const MobileScanPage: React.FC = () => {
     }
   };
 
+  const startScanner = useCallback(async () => {
+    setError(null);
+    setLookupResult(null);
+
+    if (!videoRef.current) {
+      setError('Camera preview not available');
+      return;
+    }
+
+    // Ensure any previous session is stopped
+    stopScanner();
+
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+    setIsScanning(true);
+
+    try {
+      // Prefer environment/back camera when supported
+      await reader.decodeFromConstraints(
+        { video: { facingMode: { ideal: 'environment' } } } as MediaStreamConstraints,
+        videoRef.current,
+        (result, err) => {
+          if (result) {
+            const text = result.getText()?.trim();
+            if (text) {
+              // Stop scanning immediately to avoid multiple callbacks
+              stopScanner();
+              handleBarcodeLookup(text);
+            }
+          }
+          // ignore decode errors while scanning; they happen frequently frame-to-frame
+          void err;
+        },
+      );
+    } catch (e: any) {
+      stopScanner();
+      const msg =
+        e?.name === 'NotAllowedError'
+          ? 'Camera permission denied. Please allow camera access and try again.'
+          : e?.name === 'NotFoundError'
+            ? 'No camera found on this device.'
+            : e?.message || 'Failed to start camera scanner';
+      setError(msg);
+    }
+  }, [stopScanner]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (barcodeInput.trim()) {
@@ -65,6 +132,38 @@ const MobileScanPage: React.FC = () => {
   return (
     <MobileLayout title="Scan Barcode" showBackButton onBack={() => navigate('/mobile/home')}>
       <div className="mobile-scan">
+        {/* Camera Scanner Section */}
+        <div className="mobile-scan-camera-section">
+          <div className="mobile-scan-camera-actions">
+            {!isScanning ? (
+              <button
+                type="button"
+                className="mobile-scan-camera-btn"
+                onClick={startScanner}
+                disabled={loading}
+              >
+                Start Camera Scan
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="mobile-scan-camera-btn stop"
+                onClick={stopScanner}
+              >
+                Stop Camera
+              </button>
+            )}
+          </div>
+
+          {isScanning && (
+            <div className="mobile-scan-camera-preview">
+              <video ref={videoRef} className="mobile-scan-video" muted playsInline />
+              <div className="mobile-scan-overlay" aria-hidden="true" />
+              <div className="mobile-scan-hint">Align barcode/QR inside the frame</div>
+            </div>
+          )}
+        </div>
+
         {/* Barcode Input Section */}
         <div className="mobile-scan-input-section">
           <form onSubmit={handleSubmit} className="mobile-scan-form">
@@ -145,7 +244,7 @@ const MobileScanPage: React.FC = () => {
             <h4>How to scan:</h4>
             <ul>
               <li>Enter the barcode manually in the input field above</li>
-              <li>Or use your device camera to scan the barcode</li>
+              <li>Or tap “Start Camera Scan” to scan using your device camera</li>
               <li>Barcode must be at least 5 characters long</li>
             </ul>
           </div>

@@ -17,7 +17,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { dashboardService } from '../../services/dashboardService';
 import { fetchWidgetData } from '../../services/widgetDataService';
-import { isSuperAdmin } from '../../services/permissionService';
+import { hasPermission } from '../../services/permissionService';
 import { WidgetConfig, Role } from '../../types/dashboard';
 import { MetricWidget } from '../../components/dashboard/widgets/MetricWidget';
 import { ChartWidget } from '../../components/dashboard/widgets/ChartWidget';
@@ -265,11 +265,11 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
 
 
 const DashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, permissions: userPermissions, logout } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const [widgetPermissions, setWidgetPermissions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [previewMode, setPreviewMode] = useState<{ enabled: boolean; role: Role | null }>({ enabled: false, role: null });
@@ -285,7 +285,7 @@ const DashboardPage: React.FC = () => {
         const config = JSON.parse(previewConfig);
         setPreviewMode({ enabled: true, role: previewRole as Role });
         setWidgets(config.widgets || []);
-        setPermissions(config.permissions || {});
+        setWidgetPermissions(config.permissions || {});
         setLoading(false);
       } catch (error) {
         console.error('Failed to load preview config:', error);
@@ -299,7 +299,8 @@ const DashboardPage: React.FC = () => {
     : ((user?.roles?.[0] as Role) || 'viewer');
 
   const isPreviewMode = previewMode.enabled;
-  const isSuperAdminUser = isSuperAdmin(user);
+  // SUPER_ADMIN is inferred from permissions wildcard; avoids hardcoding role names.
+  const isSuperAdminUser = userPermissions.includes('*') || hasPermission(userPermissions, 'DASHBOARD_CONFIG.VIEW');
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -792,11 +793,11 @@ const DashboardPage: React.FC = () => {
         });
         
         setWidgets(validatedWidgets);
-        setPermissions(computed.permissions);
+        setWidgetPermissions(computed.permissions);
       } catch (error) {
         console.error('[DashboardPage] Failed to load dashboard:', error);
         setWidgets([]);
-        setPermissions({});
+        setWidgetPermissions({});
       } finally {
         setLoading(false);
       }
@@ -1000,7 +1001,7 @@ const DashboardPage: React.FC = () => {
                         <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
                           <WidgetRenderer
                             widget={widget}
-                            permissions={permissions}
+                            permissions={widgetPermissions}
                             isPreviewMode={isPreviewMode}
                           />
                         </Suspense>

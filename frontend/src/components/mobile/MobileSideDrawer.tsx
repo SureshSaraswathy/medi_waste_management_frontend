@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { fetchMenuConfig, canAccessMenu, MenuConfig } from '../../services/permissionService';
+import { fetchMenuConfig, canAccessMenu, hasPermission, MenuConfig } from '../../services/permissionService';
 import './mobileSideDrawer.css';
 
 interface MenuItem {
@@ -26,7 +26,7 @@ interface MobileSideDrawerProps {
 const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, permissions, logout } = useAuth();
   const [menuConfig, setMenuConfig] = useState<MenuConfig | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -60,19 +60,19 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
       items: [
         {
           id: 'dashboard',
-          label: 'Dashboard',
+          label: 'Home',
           icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
           ),
-          path: '/dashboard',
-          permission: 'HOME_VIEW',
+          path: '/mobile/home',
+          permission: 'HOME.VIEW',
         },
         {
           id: 'waste-collection',
-          label: 'Waste Collection',
+          label: 'Waste Entry',
           icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -81,7 +81,23 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
             </svg>
           ),
           path: '/mobile/waste-entry',
-          permission: 'WASTE_COLLECTION_CREATE',
+          permission: 'WASTE_COLLECTION.CREATE',
+        },
+        {
+          id: 'waste-collections',
+          label: 'Waste Collections',
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M8 6h13"></path>
+              <path d="M8 12h13"></path>
+              <path d="M8 18h13"></path>
+              <path d="M3 6h.01"></path>
+              <path d="M3 12h.01"></path>
+              <path d="M3 18h.01"></path>
+            </svg>
+          ),
+          path: '/mobile/waste-collections',
+          permission: 'WASTE_COLLECTION.VIEW',
         },
         {
           id: 'route-assignment',
@@ -93,7 +109,19 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
             </svg>
           ),
           path: '/mobile/assign-hospital',
-          permission: 'ROUTE_ASSIGNMENT_VIEW',
+          permission: 'ROUTE_ASSIGNMENT.VIEW',
+        },
+        {
+          id: 'assigned-hcfs',
+          label: 'Assigned HCF List',
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          ),
+          path: '/mobile/assigned-hcfs',
+          permission: 'ROUTE_HCF.VIEW',
         },
         {
           id: 'scan',
@@ -110,23 +138,6 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
           path: '/mobile/scan',
         },
         {
-          id: 'analytics',
-          label: 'Analytics',
-          icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
-              <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
-            </svg>
-          ),
-          path: '/report',
-          permission: 'REPORT_VIEW',
-        },
-      ],
-    },
-    {
-      title: 'Admin',
-      items: [
-        {
           id: 'hcf-master',
           label: 'HCF Master',
           icon: (
@@ -136,8 +147,25 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
             </svg>
           ),
           path: '/mobile/hcf-master',
-          permission: 'HCF_VIEW',
+          permission: 'HCF.VIEW',
         },
+        {
+          id: 'analytics',
+          label: 'Analytics',
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+              <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+            </svg>
+          ),
+          path: '/mobile/analytics',
+          permission: 'REPORT.VIEW',
+        },
+      ],
+    },
+    {
+      title: 'Admin',
+      items: [
         {
           id: 'users',
           label: 'User Management',
@@ -169,6 +197,12 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
 
   // Check if item should be visible
   const isItemVisible = (item: MenuItem): boolean => {
+    // Prefer permission-code checks from backend (`/permissions/me`) when available.
+    // This avoids hardcoding role names and supports button-wise access control.
+    if (item.permission && permissions && permissions.length > 0) {
+      return hasPermission(permissions, item.permission);
+    }
+
     // Check permission if specified
     if (item.permission && menuConfig) {
       if (item.permission.includes('ROUTE_ASSIGNMENT')) {

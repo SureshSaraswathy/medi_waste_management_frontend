@@ -1,6 +1,5 @@
 import { User } from '../context/AuthContext';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+import { API_BASE_URL } from './apiBaseUrl';
 
 export interface MenuConfig {
   dashboard: { visible: boolean; permission: string };
@@ -34,31 +33,37 @@ export interface MenuConfigResponse {
   message: string;
 }
 
-/**
- * Check if user is SUPER_ADMIN
- */
-export const isSuperAdmin = (user: User | null): boolean => {
-  if (!user) return false;
-  
-  // Check by role
-  if (user.roles && Array.isArray(user.roles) && user.roles.includes('superadmin')) {
-    return true;
-  }
-  
-  // Check by email
-  const email = user.email?.toLowerCase()?.trim();
-  if (email === 'superadmin@medi-waste.io' || email === 'superadmin') {
-    return true;
-  }
-  
-  return false;
-};
+// NOTE:
+// Do not hardcode role names on the frontend.
+// Use permissions returned by the backend (`*` wildcard indicates full access).
 
 /**
  * Fetch user permissions from backend
  */
 export const fetchUserPermissions = async (token: string): Promise<string[]> => {
   try {
+    // Preferred endpoint (flat list): /permissions/me
+    // Backward compatibility: fallback to /auth/permissions if needed.
+    const tryFetch = async (url: string) => {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch permissions');
+      return response.json();
+    };
+
+    try {
+      const result = await tryFetch(`${API_BASE_URL}/permissions/me`);
+      // { success, data: string[] }
+      return (result?.data || []) as string[];
+    } catch {
+      // Fallback to legacy endpoint
+    }
+
     const response = await fetch(`${API_BASE_URL}/auth/permissions`, {
       method: 'GET',
       headers: {
@@ -112,7 +117,20 @@ export const hasPermission = (permissions: string[], requiredPermission: string)
   if (permissions.includes('*')) {
     return true;
   }
-  return permissions.includes(requiredPermission);
+
+  const req = (requiredPermission || '').trim();
+  if (!req) return false;
+
+  // Support FEATURE.ACTION <-> FEATURE_ACTION for backward compatibility
+  const variants = new Set<string>([req]);
+  if (req.includes('.')) variants.add(req.replace(/\./g, '_'));
+  if (req.includes('_')) variants.add(req.replace(/_/g, '.'));
+
+  for (const v of variants) {
+    if (permissions.includes(v)) return true;
+  }
+
+  return false;
 };
 
 /**

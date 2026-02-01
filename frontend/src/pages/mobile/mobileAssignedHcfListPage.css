@@ -1,18 +1,18 @@
-.mobile-hcf-master {
+.mobile-ahcf {
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.mobile-hcf-toolbar {
+.mobile-ahcf-toolbar {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.mobile-hcf-select,
-.mobile-hcf-search {
+.mobile-ahcf-select,
+.mobile-ahcf-search {
   width: 100%;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 12px;
@@ -21,7 +21,16 @@
   background: #fff;
 }
 
-.mobile-hcf-table {
+.mobile-ahcf-banner {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 13px;
+}
+
+.mobile-ahcf-table {
   width: 100%;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
@@ -29,13 +38,13 @@
   background: #fff;
 }
 
-.mobile-hcf-table table {
+.mobile-ahcf-table table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.mobile-hcf-table thead th {
+.mobile-ahcf-table thead th {
   background: #6faa3f;
   color: #fff;
   text-align: left;
@@ -43,17 +52,18 @@
   font-weight: 800;
 }
 
-.mobile-hcf-table tbody td {
+.mobile-ahcf-table tbody td {
   padding: 10px 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.mobile-hcf-table tbody tr:nth-child(odd) {
+.mobile-ahcf-table tbody tr:nth-child(odd) {
   background: #eaf5df;
 }
 
-.mobile-hcf-empty {
+.mobile-ahcf-empty {
   padding: 14px;
   color: #6b7280;
   text-align: center;
 }
+
