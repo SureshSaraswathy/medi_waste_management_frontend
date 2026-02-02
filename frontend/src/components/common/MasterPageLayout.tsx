@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { canCreateMasterData } from '../../utils/permissions';
+import { hasPermission } from '../../services/permissionService';
 import DataTable, { Column } from './DataTable';
 import './masterPageLayout.css';
 
@@ -19,7 +19,13 @@ interface MasterPageLayoutProps<T> {
   addButtonLabel?: string;
   emptyMessage?: string;
   children?: React.ReactNode; // For custom content like tabs
-  showAddButton?: boolean; // Optional prop to override default permission check
+  // Strict permissions for actions (recommended).
+  // If omitted, action is hidden by default (strict mode).
+  createPermissions?: string[];
+  editPermissions?: string[];
+  deletePermissions?: string[];
+  // Optional override (kept for backward compatibility)
+  showAddButton?: boolean;
 }
 
 function MasterPageLayout<T extends Record<string, any>>({
@@ -37,13 +43,22 @@ function MasterPageLayout<T extends Record<string, any>>({
   addButtonLabel = 'Add',
   emptyMessage,
   children,
+  createPermissions,
+  editPermissions,
+  deletePermissions,
   showAddButton,
 }: MasterPageLayoutProps<T>) {
   const { permissions } = useAuth();
-  // Use showAddButton prop if provided, otherwise check permissions
-  const canCreate = showAddButton !== undefined 
-    ? showAddButton 
-    : canCreateMasterData(permissions);
+  const perms = Array.isArray(permissions) ? permissions : [];
+  const hasAny = (codes?: string[]) => {
+    if (!codes || codes.length === 0) return false;
+    return codes.some((c) => hasPermission(perms, c));
+  };
+
+  // Strict: Use explicit permissions; if none provided, hide action.
+  const canCreate = showAddButton !== undefined ? showAddButton : hasAny(createPermissions);
+  const canEdit = hasAny(editPermissions);
+  const canDelete = hasAny(deletePermissions);
 
   return (
     <div className="master-page-layout">
@@ -84,8 +99,8 @@ function MasterPageLayout<T extends Record<string, any>>({
       <DataTable
         data={filteredData}
         columns={columns}
-        onEdit={onEdit}
-        onDelete={onDelete}
+        onEdit={canEdit ? onEdit : undefined}
+        onDelete={canDelete ? onDelete : undefined}
         getId={getId}
         emptyMessage={emptyMessage}
       />

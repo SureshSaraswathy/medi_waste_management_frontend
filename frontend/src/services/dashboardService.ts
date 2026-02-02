@@ -195,12 +195,18 @@ export const dashboardService = {
     }
 
     // Filter menu items and widgets based on permissions
+    // IMPORTANT:
+    // - `permissions` here is a boolean map coming from dashboard config.
+    // - SuperAdmin is represented as wildcard: permissions['*'] === true.
+    // - When wildcard is present, we must not hide menu items/widgets that have permission codes.
+    const hasWildcard = Boolean((permissions as any)['*']);
+
     // Recursively filter menu items including children
     const filterMenuItems = (items: MenuItem[]): MenuItem[] => {
       return items
         .filter((item) => {
           if (!item.visible) return false;
-          if (item.permission && !permissions[item.permission]) return false;
+          if (!hasWildcard && item.permission && !permissions[item.permission]) return false;
           return true;
         })
         .map((item) => {
@@ -219,7 +225,7 @@ export const dashboardService = {
     const filteredMenuItems = filterMenuItems(menuItems);
 
     const filteredWidgets = widgets.filter((widget) => {
-      if (widget.permissions?.view && !permissions[widget.permissions.view]) {
+      if (!hasWildcard && widget.permissions?.view && !permissions[widget.permissions.view]) {
         return false;
       }
       return true;

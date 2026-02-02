@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getAdminNavItems } from '../../utils/adminNavItems';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
 const FinancePage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -146,6 +147,7 @@ const FinancePage = () => {
       ), 
       active: location.pathname.startsWith('/report')
     },
+    ...getAdminNavItems(permissions, location.pathname),
   ];
 
   return (

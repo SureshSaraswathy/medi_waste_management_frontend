@@ -8,6 +8,7 @@ import LoginPage from './pages/desktop/LoginPage';
 import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
 import DashboardConfigurationPage from './pages/desktop/DashboardConfigurationPage';
+import PermissionConfigurationPage from './pages/desktop/admin/PermissionConfigurationPage';
 import TransactionPage from './pages/desktop/TransactionPage';
 import FinancePage from './pages/desktop/FinancePage';
 import CommercialAgreementsPage from './pages/desktop/CommercialAgreementsPage';
@@ -187,6 +188,15 @@ const AppWithDashboard = () => {
         element={
           <ProtectedRoute>
             <DashboardConfigurationPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Permission Configuration route - SuperAdmin only (UI gated) */}
+      <Route
+        path="/admin/permission-configuration"
+        element={
+          <ProtectedRoute>
+            <PermissionConfigurationPage />
           </ProtectedRoute>
         }
       />

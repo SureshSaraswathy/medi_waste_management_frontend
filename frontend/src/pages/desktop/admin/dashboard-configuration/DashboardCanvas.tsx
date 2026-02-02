@@ -139,11 +139,11 @@ const DashboardCanvas: React.FC<DashboardCanvasProps> = ({
                   <div className="dashboard-canvas-widget-preview">
                     <div className="dashboard-canvas-widget-preview-content">
                       <span className="dashboard-canvas-widget-preview-text">
-                        {widget.type === 'metric' && '📊 Metric Widget'}
-                        {widget.type === 'chart' && '📈 Chart Widget'}
-                        {widget.type === 'table' && '📋 Table Widget'}
+                        {widget.type === 'metric' && 'Metric Widget'}
+                        {widget.type === 'chart' && 'Chart Widget'}
+                        {widget.type === 'table' && 'Table Widget'}
                         {widget.type === 'task-list' && '✓ Task List Widget'}
-                        {widget.type === 'alert' && '⚠ Alert Widget'}
+                        {widget.type === 'alert' && 'Alert Widget'}
                         {!['metric', 'chart', 'table', 'task-list', 'alert'].includes(widget.type) && 'Widget Preview'}
                       </span>
                       <span className="dashboard-canvas-widget-size-badge">

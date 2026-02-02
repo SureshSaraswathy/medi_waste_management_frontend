@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { trainingCertificateService, TrainingCertificateResponse } from '../../services/trainingCertificateService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
@@ -27,7 +28,7 @@ interface TrainingCertificate {
 }
 
 const TrainingCertificatePage = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('All');
@@ -279,15 +280,7 @@ const TrainingCertificatePage = () => {
     return hcfs.filter(h => h.companyId === company.id && h.status === 'Active');
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname === '/commercial-agreements' },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname.startsWith('/compliance-training') },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   // Filter HCFs based on selected company
   const filteredHCFsForCompany = getHcfsByCompany(companyFilter);

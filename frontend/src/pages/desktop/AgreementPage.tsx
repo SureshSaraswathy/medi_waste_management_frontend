@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { useAgreementFilters, Agreement } from '../../hooks/useAgreementFilters';
 import { agreementService } from '../../services/agreementService';
 import { contractService } from '../../services/contractService';
@@ -20,7 +21,7 @@ interface Contract {
 }
 
 const AgreementPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const contractIdParam = searchParams.get('contractId');
@@ -239,15 +240,7 @@ const AgreementPage = () => {
     },
   ];
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname.startsWith('/commercial-agreements') },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname.startsWith('/compliance-training') },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { canCreateMasterData, canEditMasterData, canDeleteMasterData } from '../../utils/permissions';
+import { hasPermission } from '../../services/permissionService';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { areaService, AreaResponse } from '../../services/areaService';
@@ -112,9 +113,10 @@ interface Route {
 const HCFMasterPage = () => {
   const { logout, user, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(permissions);
-  const canEdit = canEditMasterData(permissions);
-  const canDelete = canDeleteMasterData(permissions);
+  const perms = Array.isArray(permissions) ? permissions : [];
+  const canCreate = hasPermission(perms, 'HCF_CREATE');
+  const canEdit = hasPermission(perms, 'HCF_EDIT') || hasPermission(perms, 'HCF_UPDATE');
+  const canDelete = hasPermission(perms, 'HCF_DELETE');
   
   // Debug: Log permissions (remove in production)
   useEffect(() => {
@@ -546,15 +548,7 @@ const HCFMasterPage = () => {
     }
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname === '/commercial-agreements' },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname === '/compliance-training' },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">

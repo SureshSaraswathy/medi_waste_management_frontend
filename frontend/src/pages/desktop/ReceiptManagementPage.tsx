@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import {
   getPaymentsWithoutReceipt,
   createManualReceipt,
@@ -19,7 +20,7 @@ interface Company {
 }
 
 const ReceiptManagementPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,15 +171,7 @@ const ReceiptManagementPage = () => {
     return matchesSearch && matchesCompany;
   });
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname === '/commercial-agreements' },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname === '/compliance-training' },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">

@@ -1,6 +1,8 @@
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getAdminNavItems } from '../../utils/adminNavItems';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import './appLayout.css';
 
 interface NavItem {
@@ -15,7 +17,7 @@ interface AppLayoutProps extends PropsWithChildren {
 }
 
 const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
-  const { user, logout } = useAuth();
+  const { user, logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -118,7 +120,25 @@ const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
     },
   ];
 
-  const items = navItems.length > 0 ? navItems : defaultNavItems;
+  const itemsBase = navItems.length > 0 ? navItems : defaultNavItems;
+  const itemsFiltered = itemsBase.filter((item) => {
+    // Strict module gating for any layout using AppLayout
+    if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
+    if (item.path === '/transaction' || item.path.startsWith('/transaction')) return canAccessDesktopModule(permissions, 'transaction');
+    if (item.path === '/finance' || item.path.startsWith('/finance')) return canAccessDesktopModule(permissions, 'finance');
+    if (item.path === '/commercial-agreements' || item.path.startsWith('/commercial-agreements'))
+      return canAccessDesktopModule(permissions, 'commercial');
+    if (item.path === '/compliance-training' || item.path.startsWith('/compliance-training'))
+      return canAccessDesktopModule(permissions, 'compliance');
+    if (item.path === '/master' || item.path.startsWith('/master')) return canAccessDesktopModule(permissions, 'master');
+    if (item.path === '/report' || item.path.startsWith('/report')) return canAccessDesktopModule(permissions, 'report');
+    return true;
+  });
+  const adminItems = getAdminNavItems(Array.isArray(permissions) ? permissions : [], location.pathname);
+  const items = [
+    ...itemsFiltered,
+    ...adminItems.filter((a) => !itemsFiltered.some((i) => i.path === a.path)),
+  ];
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);

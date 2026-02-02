@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { canCreateMasterData } from '../../utils/permissions';
+import { hasPermission } from '../../services/permissionService';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import './frequencyMasterPage.css';
@@ -29,7 +30,7 @@ interface Company {
 const FrequencyMasterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = canCreateMasterData(permissions);
+  const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'FREQUENCY_CREATE');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingFrequency, setEditingFrequency] = useState<Frequency | null>(null);
@@ -184,15 +185,7 @@ const FrequencyMasterPage = () => {
     }
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname === '/transaction' },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname === '/finance' },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname === '/commercial-agreements' },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname === '/compliance-training' },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report/billing-finance', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">

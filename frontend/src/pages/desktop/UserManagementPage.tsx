@@ -694,15 +694,15 @@ const UserManagementPage = () => {
           
           if (roleId && isValidUUID(roleId)) {
             updateData.userRoleId = roleId;
-            console.log('[handleSaveUser] ✅ Using converted UUID role ID:', roleId);
+            console.log('[handleSaveUser] Using converted UUID role ID:', roleId);
           } else if (isValidUUID(formData.userRoleID)) {
             // Already a valid UUID
             updateData.userRoleId = formData.userRoleID;
-            console.log('[handleSaveUser] ✅ Using provided UUID role ID:', formData.userRoleID);
+            console.log('[handleSaveUser] Using provided UUID role ID:', formData.userRoleID);
     } else {
             // Role ID is not a valid UUID - skip it (userRoleId is optional)
             // This prevents validation errors when using mock roles with simple IDs
-            console.warn('[handleSaveUser] ⚠️ Role ID is not a valid UUID, skipping role assignment:', {
+            console.warn('[handleSaveUser] Role ID is not a valid UUID, skipping role assignment:', {
               roleName: formData.userRoleID,
               roleId: roleId,
               message: 'Role will not be assigned. Please ensure roles are fetched from the backend API with valid UUIDs.'
@@ -757,25 +757,25 @@ const UserManagementPage = () => {
         try {
           const result = await userService.updateCompleteUser(editingUser.id, updateData);
           updateSuccess = true;
-          console.log('[handleSaveUser] ✅ UPDATE API call SUCCESSFUL! Result:', result);
+          console.log('[handleSaveUser] UPDATE API call successful. Result:', result);
           
           // Show success
-          alert('✅ User updated successfully!');
+          alert('User updated successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
           setShowUserModal(false);
           setEditingUser(null);
           setError(null);
-          console.log('[handleSaveUser] ✅ Modal closed');
+          console.log('[handleSaveUser] Modal closed');
           
           // Reload users after a delay
           setTimeout(async () => {
             try {
               await loadUsers();
-              console.log('[handleSaveUser] ✅ Users reloaded');
+              console.log('[handleSaveUser] Users reloaded');
             } catch (e) {
-              console.error('[handleSaveUser] ⚠️ Reload error (data was saved):', e);
+              console.error('[handleSaveUser] Reload error (data was saved):', e);
             }
           }, 500);
           
@@ -821,15 +821,15 @@ const UserManagementPage = () => {
           
           if (roleId && isValidUUID(roleId)) {
             createData.userRoleId = roleId;
-            console.log('[handleSaveUser] ✅ Using converted UUID role ID:', roleId);
+            console.log('[handleSaveUser] Using converted UUID role ID:', roleId);
           } else if (isValidUUID(formData.userRoleID)) {
             // Already a valid UUID
             createData.userRoleId = formData.userRoleID;
-            console.log('[handleSaveUser] ✅ Using provided UUID role ID:', formData.userRoleID);
+            console.log('[handleSaveUser] Using provided UUID role ID:', formData.userRoleID);
           } else {
             // Role ID is not a valid UUID - skip it (userRoleId is optional)
             // This prevents validation errors when using mock roles with simple IDs
-            console.warn('[handleSaveUser] ⚠️ Role ID is not a valid UUID, skipping role assignment:', {
+            console.warn('[handleSaveUser] Role ID is not a valid UUID, skipping role assignment:', {
               roleName: formData.userRoleID,
               roleId: roleId,
               message: 'Role will not be assigned. Please ensure roles are fetched from the backend API with valid UUIDs.'
@@ -915,29 +915,29 @@ const UserManagementPage = () => {
         try {
           const result = await userService.createCompleteUser(createData);
           saveSuccess = true;
-          console.log('[handleSaveUser] ✅ API call SUCCESSFUL! Result:', result);
+          console.log('[handleSaveUser] API call successful. Result:', result);
           
           if (!result) {
-            console.warn('[handleSaveUser] ⚠️ Warning: API returned empty result but status was 200');
+            console.warn('[handleSaveUser] Warning: API returned empty result but status was 200');
           }
           
           // Show success
-          alert('✅ User created successfully!');
+          alert('User created successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
     setShowUserModal(false);
     setEditingUser(null);
           setError(null);
-          console.log('[handleSaveUser] ✅ Modal closed');
+          console.log('[handleSaveUser] Modal closed');
           
           // Reload users after a delay
           setTimeout(async () => {
             try {
               await loadUsers();
-              console.log('[handleSaveUser] ✅ Users reloaded');
+              console.log('[handleSaveUser] Users reloaded');
             } catch (e) {
-              console.error('[handleSaveUser] ⚠️ Reload error (data was saved):', e);
+              console.error('[handleSaveUser] Reload error (data was saved):', e);
             }
           }, 500);
           
@@ -1083,7 +1083,7 @@ const UserManagementPage = () => {
     try {
       await roleService.deleteRole(id);
       await loadRoles(); // Reload roles after deletion
-      alert('✅ Role deleted successfully!');
+      alert('Role deleted successfully!');
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to delete role');
@@ -1115,8 +1115,8 @@ const UserManagementPage = () => {
         
         console.log('[handleSaveRole] Updating role:', editingRole.id, updateData);
         await roleService.updateRole(editingRole.id, updateData);
-        console.log('[handleSaveRole] ✅ Role updated successfully');
-        alert('✅ Role updated successfully!');
+        console.log('[handleSaveRole] Role updated successfully');
+        alert('Role updated successfully!');
     } else {
         // Create new role
         const createData = {
@@ -1128,8 +1128,8 @@ const UserManagementPage = () => {
         
         console.log('[handleSaveRole] Creating role:', createData);
         await roleService.createRole(createData);
-        console.log('[handleSaveRole] ✅ Role created successfully');
-        alert('✅ Role created successfully!');
+        console.log('[handleSaveRole] Role created successfully');
+        alert('Role created successfully!');
       }
       
     setShowRoleModal(false);
@@ -1611,7 +1611,7 @@ const UserManagementPage = () => {
                 marginBottom: '20px' 
               }}>
                 <p style={{ margin: '0 0 12px 0', fontWeight: '600', color: '#92400e' }}>
-                  ⚠️ Important: This password will only be shown once!
+                  Important: This password will only be shown once!
                 </p>
                 <p style={{ margin: 0, fontSize: '14px', color: '#78350f' }}>
                   Please copy this password and share it securely with the user. The user must change this password on their first login.
@@ -1958,7 +1958,7 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
     
     const message = isValid 
       ? '' 
-      : `⚠️ Validation Error - Step ${step}: ${stepTitle}\n\n` +
+      : `Validation Error - Step ${step}: ${stepTitle}\n\n` +
         `Please fill in the following required fields:\n\n` +
         `${missingFields.map((f, i) => `  ${i + 1}. ${f}`).join('\n')}\n\n` +
         `Please complete these fields before continuing.`;
@@ -2496,7 +2496,7 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                       }}
                       disabled={!user?.id || loading}
                     >
-                      ✅ Activate User
+                      Activate User
                     </button>
                     <button
                       type="button"

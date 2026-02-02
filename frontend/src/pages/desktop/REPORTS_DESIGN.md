@@ -49,10 +49,10 @@ A scalable, enterprise-grade Reports page designed to handle 10-100+ reports wit
   - **Body**: Expandable parameters section, metadata tags
   - **Actions**: Generate, Schedule (conditional), More menu
 - **Visual Indicators**:
-  - ⭐ Popular: Frequently used reports
-  - 🕒 Scheduled: Reports with scheduled runs
-  - 🔒 Restricted: Role-based access restrictions
-  - 🧪 Beta: New/experimental features
+  - Popular: Frequently used reports
+  - Scheduled: Reports with scheduled runs
+  - Restricted: Role-based access restrictions
+  - Beta: New/experimental features
 - **Interactions**:
   - Click to expand/collapse parameters
   - Hover effects for better UX
@@ -137,9 +137,9 @@ A scalable, enterprise-grade Reports page designed to handle 10-100+ reports wit
 {
   id: 'NewCategory',
   label: 'New Category',
-  icon: '📊',
+  icon: 'chart',
   children: [ // Optional for hierarchical structure
-    { id: 'NewCategory-Child', label: 'Child Category', icon: '📄' }
+    { id: 'NewCategory-Child', label: 'Child Category', icon: 'file' }
   ]
 }
 ```

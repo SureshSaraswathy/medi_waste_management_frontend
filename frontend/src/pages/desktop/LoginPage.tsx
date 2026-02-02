@@ -192,7 +192,7 @@ const LoginPage = () => {
                   placeholder.className = 'image-placeholder';
                   placeholder.innerHTML = `
                     <div style="color: #cbd5e0; text-align: center; padding: 40px;">
-                      <p style="font-size: 18px; margin-bottom: 16px;">📋 Waste Segregation Infographic</p>
+                      <p style="font-size: 18px; margin-bottom: 16px;">Waste Segregation Infographic</p>
                       <p style="font-size: 14px; color: #94a3b8;">Please add the image file:</p>
                       <p style="font-size: 12px; color: #718096; margin-top: 8px;">frontend/public/waste-segregation-infographic.png</p>
                     </div>
