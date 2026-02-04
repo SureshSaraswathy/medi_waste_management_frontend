@@ -8,11 +8,13 @@ type Props = PropsWithChildren<{
 }>;
 
 const ProtectedRoute = ({ roles, children }: Props) => {
-  const { user, loading } = useAuth();
+  const { user, loading, permissions, permissionsLoading, permissionsReady } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
-  if (loading) {
+  // Important: wait until permissions are loaded at least once for this token
+  // to avoid redirecting to /not-authorized due to a transient permissions=[] state.
+  if (loading || permissionsLoading || !permissionsReady) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -43,6 +45,14 @@ const ProtectedRoute = ({ roles, children }: Props) => {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Global rule:
+  // - If user has ZERO permissions, they should only see the Not Authorized page.
+  // - This prevents "empty-role" users from landing on dashboard or other pages.
+  const perms = Array.isArray(permissions) ? permissions : [];
+  if (location.pathname !== '/not-authorized' && perms.length === 0) {
+    return <Navigate to="/not-authorized" replace state={{ from: location.pathname }} />;
   }
 
   // Safety check: ensure user.roles is an array

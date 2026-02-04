@@ -42,8 +42,9 @@ export interface MenuConfigResponse {
  */
 export const fetchUserPermissions = async (token: string): Promise<string[]> => {
   try {
-    // Preferred endpoint (flat list): /permissions/me
-    // Backward compatibility: fallback to /auth/permissions if needed.
+    // IMPORTANT:
+    // Use /auth/permissions first because it always reloads permissions from DB.
+    // /permissions/me may return permissions embedded in JWT (can become stale after role changes until re-login).
     const tryFetch = async (url: string) => {
       const response = await fetch(url, {
         method: 'GET',
@@ -57,14 +58,15 @@ export const fetchUserPermissions = async (token: string): Promise<string[]> => 
     };
 
     try {
-      const result = await tryFetch(`${API_BASE_URL}/permissions/me`);
-      // { success, data: string[] }
-      return (result?.data || []) as string[];
+      const result = await tryFetch(`${API_BASE_URL}/auth/permissions`);
+      // { success, data: { userId, permissions: string[], isSuperAdmin } }
+      const perms = result?.data?.permissions;
+      return (Array.isArray(perms) ? perms : []) as string[];
     } catch {
-      // Fallback to legacy endpoint
+      // Fallback to /permissions/me (flat list) if needed
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/permissions`, {
+    const response = await fetch(`${API_BASE_URL}/permissions/me`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -76,8 +78,8 @@ export const fetchUserPermissions = async (token: string): Promise<string[]> => 
       throw new Error('Failed to fetch permissions');
     }
 
-    const result: PermissionResponse = await response.json();
-    return result.data.permissions || [];
+    const result = await response.json();
+    return (result?.data || []) as string[];
   } catch (error) {
     console.error('Error fetching permissions:', error);
     return [];

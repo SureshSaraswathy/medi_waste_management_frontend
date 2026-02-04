@@ -1,6 +1,6 @@
 /* Optimized Full-Page Profile Styles */
 .profile-page {
-  padding: 4px;
+  padding: 16px;
   max-width: 100%;
   margin: 0;
   overflow: hidden;
@@ -13,7 +13,7 @@
 
 /* Override dashboard-content padding for profile page */
 .dashboard-content {
-  padding: 4px !important;
+  padding: 16px !important;
   overflow: hidden !important;
   height: calc(100vh - 70px) !important;
   display: flex;
@@ -24,16 +24,30 @@
 /* Compact Profile Header Card */
 .profile-header-card {
   background: #ffffff;
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 6px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #1e293b;
+  justify-content: space-between;
+  gap: 12px;
+  color: #0f172a;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   border: 1px solid #e2e8f0;
   flex-shrink: 0;
+}
+
+.profile-header-card--template {
+  background: linear-gradient(90deg, #334155 0%, #1f2937 60%, #0f172a 100%);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+}
+
+.profile-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .profile-header-avatar {
@@ -43,15 +57,15 @@
 .profile-avatar-large {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: #3b82f6;
-  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 900;
+  font-size: 14px;
   font-family: inherit;
 }
 
@@ -61,76 +75,112 @@
 }
 
 .profile-header-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 2px 0;
-  line-height: 1.3;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
   font-family: inherit;
 }
 
-.profile-header-meta {
+.profile-header-top {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.profile-header-role {
+.profile-role-pill {
   font-size: 11px;
-  font-weight: 500;
-  color: #64748b;
-  font-family: inherit;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
-.profile-header-separator {
-  opacity: 0.5;
+.profile-status-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 11px;
-  color: #94a3b8;
-}
-
-.profile-header-status {
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 600;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.2px;
-  background: #f1f5f9;
-  color: #475569;
-  font-family: inherit;
+  letter-spacing: 0.3px;
 }
 
-.profile-header-status.status-badge--active {
-  background: #dcfce7;
-  color: #166534;
+.profile-status-pill.status-badge--active {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #bbf7d0;
 }
 
-.profile-header-status.status-badge--inactive {
-  background: #fee2e2;
-  color: #991b1b;
+.profile-status-pill.status-badge--inactive {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
 }
 
-.profile-header-status.status-badge--draft {
-  background: #fef3c7;
-  color: #92400e;
+.profile-status-pill.status-badge--draft {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fde68a;
 }
 
-.profile-header-contact {
+.profile-header-sub {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: #64748b;
-  margin-top: 2px;
-  font-family: inherit;
+  gap: 8px;
+  margin-top: 6px;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 12px;
 }
 
-.profile-header-contact svg {
-  flex-shrink: 0;
-  width: 11px;
-  height: 11px;
+.profile-header-dot {
+  opacity: 0.7;
+}
+
+.profile-header-subitem {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-save-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-save-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.profile-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Compact Informational Banner */
@@ -184,16 +234,16 @@
 /* Compact Section Tabs */
 .profile-section-tabs {
   display: flex;
-  gap: 2px;
-  border-bottom: 1px solid #e2e8f0;
-  margin-bottom: 6px;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   flex-shrink: 0;
   background: #ffffff;
-  padding: 2px;
-  border-radius: 4px 4px 0 0;
+  padding: 6px;
+  border-radius: 12px;
 }
 
 .profile-section-tabs::-webkit-scrollbar {
@@ -203,19 +253,18 @@
 .section-tab {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  background: transparent;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
   border: none;
-  border-bottom: 2px solid transparent;
   color: #64748b;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
   font-family: inherit;
-  border-radius: 3px;
+  border-radius: 10px;
 }
 
 .section-tab:hover {
@@ -224,9 +273,8 @@
 }
 
 .section-tab.active {
-  color: #3b82f6;
-  background: #eff6ff;
-  border-bottom-color: #3b82f6;
+  color: #ffffff;
+  background: #334155;
 }
 
 .section-tab svg {
@@ -310,59 +358,67 @@
 /* Compact Profile Cards Grid - Optimized for 6 cards */
 .profile-cards-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .profile-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 5px;
-  padding: 8px;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-}
-
-.profile-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  gap: 8px;
 }
 
 .profile-card-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 5px;
+  gap: 8px;
+  margin-bottom: 0;
 }
 
 .profile-card-header svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   color: #64748b;
   flex-shrink: 0;
 }
 
 .profile-card-title {
-  font-size: 9px;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   font-family: inherit;
   line-height: 1.2;
 }
 
 .profile-card-value {
   font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  word-break: break-word;
-  font-family: inherit;
-  line-height: 1.3;
-  margin-top: auto;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.profile-card-value .status-badge {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 /* Optimized Contact Form */
@@ -388,8 +444,8 @@
 }
 
 .form-group label {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 900;
   color: #374151;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -397,10 +453,11 @@
 }
 
 .form-group input {
-  padding: 6px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
   transition: all 0.2s ease;
   font-family: inherit;
   background: #ffffff;
@@ -446,10 +503,11 @@
 
 /* Compact Buttons */
 .btn {
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;

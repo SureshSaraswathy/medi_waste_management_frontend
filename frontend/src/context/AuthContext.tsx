@@ -24,6 +24,8 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   permissions: string[];
+  permissionsLoading: boolean;
+  permissionsReady: boolean;
   login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string }>;
   sendOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
@@ -43,6 +45,8 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   permissions: [],
+  permissionsLoading: false,
+  permissionsReady: true,
   login: async () => {
     throw new Error('AuthProvider is not mounted');
   },
@@ -72,6 +76,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Start with true to check localStorage
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [permissionsReady, setPermissionsReady] = useState(true);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -86,26 +92,13 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
             const tokenParts = storedUser.token.split('.');
             if (tokenParts.length === 3) {
               setUser(storedUser);
-              // Load cached permissions if any (additive; safe fallback to empty)
-              try {
-                const rawPerms = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
-                if (rawPerms) {
-                  const parsed = JSON.parse(rawPerms) as StoredPermissionsPayload | string[];
-                  // Backward compatible: if it's an array, accept it; if object, validate userId match.
-                  if (Array.isArray(parsed)) {
-                    setPermissions(parsed || []);
-                  } else if (parsed && typeof parsed === 'object') {
-                    if (parsed.userId === storedUser.id) {
-                      setPermissions(Array.isArray(parsed.permissions) ? parsed.permissions : []);
-                    } else {
-                      // Permissions belong to a different user; ignore.
-                      setPermissions([]);
-                    }
-                  }
-                }
-              } catch {
-                setPermissions([]);
-              }
+              // Important:
+              // Do NOT rehydrate permissions from localStorage. They can become stale after role changes.
+              // Always re-fetch permissions from backend for the current token.
+              setPermissions([]);
+              // Prevent a race where ProtectedRoute sees permissions=[] before fetch starts.
+              setPermissionsReady(false);
+              setPermissionsLoading(true);
             } else {
               // Invalid token format, remove user data
               console.warn('Invalid token format in storage');
@@ -125,6 +118,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         } else {
           setUser(null);
           setPermissions([]);
+          setPermissionsReady(true);
         }
       } catch (error) {
         console.error('Error loading user from storage:', error);
@@ -132,6 +126,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         setUser(null);
         localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
         setPermissions([]);
+        setPermissionsReady(true);
       } finally {
         setLoading(false);
       }
@@ -151,6 +146,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       // Prevent stale permissions leakage between users (e.g. after SuperAdmin login).
       // Permissions will be re-fetched for the new user token.
       setPermissions([]);
+      setPermissionsReady(false);
+      setPermissionsLoading(true);
       try {
         localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
       } catch {
@@ -168,6 +165,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         // ignore
       }
       setPermissions([]);
+      setPermissionsReady(true);
+      setPermissionsLoading(false);
     }
   }, []);
 
@@ -176,8 +175,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     const loadPermissions = async () => {
       if (!user?.token) {
         setPermissions([]);
+        setPermissionsLoading(false);
+        setPermissionsReady(true);
         return;
       }
+      setPermissionsReady(false);
+      setPermissionsLoading(true);
       try {
         const perms = await fetchUserPermissions(user.token);
         setPermissions(perms || []);
@@ -188,7 +191,17 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
           // ignore
         }
       } catch {
-        // Keep previous permissions if fetch fails, but don't block the app.
+        // If permission fetch fails, do NOT keep any cached permissions.
+        // This prevents stale menus after role permission updates.
+        setPermissions([]);
+        try {
+          localStorage.removeItem(PERMISSIONS_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
+      } finally {
+        setPermissionsLoading(false);
+        setPermissionsReady(true);
       }
     };
     loadPermissions();
@@ -263,8 +276,20 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   );
 
   const value = useMemo(
-    () => ({ user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole }),
-    [user, loading, permissions, login, sendOTP, verifyOTP, logout, createUser, hasRole],
+    () => ({
+      user,
+      loading,
+      permissions,
+      permissionsLoading,
+      permissionsReady,
+      login,
+      sendOTP,
+      verifyOTP,
+      logout,
+      createUser,
+      hasRole,
+    }),
+    [user, loading, permissions, permissionsLoading, permissionsReady, login, sendOTP, verifyOTP, logout, createUser, hasRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

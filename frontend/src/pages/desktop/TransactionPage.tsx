@@ -354,30 +354,22 @@ const TransactionPage = () => {
           </div>
 
       <div className="master-grid">
-        {filteredItems.map((item) => {
-          const allowed = canSeeTransactionCard(item.id);
-          if (!allowed) {
-            return (
-              <div
-                key={item.id}
-                className="master-card master-card--disabled"
-                title="No access"
-                style={{ opacity: 0.5, cursor: 'not-allowed', pointerEvents: 'none' }}
-              >
-                <div className="master-card-icon">{item.icon}</div>
-                <h3 className="master-card-title">{item.title}</h3>
-                <p className="master-card-description">{item.description}</p>
-              </div>
-            );
-          }
-          return (
+        {/* UI-only: hide transaction cards that user cannot access (avoid clutter/disabled grid) */}
+        {filteredItems
+          .filter((item) => canSeeTransactionCard(item.id))
+          .map((item) => (
             <Link key={item.id} to={item.path} className="master-card">
               <div className="master-card-icon">{item.icon}</div>
               <h3 className="master-card-title">{item.title}</h3>
               <p className="master-card-description">{item.description}</p>
             </Link>
-          );
-        })}
+          ))}
+
+        {filteredItems.filter((item) => canSeeTransactionCard(item.id)).length === 0 ? (
+          <div style={{ color: '#64748b', fontSize: 13, padding: '8px 4px' }}>
+            No transaction modules available for your permissions.
+          </div>
+        ) : null}
       </div>
         </div>
       </main>

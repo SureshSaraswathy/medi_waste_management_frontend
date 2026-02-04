@@ -394,29 +394,58 @@ const ProfilePage = () => {
         <div className="dashboard-content">
           <div className="profile-page">
             {/* Profile Header with Avatar */}
-            <div className="profile-header-card">
-              <div className="profile-header-avatar">
-                <div className="profile-avatar-large">
-                  {getInitials(displayName)}
+            <div className="profile-header-card profile-header-card--template">
+              <div className="profile-header-left">
+                <div className="profile-header-avatar">
+                  <div className="profile-avatar-large">{getInitials(displayName)}</div>
+                </div>
+
+                <div className="profile-header-info">
+                  <div className="profile-header-top">
+                    <h1 className="profile-header-name">{displayName}</h1>
+                    <div className="profile-header-badges">
+                      <span className="profile-role-pill">{displayRole}</span>
+                      <span className={`profile-status-pill ${getStatusBadgeClass(displayStatus)}`}>{displayStatus}</span>
+                    </div>
+                  </div>
+
+                  <div className="profile-header-sub">
+                    <span className="profile-header-subitem">
+                      {profileData?.emailAddress || user?.email || '—'}
+                    </span>
+                    <span className="profile-header-dot">•</span>
+                    <span className="profile-header-subitem">{profileData?.employmentType || 'Administration'}</span>
+                  </div>
                 </div>
               </div>
-              <div className="profile-header-info">
-                <h1 className="profile-header-name">{displayName}</h1>
-                <div className="profile-header-meta">
-                  <span className="profile-header-role">{displayRole}</span>
-                  <span className="profile-header-separator">•</span>
-                  <span className={`profile-header-status ${getStatusBadgeClass(displayStatus)}`}>
-                    {displayStatus}
-                  </span>
-                </div>
-                {profileData?.mobileNumber && profileData.mobileNumber !== '-' && (
-                  <div className="profile-header-contact">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                    </svg>
-                    {profileData.mobileNumber}
-                  </div>
-                )}
+
+              {/* UI-only: Save button uses existing contact save behavior (no API changes). */}
+              <div className="profile-header-actions">
+                <button
+                  type="button"
+                  className="profile-save-btn"
+                  onClick={handleContactSave}
+                  disabled={
+                    loading ||
+                    activeSection !== 'contact' ||
+                    !isEditingContact ||
+                    !profileData?.userId
+                  }
+                  title={
+                    activeSection !== 'contact'
+                      ? 'Switch to Contact Info to save'
+                      : !isEditingContact
+                        ? 'Click Edit Contact Info to make changes'
+                        : 'Save contact information'
+                  }
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  Save
+                </button>
               </div>
             </div>
 

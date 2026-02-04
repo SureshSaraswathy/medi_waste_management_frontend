@@ -1,7 +1,11 @@
 .perm-config-page {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  /* Layout change (alignment + font size only):
+   * - dashboard-page-content already applies padding
+   * - remove extra centering to align with Masters template
+   */
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
 }
 
 .perm-config-header {
@@ -10,18 +14,26 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f8fafc;
+  padding: 12px 0;
 }
 
 .perm-config-header h1 {
   margin: 0;
-  font-size: 26px;
+  /* Typography alignment (Masters template) */
+  font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: #1e293b;
 }
 
 .perm-config-header p {
   margin: 6px 0 0;
-  color: #6b7280;
+  /* Typography alignment (Masters template) */
+  font-size: 13px;
+  color: #64748b;
 }
 
 .perm-config-save {
@@ -34,16 +46,221 @@
   font-weight: 700;
   cursor: pointer;
 }
+.perm-config-save-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* UI-only: make unsaved state obvious without changing save behavior */
+.perm-config-unsaved {
+  font-size: 12px;
+  font-weight: 800;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
 .perm-config-save:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+.perm-config-subheader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 2px 0 14px;
+}
+
+.perm-config-helper {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.perm-config-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: flex-end;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.legend-swatch--checked {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.legend-swatch--partial {
+  background: linear-gradient(90deg, #1f2937 50%, #ffffff 50%);
+  border-color: #1f2937;
+}
+
+.legend-swatch--disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.legend-lock {
+  font-size: 12px;
+}
+
 .perm-config-controls {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  /* UI-only: keep Search + legend on a single line (legend in an auto column) */
+  grid-template-columns: 280px 1fr auto;
   gap: 16px;
   margin-bottom: 12px;
+}
+
+.perm-config-controls.perm-config-controls--company {
+  grid-template-columns: 280px 280px 1fr auto;
+}
+
+/* UI-only: legend aligns with controls row (next to Search) */
+.perm-config-legend--controls {
+  justify-content: flex-start;
+  align-self: end;
+  padding-bottom: 2px;
+}
+
+.perm-config-control--search input {
+  /* UI-only: reduce search input size for a cleaner toolbar */
+  height: 36px;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  /* UI-only: stack controls on smaller screens */
+  .perm-config-controls,
+  .perm-config-controls.perm-config-controls--company {
+    grid-template-columns: 1fr;
+  }
+  .perm-config-legend--controls {
+    align-self: start;
+    padding-bottom: 0;
+  }
+}
+
+/* Template-style filter pills row (UI-only) */
+.perm-config-filters {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.perm-config-filters-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.perm-config-filters-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.perm-config-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.perm-config-pill {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+}
+
+.perm-config-pill.active {
+  border-color: #a78bfa;
+  background: rgba(167, 139, 250, 0.14);
+  color: #4c1d95;
+}
+
+.perm-config-clear-link {
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.perm-config-clear-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.perm-config-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+
+.perm-config-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.perm-config-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.perm-config-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.perm-config-btn--ghost {
+  background: transparent;
+}
+
+.perm-config-btn--tiny {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .perm-config-control label {
@@ -63,6 +280,9 @@
   padding: 0 12px;
   outline: none;
   background: #fff;
+  /* Typography alignment (Masters template) */
+  font-size: 14px;
+  color: #1e293b;
 }
 
 .perm-config-error {
@@ -80,55 +300,446 @@
   color: #6b7280;
 }
 
-.perm-config-grid {
-  margin-top: 16px;
+.perm-config-layout {
+  margin-top: 12px;
   display: grid;
-  gap: 14px;
+  /* Layout change (UI/spacing only): give more space to tree, keep right panel secondary */
+  grid-template-columns: minmax(0, 2.2fr) minmax(320px, 1fr); /* ~69% / 31% */
+  gap: 16px;
+  align-items: start;
 }
 
-.perm-config-module {
+.perm-config-tree,
+.perm-config-selected {
+  background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 14px;
+  border-radius: 14px;
 }
 
-.perm-config-module h2 {
-  margin: 0 0 10px;
-  font-size: 16px;
-  font-weight: 800;
+.perm-config-tree {
+  padding: 10px;
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  /* Layout change (UI/spacing only): avoid wrapping pressure; allow horizontal scroll when needed */
+  overflow-x: auto;
+}
+
+.perm-config-selected {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 280px);
+  /* Layout change (UI/spacing only): keep right panel visually secondary */
+  background: #fcfcfd;
+}
+
+.perm-config-selected-header {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.perm-config-selected-title {
+  font-size: 14px;
+  font-weight: 900;
   color: #111827;
 }
 
-.perm-config-list {
+.perm-config-selected-subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.perm-config-selected-empty {
+  padding: 18px 14px;
+  color: #6b7280;
+  font-size: 13px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.perm-config-selected-empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.perm-config-selected-empty-title {
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.perm-config-selected-empty-subtitle {
+  max-width: 46ch;
+  color: #64748b;
+}
+
+.perm-config-selected-list {
+  padding: 10px;
+  overflow: auto;
+}
+
+/* Right panel grouping */
+.selected-module-group {
+  border: 1px solid #f1f5f9;
+  background: #fbfdff;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.selected-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.selected-module-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.selected-module-count {
+  font-size: 12px;
+  font-weight: 900;
+  color: #334155;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.selected-code-list {
+  list-style: none;
+  padding: 10px 0 0;
+  margin: 0;
   display: grid;
   gap: 8px;
 }
 
-.perm-config-item {
-  display: grid;
-  grid-template-columns: 18px 1fr;
+.selected-code-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  align-items: flex-start;
-  padding: 10px;
-  border: 1px solid #f3f4f6;
+  min-width: 0;
+}
+
+.selected-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+  /* Layout change (UI/spacing only): do not wrap long permission codes */
+  white-space: nowrap;
+}
+
+/* Module card (top level) */
+.module-card {
+  background: #F9FAFB;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 14px;
+  /* Layout change (UI/spacing only): more breathing room between modules */
+  margin-bottom: 16px;
+}
+
+.module-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* UI-only: visually strengthen module headers */
+  background: #f3f4f6;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 10px 12px;
   border-radius: 10px;
 }
 
-.perm-config-item:hover {
-  border-color: #e5e7eb;
-  background: #fafafa;
-}
-
-.perm-config-item input {
-  margin-top: 3px;
-}
-
-.perm-config-item-title {
+.module-card-right {
   display: flex;
+  align-items: center;
   gap: 10px;
-  align-items: baseline;
-  flex-wrap: wrap;
+}
+
+.module-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.module-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.module-card-title {
+  min-width: 0;
+}
+
+.module-card-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.module-card-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+  min-height: 16px; /* preserves header height when empty */
+}
+
+.module-card-expander {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #374151;
+  font-weight: 800;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.module-card-expander:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.module-card-body {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Entity (second level) */
+.entity-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.entity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Layout change (UI/spacing only): slightly reduce inner padding */
+  padding: 9px 10px;
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.entity-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.entity-title {
+  min-width: 0;
+}
+
+.entity-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+}
+
+.entity-meta {
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.entity-desc {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.entity-expander {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.entity-expander:hover {
+  background: #f8fafc;
+}
+
+/* UI-only: entity header right side container */
+.entity-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Chevron-style expander for clearer scan */
+.entity-expander--icon {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.entity-actions {
+  /* Layout change (UI/spacing only): slightly reduce inner padding */
+  padding: 10px;
+}
+
+/* Actions (third level) - responsive grid */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 980px) {
+  .action-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Template-style: list layout (name + code) */
+.action-grid--list {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.action-grid--chips {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 980px) {
+  .action-grid--chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.action-item--chip {
+  justify-content: flex-start;
+}
+
+.action-chip-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+/* Module-level actions list (template-style) */
+.module-actions {
+  display: grid;
+  gap: 12px;
+  padding: 2px 2px 8px;
+}
+
+.module-action-item {
+  padding: 12px 12px;
+  border-radius: 10px;
+}
+
+.action-item input {
+  accent-color: #7c3aed;
+}
+.action-item:hover {
+  background: #f8fafc;
+}
+
+.action-item input {
+  accent-color: #1f2937;
+}
+
+.action-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.action-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-code {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-lock {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.action-item--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.entity-footnote {
+  margin-top: 10px;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .perm-code {
@@ -147,7 +758,6 @@
 }
 
 .perm-desc {
-  margin-top: 4px;
   color: #6b7280;
   font-size: 12px;
 }
@@ -155,6 +765,16 @@
 @media (max-width: 900px) {
   .perm-config-controls {
     grid-template-columns: 1fr;
+  }
+  .perm-config-controls.perm-config-controls--company {
+    grid-template-columns: 1fr;
+  }
+  .perm-config-layout {
+    grid-template-columns: 1fr;
+  }
+  .perm-config-tree,
+  .perm-config-selected {
+    max-height: unset;
   }
 }
 

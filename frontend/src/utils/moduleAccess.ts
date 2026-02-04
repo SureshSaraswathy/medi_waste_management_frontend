@@ -29,7 +29,10 @@ const MODULE_MENU_PERMISSIONS: Record<Exclude<DesktopModuleKey, 'dashboard'>, st
   finance: ['MENU_FINANCE_VIEW', 'MENU_FINANCE.VIEW', 'FINANCE_VIEW', 'FINANCE.VIEW'],
   commercial: ['MENU_COMMERCIAL_VIEW', 'MENU_COMMERCIAL.VIEW'],
   compliance: ['MENU_COMPLIANCE_VIEW', 'MENU_COMPLIANCE.VIEW'],
-  master: ['MENU_MASTER_VIEW', 'MENU_MASTER.VIEW'],
+  // Backward compatibility:
+  // - Older seed/migrations used MASTERS_VIEW for module-level access.
+  // - Keep MENU_MASTER_VIEW as the preferred explicit menu permission.
+  master: ['MENU_MASTER_VIEW', 'MENU_MASTER.VIEW', 'MASTERS_VIEW', 'MASTERS.VIEW', 'MASTER_VIEW', 'MASTER.VIEW'],
   report: ['MENU_REPORTS_VIEW', 'MENU_REPORTS.VIEW', 'REPORTS_VIEW', 'REPORTS.VIEW'],
 };
 
