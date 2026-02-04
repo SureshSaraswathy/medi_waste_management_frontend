@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { userService, UserResponse } from '../../services/userService';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -64,6 +64,14 @@ interface User {
   status: string;
 }
 
+interface AdvancedFilters {
+  route: string;
+  vehicle: string;
+  driver: string;
+  picker: string;
+  supervisor: string;
+}
+
 const RouteAssignmentPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
@@ -71,10 +79,18 @@ const RouteAssignmentPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<RouteAssignment | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    route: '',
+    vehicle: '',
+    driver: '',
+    picker: '',
+    supervisor: '',
+  });
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -104,7 +120,9 @@ const RouteAssignmentPage = () => {
   // Load routes
   const loadRoutes = useCallback(async (companyId?: string) => {
     try {
-      const apiRoutes = await routeService.getAllRoutes(companyId, true);
+      // UI-only note: route service currently supports only `activeOnly` (no companyId param).
+      // We load active routes and filter client-side when a companyId is provided.
+      const apiRoutes = await routeService.getAllRoutes(true);
       const mappedRoutes: Route[] = apiRoutes.map((r: RouteResponse) => ({
         id: r.id,
         routeCode: r.routeCode,
@@ -112,7 +130,7 @@ const RouteAssignmentPage = () => {
         companyId: r.companyId,
         status: r.status,
       }));
-      setRoutes(mappedRoutes);
+      setRoutes(companyId ? mappedRoutes.filter((r) => r.companyId === companyId) : mappedRoutes);
     } catch (err) {
       console.error('Error loading routes:', err);
     }
@@ -246,13 +264,40 @@ const RouteAssignmentPage = () => {
     }
   }, [selectedDate, statusFilter, routes, vehicles, drivers, pickers, supervisors, companies, loadAssignments]);
 
-  const filteredAssignments = assignments.filter(assignment =>
-    assignment.routeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    assignment.routeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    assignment.vehicleNum.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    assignment.driverName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    assignment.companyName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAssignments = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const routeQuery = advancedFilters.route.trim().toLowerCase();
+    const vehicleQuery = advancedFilters.vehicle.trim().toLowerCase();
+    const driverQuery = advancedFilters.driver.trim().toLowerCase();
+    const pickerQuery = advancedFilters.picker.trim().toLowerCase();
+    const supervisorQuery = advancedFilters.supervisor.trim().toLowerCase();
+
+    return assignments.filter((assignment) => {
+      // Top search box: broad match across key fields
+      const matchesSearch =
+        !query ||
+        assignment.routeCode.toLowerCase().includes(query) ||
+        assignment.routeName.toLowerCase().includes(query) ||
+        assignment.vehicleNum.toLowerCase().includes(query) ||
+        assignment.driverName.toLowerCase().includes(query) ||
+        assignment.pickerName?.toLowerCase().includes(query) ||
+        assignment.supervisorName?.toLowerCase().includes(query) ||
+        assignment.companyName.toLowerCase().includes(query);
+
+      // Advanced filters: UI-only refinements, do not change backend API calls/contracts
+      const matchesRoute =
+        !routeQuery ||
+        assignment.routeCode.toLowerCase().includes(routeQuery) ||
+        assignment.routeName.toLowerCase().includes(routeQuery);
+      const matchesVehicle = !vehicleQuery || assignment.vehicleNum.toLowerCase().includes(vehicleQuery);
+      const matchesDriver = !driverQuery || assignment.driverName.toLowerCase().includes(driverQuery);
+      const matchesPicker = !pickerQuery || (assignment.pickerName || '-').toLowerCase().includes(pickerQuery);
+      const matchesSupervisor =
+        !supervisorQuery || (assignment.supervisorName || '-').toLowerCase().includes(supervisorQuery);
+
+      return matchesSearch && matchesRoute && matchesVehicle && matchesDriver && matchesPicker && matchesSupervisor;
+    });
+  }, [assignments, searchQuery, advancedFilters]);
 
   const handleAdd = () => {
     setEditingAssignment(null);
@@ -442,37 +487,15 @@ const RouteAssignmentPage = () => {
         {/* Top Header */}
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Route Assignment</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Route Assignment</span>
           </div>
         </header>
 
         {/* Success Message */}
         {successMessage && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#d4edda', 
-            color: '#155724', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #c3e6cb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
+          <div className="ra-alert ra-alert--success" role="status" aria-live="polite">
             <span>{successMessage}</span>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#155724',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close success message"
-            >
+            <button onClick={() => setSuccessMessage(null)} className="ra-alert-close" aria-label="Close success message">
               ×
             </button>
           </div>
@@ -480,31 +503,9 @@ const RouteAssignmentPage = () => {
 
         {/* Error Message */}
         {error && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#fee', 
-            color: '#c33', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
+          <div className="ra-alert ra-alert--error" role="alert">
             <span>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#c33',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close error message"
-            >
+            <button onClick={() => setError(null)} className="ra-alert-close" aria-label="Close error message">
               ×
             </button>
           </div>
@@ -518,61 +519,74 @@ const RouteAssignmentPage = () => {
         )}
 
         <div className="route-assignment-page">
-          <div className="route-assignment-header">
-            <h1 className="route-assignment-title">Route Assignment</h1>
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <h1 className="ra-page-title">Route Assignment</h1>
+            <p className="ra-page-subtitle">Manage and assign routes to vehicles and drivers</p>
           </div>
 
-          {/* Filters */}
-          <div className="route-assignment-filters">
-            <div className="filter-group">
-              <label htmlFor="assignment-date">Assignment Date</label>
-              <input
-                id="assignment-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="date-input"
-              />
-            </div>
-            <div className="filter-group">
-              <label htmlFor="status-filter">Status</label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="status-select"
-              >
-                <option value="all">All Status</option>
-                <option value="Draft">Draft</option>
-                <option value="Assigned">Assigned</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div className="filter-group filter-group--search">
-              <label htmlFor="search">Search</label>
-              <div className="search-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                </svg>
+          {/* Toolbar (template-style) */}
+          <div className="ra-toolbar">
+            <div className="ra-toolbar-left">
+              <div className="ra-control">
+                <label htmlFor="assignment-date">Assignment Date</label>
                 <input
-                  id="search"
-                  type="text"
-                  placeholder="Search by route, vehicle, driver..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
+                  id="assignment-date"
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="date-input"
                 />
               </div>
+              <div className="ra-control">
+                <label htmlFor="status-filter">Status</label>
+                <select
+                  id="status-filter"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="status-select"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <div className="ra-control ra-control--search">
+                <label htmlFor="search">Search</label>
+                <div className="search-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                  <input
+                    id="search"
+                    type="text"
+                    placeholder="Search by route, vehicle, driver..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+              </div>
             </div>
-            <button className="add-assignment-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Assignment
-            </button>
+
+            <div className="ra-toolbar-right">
+              <button className="ra-btn ra-btn--secondary" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+                </svg>
+                Filters
+              </button>
+              <button className="ra-btn ra-btn--primary" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Assignment
+              </button>
+            </div>
           </div>
 
           {/* Assignments Table */}
@@ -602,24 +616,50 @@ const RouteAssignmentPage = () => {
                     <tr key={assignment.id} className={!canEdit(assignment) ? 'read-only-row' : ''}>
                       <td>{new Date(assignment.assignmentDate).toLocaleDateString()}</td>
                       <td>
-                        <div className="route-info">
+                        {/* UI-only: single-line route display to match template and keep row height compact */}
+                        <div className="route-info route-info--single" title={`${assignment.routeCode} - ${assignment.routeName}`}>
                           <span className="route-code">{assignment.routeCode}</span>
+                          <span className="route-sep"> - </span>
                           <span className="route-name">{assignment.routeName}</span>
                         </div>
                       </td>
                       <td>{assignment.vehicleNum}</td>
                       <td>{assignment.driverName}</td>
-                      <td>{assignment.pickerName || '-'}</td>
-                      <td>{assignment.supervisorName || '-'}</td>
                       <td>
-                        <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
-                          {assignment.status}
-                        </span>
+                        {assignment.pickerName ? (
+                          assignment.pickerName
+                        ) : (
+                          <span className="text-muted">Not assigned</span>
+                        )}
                       </td>
                       <td>
-                        <div className="action-buttons">
+                        {assignment.supervisorName ? (
+                          assignment.supervisorName
+                        ) : (
+                          <span className="text-muted">Not assigned</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
+                            {assignment.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="action-buttons ra-actions">
                           {canEdit(assignment) && (
                             <>
+                              <button
+                                className="action-btn action-btn--view"
+                                onClick={() => handleEdit(assignment)}
+                                title="View"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                  <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                              </button>
                               <button
                                 className="action-btn action-btn--edit"
                                 onClick={() => handleEdit(assignment)}
@@ -685,10 +725,31 @@ const RouteAssignmentPage = () => {
             </table>
           </div>
           <div className="route-assignment-pagination-info">
-            Showing {filteredAssignments.length} of {assignments.length} Items
+            Showing {filteredAssignments.length} of {assignments.length} items
           </div>
         </div>
       </main>
+
+      {/* Advanced Filters Modal (template-style). UI-only filters; backend APIs are unchanged. */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          selectedDate={selectedDate}
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ route: '', vehicle: '', driver: '', picker: '', supervisor: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setSelectedDate(payload.selectedDate);
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Assignment Add/Edit Modal */}
       {showModal && (
@@ -754,7 +815,7 @@ const AssignmentFormModal = ({
     }
   );
 
-  const isReadOnly = assignment && (assignment.status === 'In Progress' || assignment.status === 'Completed');
+  const isReadOnly = !!assignment && (assignment.status === 'In Progress' || assignment.status === 'Completed');
 
   // Load users when company is selected
   useEffect(() => {
@@ -790,11 +851,28 @@ const AssignmentFormModal = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-content--large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{assignment ? (isReadOnly ? 'View Assignment' : 'Edit Assignment') : 'Add Assignment'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header - match template */}
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">
+                {assignment ? (isReadOnly ? 'View Assignment' : 'Edit Assignment') : 'Add Assignment'}
+              </h2>
+              <p className="ra-assignment-modal-subtitle">
+                {assignment ? 'Update assignment details' : 'Create a new assignment.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -802,22 +880,17 @@ const AssignmentFormModal = ({
           </button>
         </div>
 
-        <form className="assignment-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Assignment Information</h3>
-            <div className="form-grid form-grid--two-columns">
-              <div className="form-group">
-                <label>Assignment Date *</label>
-                <input
-                  type="date"
-                  value={assignment ? assignment.assignmentDate : selectedDate}
-                  disabled={true}
-                  className="form-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>Company *</label>
+        {/* Form - match template layout */}
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            {/* Left Column */}
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="company">
+                  Company Name <span className="ra-required">*</span>
+                </label>
                 <select
+                  id="company"
                   value={formData.companyId || ''}
                   onChange={async (e) => {
                     const companyId = e.target.value;
@@ -828,7 +901,7 @@ const AssignmentFormModal = ({
                   }}
                   required
                   disabled={!!assignment || isReadOnly}
-                  className="form-select"
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -838,31 +911,30 @@ const AssignmentFormModal = ({
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Route *</label>
-                <select
-                  value={formData.routeId || ''}
-                  onChange={(e) => setFormData({ ...formData, routeId: e.target.value })}
-                  required
-                  disabled={!formData.companyId || isReadOnly}
-                  className="form-select"
-                >
-                  <option value="">Select Route</option>
-                  {filteredRoutes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.routeCode} - {route.routeName}
-                    </option>
-                  ))}
-                </select>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="assignment-date">
+                  Date <span className="ra-required">*</span>
+                </label>
+                <input
+                  id="assignment-date"
+                  type="date"
+                  value={assignment ? assignment.assignmentDate : selectedDate}
+                  disabled={true}
+                  className="ra-assignment-input"
+                  placeholder="dd-mm-yyyy"
+                />
               </div>
-              <div className="form-group">
-                <label>Vehicle *</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="vehicle">
+                  Vehicle <span className="ra-required">*</span>
+                </label>
                 <select
+                  id="vehicle"
                   value={formData.vehicleId || ''}
                   onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
                   required
                   disabled={!formData.companyId || isReadOnly}
-                  className="form-select"
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Vehicle</option>
                   {filteredVehicles.map((vehicle) => (
@@ -872,30 +944,14 @@ const AssignmentFormModal = ({
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Driver *</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="picker">Picker</label>
                 <select
-                  value={formData.driverId || ''}
-                  onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-                  required
-                  disabled={!formData.companyId || isReadOnly}
-                  className="form-select"
-                >
-                  <option value="">Select Driver</option>
-                  {filteredDrivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.userName} {driver.employeeCode ? `(${driver.employeeCode})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Picker</label>
-                <select
+                  id="picker"
                   value={formData.pickerId || ''}
                   onChange={(e) => setFormData({ ...formData, pickerId: e.target.value || null })}
                   disabled={!formData.companyId || isReadOnly}
-                  className="form-select"
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Picker (Optional)</option>
                   {filteredPickers.map((picker) => (
@@ -905,13 +961,58 @@ const AssignmentFormModal = ({
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Supervisor</label>
+            </div>
+
+            {/* Right Column */}
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="route">
+                  Route <span className="ra-required">*</span>
+                </label>
                 <select
+                  id="route"
+                  value={formData.routeId || ''}
+                  onChange={(e) => setFormData({ ...formData, routeId: e.target.value })}
+                  required
+                  disabled={!formData.companyId || isReadOnly}
+                  className="ra-assignment-select"
+                >
+                  <option value="">Select Route</option>
+                  {filteredRoutes.map((route) => (
+                    <option key={route.id} value={route.id}>
+                      {route.routeCode} - {route.routeName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="driver">
+                  Driver <span className="ra-required">*</span>
+                </label>
+                <select
+                  id="driver"
+                  value={formData.driverId || ''}
+                  onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
+                  required
+                  disabled={!formData.companyId || isReadOnly}
+                  className="ra-assignment-select"
+                >
+                  <option value="">Select Driver</option>
+                  {filteredDrivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.userName} {driver.employeeCode ? `(${driver.employeeCode})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="supervisor">Supervisor</label>
+                <select
+                  id="supervisor"
                   value={formData.supervisorId || ''}
                   onChange={(e) => setFormData({ ...formData, supervisorId: e.target.value || null })}
                   disabled={!formData.companyId || isReadOnly}
-                  className="form-select"
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Supervisor (Optional)</option>
                   {filteredSupervisors.map((supervisor) => (
@@ -921,13 +1022,14 @@ const AssignmentFormModal = ({
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Status</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="status">Status</label>
                 <select
+                  id="status"
                   value={formData.status || 'Draft'}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                   disabled={isReadOnly}
-                  className="form-select"
+                  className="ra-assignment-select"
                 >
                   <option value="Draft">Draft</option>
                   <option value="Assigned">Assigned</option>
@@ -940,26 +1042,16 @@ const AssignmentFormModal = ({
                 </select>
               </div>
             </div>
-            <div className="form-group form-group--full-width">
-              <label>Notes</label>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
-                disabled={isReadOnly}
-                rows={3}
-                className="form-textarea"
-                placeholder="Additional notes or instructions..."
-              />
-            </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              {isReadOnly ? 'Close' : 'Cancel'}
+          {/* Modal Footer - match template */}
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
+              Cancel
             </button>
             {!isReadOnly && (
-              <button type="submit" className="btn btn--primary">
-                {assignment ? 'Update' : 'Create'}
+              <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary">
+                {assignment ? 'Update Assignment' : 'Create Assignment'}
               </button>
             )}
           </div>
@@ -970,3 +1062,162 @@ const AssignmentFormModal = ({
 };
 
 export default RouteAssignmentPage;
+
+interface AdvancedFiltersModalProps {
+  selectedDate: string;
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { selectedDate: string; statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  selectedDate,
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftDate, setDraftDate] = useState(selectedDate);
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter assignments by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field ra-filter-field--range">
+              <label>Assignment Date</label>
+              <div className="ra-filter-range">
+                <input
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className="ra-filter-input"
+                />
+              </div>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Route</label>
+              <input
+                type="text"
+                value={draft.route}
+                onChange={(e) => setDraft({ ...draft, route: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter route"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Vehicle</label>
+              <input
+                type="text"
+                value={draft.vehicle}
+                onChange={(e) => setDraft({ ...draft, vehicle: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter vehicle"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Driver</label>
+              <input
+                type="text"
+                value={draft.driver}
+                onChange={(e) => setDraft({ ...draft, driver: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter driver name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Picker</label>
+              <input
+                type="text"
+                value={draft.picker}
+                onChange={(e) => setDraft({ ...draft, picker: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter picker name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Supervisor</label>
+              <input
+                type="text"
+                value={draft.supervisor}
+                onChange={(e) => setDraft({ ...draft, supervisor: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter supervisor name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="ra-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraftDate(new Date().toISOString().split('T')[0]);
+              setDraftStatus('all');
+              setDraft({ route: '', vehicle: '', driver: '', picker: '', supervisor: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() =>
+              onApply({
+                selectedDate: draftDate,
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

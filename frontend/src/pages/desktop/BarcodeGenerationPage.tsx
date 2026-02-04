@@ -33,8 +33,17 @@ const BarcodeGenerationPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [previewLabels, setPreviewLabels] = useState<BarcodeLabel[]>([]);
   const printContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    companyId: '',
+    hcfId: '',
+    barcodeType: '',
+    colorBlock: '',
+  });
   
   // Master data
   const [companies, setCompanies] = useState<CompanyResponse[]>([]);
@@ -53,6 +62,10 @@ const BarcodeGenerationPage = () => {
   const [formData, setFormData] = useState({
     companyId: '',
     hcfId: '',
+    hcfCode: '',
+    prefix: 'HCF',
+    startSequence: 1,
+    endSequence: 10,
     barcodeType: 'Barcode' as BarcodeType,
     colorBlock: 'White' as ColorBlock,
     count: 1,
@@ -166,8 +179,11 @@ const BarcodeGenerationPage = () => {
 
   // Generate labels using backend API
   const handleGenerate = async () => {
-    if (!formData.companyId || !formData.hcfId || formData.count < 1) {
-      setError('Please select company, HCF, and enter valid count');
+    // Calculate count from start and end sequence
+    const count = formData.endSequence - formData.startSequence + 1;
+    
+    if (!formData.companyId || !formData.hcfId || count < 1) {
+      setError('Please select company, HCF, and enter valid sequence range');
       return;
     }
 
@@ -183,13 +199,13 @@ const BarcodeGenerationPage = () => {
       setLoading(true);
       setError(null);
 
-      // Call backend API to generate labels
+      // Call backend API to generate labels (backend expects count, not sequence range)
       const apiLabels = await barcodeLabelService.generateLabels({
         hcfId: formData.hcfId,
         companyId: formData.companyId,
         barcodeType: formData.barcodeType,
         colorBlock: formData.colorBlock,
-        count: formData.count,
+        count: count, // Calculate count from start/end sequence
       });
 
       // Map backend response to frontend format
@@ -215,13 +231,18 @@ const BarcodeGenerationPage = () => {
       setShowGenerateModal(false);
 
       // Reset form
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         companyId: '',
         hcfId: '',
+        hcfCode: '',
+        prefix: 'HCF',
+        startSequence: 1,
+        endSequence: 10,
         barcodeType: 'Barcode',
         colorBlock: 'White',
         count: 1,
-      });
+      }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate labels';
       setError(errorMessage);
@@ -338,14 +359,22 @@ const BarcodeGenerationPage = () => {
   };
 
 
-  // Filter labels
+  // Filter labels - client-side filtering
   const filteredLabels = labels.filter(label => {
+    // Search filter
     const matchesSearch = 
       label.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       label.hcfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       label.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       label.barcodeValue.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    
+    // Advanced filters
+    const matchesCompany = !filters.companyId || label.companyId === filters.companyId;
+    const matchesHcf = !filters.hcfId || label.hcfCode === filters.hcfId;
+    const matchesType = !filters.barcodeType || label.barcodeType === filters.barcodeType;
+    const matchesColor = !filters.colorBlock || label.colorBlock === filters.colorBlock;
+    
+    return matchesSearch && matchesCompany && matchesHcf && matchesType && matchesColor;
   });
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
@@ -450,13 +479,21 @@ const BarcodeGenerationPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="generate-btn" onClick={() => setShowGenerateModal(true)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Generate Labels
-            </button>
+            <div className="barcode-action-buttons-group">
+              <button className="barcode-filter-btn" onClick={() => setShowFiltersModal(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Filters
+              </button>
+              <button className="generate-btn" onClick={() => setShowGenerateModal(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Generate Labels
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -474,55 +511,122 @@ const BarcodeGenerationPage = () => {
             <table className="barcode-table">
               <thead>
                 <tr>
-                  <th>Sequence</th>
-                  <th>HCF Code</th>
-                  <th>HCF Name</th>
-                  <th>Company</th>
-                  <th>Type</th>
-                  <th>Color Block</th>
-                  <th>Barcode Value</th>
-                  <th>Actions</th>
+                  <th>SEQUENCE</th>
+                  <th>HCF CODE</th>
+                  <th>HCF NAME</th>
+                  <th>COMPANY</th>
+                  <th>TYPE</th>
+                  <th>COLOR BLOCK</th>
+                  <th>BARCODE VALUE</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLabels.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="empty-message">
-                      No labels generated yet. Click "Generate Labels" to create barcode/QR labels.
+                      No labels found. Click "Generate Labels" to create barcode/QR labels.
                     </td>
                   </tr>
                 ) : (
                   filteredLabels.map((label) => (
                     <tr key={label.id}>
-                      <td className="sequence-cell">{label.sequenceNumber}</td>
+                      <td className="sequence-cell">{label.sequenceNumber.toString().padStart(6, '0')}</td>
                       <td className="hcf-code-cell">{label.hcfCode}</td>
                       <td>{label.hcfName}</td>
                       <td>{label.companyName}</td>
                       <td>
-                        <span className={`barcode-type-badge barcode-type-badge--${label.barcodeType.toLowerCase().replace(' ', '-')}`}>
-                          {label.barcodeType}
-                        </span>
+                        <div className="barcode-type-icon-wrapper">
+                          {label.barcodeType === 'QR Code' ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="3" width="5" height="5"></rect>
+                              <rect x="16" y="3" width="5" height="5"></rect>
+                              <rect x="3" y="16" width="5" height="5"></rect>
+                              <rect x="7" y="7" width="2" height="2"></rect>
+                              <rect x="15" y="7" width="2" height="2"></rect>
+                              <rect x="7" y="15" width="2" height="2"></rect>
+                              <rect x="11" y="11" width="2" height="2"></rect>
+                              <rect x="16" y="16" width="5" height="5"></rect>
+                            </svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="4" y1="8" x2="4" y2="16"></line>
+                              <line x1="6" y1="8" x2="6" y2="16"></line>
+                              <line x1="8" y1="8" x2="8" y2="16"></line>
+                              <line x1="10" y1="8" x2="10" y2="16"></line>
+                              <line x1="12" y1="8" x2="12" y2="16"></line>
+                              <line x1="14" y1="8" x2="14" y2="16"></line>
+                              <line x1="16" y1="8" x2="16" y2="16"></line>
+                              <line x1="18" y1="8" x2="18" y2="16"></line>
+                              <line x1="20" y1="8" x2="20" y2="16"></line>
+                            </svg>
+                          )}
+                        </div>
                       </td>
                       <td>
-                        <span className={`color-block-badge color-block-badge--${label.colorBlock.toLowerCase()}`}>
-                          {label.colorBlock}
-                        </span>
+                        <div className="color-block-swatch-wrapper">
+                          <div 
+                            className={`color-block-swatch color-block-swatch--${label.colorBlock.toLowerCase()}`}
+                            style={{
+                              backgroundColor: label.colorBlock === 'Yellow' ? '#FFFF00' : 
+                                              label.colorBlock === 'Red' ? '#FF0000' : '#FFFFFF',
+                              border: label.colorBlock === 'White' ? '1px solid #e2e8f0' : 'none'
+                            }}
+                          ></div>
+                          <span className="color-block-hex">
+                            {label.colorBlock === 'Yellow' ? '#FFFF00' : 
+                             label.colorBlock === 'Red' ? '#FF0000' : '#FFFFFF'}
+                          </span>
+                        </div>
                       </td>
                       <td className="barcode-value-cell">{label.barcodeValue}</td>
                       <td>
-                        <div className="barcode-action-buttons">
+                        <div className="barcode-table-action-buttons">
                           <button
-                            className="action-btn action-btn--print"
+                            className="barcode-action-btn barcode-action-btn--view"
                             onClick={() => {
                               setPreviewLabels([label]);
                               setShowPreviewModal(true);
                             }}
-                            title="Preview & Print"
+                            title="View"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                              <rect x="6" y="14" width="12" height="8"></rect>
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
+                          <button
+                            className="barcode-action-btn barcode-action-btn--download"
+                            onClick={() => {
+                              setPreviewLabels([label]);
+                              setShowPreviewModal(true);
+                              setTimeout(() => handlePrint(), 200);
+                            }}
+                            title="Download"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                          </button>
+                          <button
+                            className="barcode-action-btn barcode-action-btn--delete"
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to delete this label?')) {
+                                try {
+                                  await barcodeLabelService.deleteBarcodeLabel(label.id);
+                                  await loadLabels();
+                                } catch (err) {
+                                  setError('Failed to delete label');
+                                }
+                              }
+                            }}
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             </svg>
                           </button>
                         </div>
@@ -548,6 +652,18 @@ const BarcodeGenerationPage = () => {
           setFormData={setFormData}
           onClose={() => setShowGenerateModal(false)}
           onGenerate={handleGenerate}
+        />
+      )}
+
+      {/* Filters Modal */}
+      {showFiltersModal && (
+        <FiltersModal
+          companies={companies}
+          hcfs={hcfs}
+          filters={filters}
+          setFilters={setFilters}
+          onClose={() => setShowFiltersModal(false)}
+          onClear={() => setFilters({ companyId: '', hcfId: '', barcodeType: '', colorBlock: '' })}
         />
       )}
 
@@ -596,6 +712,10 @@ interface GenerateLabelModalProps {
   formData: {
     companyId: string;
     hcfId: string;
+    hcfCode: string;
+    prefix: string;
+    startSequence: number;
+    endSequence: number;
     barcodeType: BarcodeType;
     colorBlock: ColorBlock;
     count: number;
@@ -603,6 +723,10 @@ interface GenerateLabelModalProps {
   setFormData: React.Dispatch<React.SetStateAction<{
     companyId: string;
     hcfId: string;
+    hcfCode: string;
+    prefix: string;
+    startSequence: number;
+    endSequence: number;
     barcodeType: BarcodeType;
     colorBlock: ColorBlock;
     count: number;
@@ -613,36 +737,63 @@ interface GenerateLabelModalProps {
 
 const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, onGenerate }: GenerateLabelModalProps) => {
   const selectedHcf = hcfs.find(h => h.id === formData.hcfId);
-  const [lastSeqBarcode, setLastSeqBarcode] = useState<number>(0);
-  const [lastSeqQR, setLastSeqQR] = useState<number>(0);
-  const [loadingSequence, setLoadingSequence] = useState(false);
+  const filteredHcfs = formData.companyId 
+    ? hcfs.filter(hcf => hcf.companyId === formData.companyId)
+    : hcfs;
+  
+  // Calculate label count from sequence range
+  const labelCount = formData.endSequence >= formData.startSequence 
+    ? formData.endSequence - formData.startSequence + 1 
+    : 0;
+  
+  // Generate preview barcode value
+  const previewBarcodeValue = formData.hcfCode && formData.startSequence 
+    ? `${formData.prefix}-${formData.hcfCode}-${formData.startSequence.toString().padStart(6, '0')}`
+    : '';
 
-  // Load last sequence numbers from backend when HCF is selected
-  useEffect(() => {
-    if (selectedHcf) {
-      setLoadingSequence(true);
-      Promise.all([
-        barcodeLabelService.getLastSequence(selectedHcf.hcfCode, 'Barcode').catch(() => 0),
-        barcodeLabelService.getLastSequence(selectedHcf.hcfCode, 'QR Code').catch(() => 0),
-      ]).then(([barcodeSeq, qrSeq]) => {
-        setLastSeqBarcode(barcodeSeq);
-        setLastSeqQR(qrSeq);
-        setLoadingSequence(false);
-      }).catch(() => {
-        setLoadingSequence(false);
-      });
+  // Handle HCF code input - find matching HCF
+  const handleHcfCodeChange = (code: string) => {
+    setFormData({ ...formData, hcfCode: code });
+    const matchingHcf = filteredHcfs.find(h => h.hcfCode.toUpperCase() === code.toUpperCase());
+    if (matchingHcf) {
+      setFormData(prev => ({ ...prev, hcfCode: code, hcfId: matchingHcf.id }));
     } else {
-      setLastSeqBarcode(0);
-      setLastSeqQR(0);
+      setFormData(prev => ({ ...prev, hcfCode: code, hcfId: '' }));
     }
-  }, [selectedHcf]);
+  };
+
+  // Handle HCF name selection
+  const handleHcfNameChange = (hcfId: string) => {
+    const selectedHcf = hcfs.find(h => h.id === hcfId);
+    if (selectedHcf) {
+      setFormData({ ...formData, hcfId, hcfCode: selectedHcf.hcfCode });
+    }
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">Generate Barcode/QR Labels</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay bg-generate-modal-overlay" onClick={onClose}>
+      <div className="modal-content bg-generate-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header - match template */}
+        <div className="bg-generate-modal-header">
+          <div className="bg-generate-modal-titlewrap">
+            <div className="bg-generate-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="5" height="5"></rect>
+                <rect x="16" y="3" width="5" height="5"></rect>
+                <rect x="3" y="16" width="5" height="5"></rect>
+                <rect x="7" y="7" width="2" height="2"></rect>
+                <rect x="15" y="7" width="2" height="2"></rect>
+                <rect x="7" y="15" width="2" height="2"></rect>
+                <rect x="11" y="11" width="2" height="2"></rect>
+                <rect x="16" y="16" width="5" height="5"></rect>
+              </svg>
+            </div>
+            <div>
+              <h2 className="bg-generate-modal-title">Generate Labels</h2>
+              <p className="bg-generate-modal-subtitle">Create barcode or QR code labels</p>
+            </div>
+          </div>
+          <button className="bg-generate-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -650,95 +801,222 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
           </button>
         </div>
 
-        <form className="barcode-form" onSubmit={(e) => { e.preventDefault(); onGenerate(); }}>
-          <div className="form-section">
-            <h3 className="form-section-title">Label Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company *</label>
+        <form className="bg-generate-form" onSubmit={(e) => { e.preventDefault(); onGenerate(); }}>
+          {/* LABEL TYPE Section */}
+          <div className="bg-generate-form-section">
+            <label className="bg-generate-form-label">
+              LABEL TYPE <span className="bg-required">*</span>
+            </label>
+            <div className="bg-label-type-options">
+              <button
+                type="button"
+                className={`bg-label-type-btn ${formData.barcodeType === 'Barcode' ? 'bg-label-type-btn--active' : ''}`}
+                onClick={() => setFormData({ ...formData, barcodeType: 'Barcode' })}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="4" y1="8" x2="4" y2="16"></line>
+                  <line x1="6" y1="8" x2="6" y2="16"></line>
+                  <line x1="8" y1="8" x2="8" y2="16"></line>
+                  <line x1="10" y1="8" x2="10" y2="16"></line>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="14" y1="8" x2="14" y2="16"></line>
+                  <line x1="16" y1="8" x2="16" y2="16"></line>
+                  <line x1="18" y1="8" x2="18" y2="16"></line>
+                  <line x1="20" y1="8" x2="20" y2="16"></line>
+                </svg>
+                Barcode
+              </button>
+              <button
+                type="button"
+                className={`bg-label-type-btn ${formData.barcodeType === 'QR Code' ? 'bg-label-type-btn--active' : ''}`}
+                onClick={() => setFormData({ ...formData, barcodeType: 'QR Code' })}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="5" height="5"></rect>
+                  <rect x="16" y="3" width="5" height="5"></rect>
+                  <rect x="3" y="16" width="5" height="5"></rect>
+                  <rect x="7" y="7" width="2" height="2"></rect>
+                  <rect x="15" y="7" width="2" height="2"></rect>
+                  <rect x="7" y="15" width="2" height="2"></rect>
+                  <rect x="11" y="11" width="2" height="2"></rect>
+                  <rect x="16" y="16" width="5" height="5"></rect>
+                </svg>
+                QR Code
+              </button>
+            </div>
+          </div>
+
+          {/* COMPANY and PREFIX Section */}
+          <div className="bg-generate-form-section">
+            <div className="bg-generate-form-grid">
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  COMPANY <span className="bg-required">*</span>
+                </label>
                 <select
                   value={formData.companyId}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value, hcfId: '' })}
+                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value, hcfId: '', hcfCode: '' })}
                   required
+                  className="bg-generate-select"
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>
-                      {company.companyCode} - {company.companyName}
+                      {company.companyName}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>HCF *</label>
-                <select
-                  value={formData.hcfId}
-                  onChange={(e) => setFormData({ ...formData, hcfId: e.target.value })}
-                  required
-                  disabled={!formData.companyId}
-                >
-                  <option value="">Select HCF</option>
-                  {hcfs.map((hcf) => (
-                    <option key={hcf.id} value={hcf.id}>
-                      {hcf.hcfCode} - {hcf.hcfName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Barcode Type *</label>
-                <select
-                  value={formData.barcodeType}
-                  onChange={(e) => setFormData({ ...formData, barcodeType: e.target.value as BarcodeType })}
-                  required
-                >
-                  <option value="Barcode">Barcode (Code128)</option>
-                  <option value="QR Code">QR Code</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Print Color Block *</label>
-                <select
-                  value={formData.colorBlock}
-                  onChange={(e) => setFormData({ ...formData, colorBlock: e.target.value as ColorBlock })}
-                  required
-                >
-                  <option value="Yellow">Yellow</option>
-                  <option value="Red">Red</option>
-                  <option value="White">White</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Barcode Count *</label>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  PREFIX <span className="bg-required">*</span>
+                </label>
                 <input
-                  type="number"
-                  value={formData.count}
-                  onChange={(e) => setFormData({ ...formData, count: parseInt(e.target.value) || 1 })}
+                  type="text"
+                  value={formData.prefix}
+                  onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
                   required
-                  min={1}
-                  max={1000}
-                  placeholder="Enter count (1-1000)"
+                  className="bg-generate-input"
                 />
               </div>
-              {selectedHcf && (
-                <div className="form-group">
-                  <label>Last Sequence</label>
-                  <input
-                    type="text"
-                    value={loadingSequence ? 'Loading...' : `Barcode: ${lastSeqBarcode} | QR: ${lastSeqQR}`}
-                    readOnly
-                    style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                  />
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          {/* SEQUENCE Section */}
+          <div className="bg-generate-form-section">
+            <div className="bg-generate-form-grid">
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  START SEQUENCE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.startSequence}
+                  onChange={(e) => setFormData({ ...formData, startSequence: parseInt(e.target.value) || 1 })}
+                  required
+                  min={1}
+                  className="bg-generate-input"
+                />
+              </div>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  END SEQUENCE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.endSequence}
+                  onChange={(e) => setFormData({ ...formData, endSequence: parseInt(e.target.value) || 1 })}
+                  required
+                  min={formData.startSequence}
+                  className="bg-generate-input"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* HCF CODE and NAME Section */}
+          <div className="bg-generate-form-section">
+            <div className="bg-generate-form-grid">
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  HCF CODE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.hcfCode}
+                  onChange={(e) => handleHcfCodeChange(e.target.value)}
+                  required
+                  placeholder="e.g., MH01"
+                  className="bg-generate-input"
+                />
+              </div>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  HCF NAME <span className="bg-required">*</span>
+                </label>
+                <select
+                  value={formData.hcfId}
+                  onChange={(e) => handleHcfNameChange(e.target.value)}
+                  required
+                  disabled={!formData.companyId}
+                  className="bg-generate-select"
+                >
+                  <option value="">Select HCF</option>
+                  {filteredHcfs.map((hcf) => (
+                    <option key={hcf.id} value={hcf.id}>
+                      {hcf.hcfName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* COLOR BLOCK Section */}
+          <div className="bg-generate-form-section">
+            <label className="bg-generate-form-label">
+              COLOR BLOCK <span className="bg-required">*</span>
+            </label>
+            <div className="bg-color-block-options">
+              <button
+                type="button"
+                className={`bg-color-block-btn ${formData.colorBlock === 'White' ? 'bg-color-block-btn--active' : ''}`}
+                onClick={() => setFormData({ ...formData, colorBlock: 'White' })}
+              >
+                <div className="bg-color-block-swatch" style={{ backgroundColor: '#FFFFFF', border: '1px solid #e2e8f0' }}></div>
+                <span>WHITE</span>
+                <span className="bg-color-block-hex">#FFFFFF</span>
+              </button>
+              <button
+                type="button"
+                className={`bg-color-block-btn ${formData.colorBlock === 'Red' ? 'bg-color-block-btn--active' : ''}`}
+                onClick={() => setFormData({ ...formData, colorBlock: 'Red' })}
+              >
+                <div className="bg-color-block-swatch" style={{ backgroundColor: '#FF0000' }}></div>
+                <span>RED</span>
+                <span className="bg-color-block-hex">#FF0000</span>
+              </button>
+              <button
+                type="button"
+                className={`bg-color-block-btn ${formData.colorBlock === 'Yellow' ? 'bg-color-block-btn--active' : ''}`}
+                onClick={() => setFormData({ ...formData, colorBlock: 'Yellow' })}
+              >
+                <div className="bg-color-block-swatch" style={{ backgroundColor: '#FFFF00' }}></div>
+                <span>YELLOW</span>
+                <span className="bg-color-block-hex">#FFFF00</span>
+              </button>
+            </div>
+          </div>
+
+          {/* PREVIEW Section */}
+          <div className="bg-generate-form-section">
+            <label className="bg-generate-form-label">PREVIEW</label>
+            <div className="bg-preview-box">
+              <div className="bg-preview-content">
+                <div 
+                  className="bg-preview-color-swatch" 
+                  style={{ 
+                    backgroundColor: formData.colorBlock === 'Yellow' ? '#FFFF00' : 
+                                    formData.colorBlock === 'Red' ? '#FF0000' : '#FFFFFF',
+                    border: formData.colorBlock === 'White' ? '1px solid #e2e8f0' : 'none'
+                  }}
+                ></div>
+                <div className="bg-preview-barcode-value">
+                  {previewBarcodeValue || `${formData.prefix}-CODE-000001`}
+                </div>
+              </div>
+              <div className="bg-preview-count">
+                {labelCount > 0 ? `${labelCount} label(s) will be generated` : 'Enter sequence range'}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="bg-generate-modal-footer">
+            <button type="button" className="bg-generate-btn bg-generate-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="bg-generate-btn bg-generate-btn--primary">
               Generate Labels
             </button>
           </div>
@@ -757,11 +1035,46 @@ interface PreviewLabelModalProps {
 }
 
 const PreviewLabelModal = ({ labels, printContainerRef, onClose, onPrint }: PreviewLabelModalProps) => {
+  const previewBarcodeRef = useRef<SVGSVGElement>(null);
+  const previewQrRef = useRef<HTMLCanvasElement>(null);
+  const firstLabel = labels[0];
+
+  // Generate barcode/QR code for preview
+  useEffect(() => {
+    if (!firstLabel) return;
+
+    if (firstLabel.barcodeType === 'Barcode' && previewBarcodeRef.current) {
+      try {
+        previewBarcodeRef.current.innerHTML = '';
+        JsBarcode(previewBarcodeRef.current, firstLabel.barcodeValue, {
+          format: 'CODE128',
+          width: 2,
+          height: 50,
+          displayValue: false,
+          margin: 5,
+        });
+      } catch (err) {
+        console.error('Failed to generate preview barcode:', err);
+      }
+    } else if (firstLabel.barcodeType === 'QR Code' && previewQrRef.current) {
+      QRCode.toCanvas(previewQrRef.current, firstLabel.barcodeValue, {
+        width: 150,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      }).catch((err) => {
+        console.error('Failed to generate preview QR code:', err);
+      });
+    }
+  }, [firstLabel]);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content modal-content--preview" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Preview Labels ({labels.length})</h2>
+          <h2 className="modal-title">Preview Label ({labels.length})</h2>
           <button className="modal-close-btn" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -772,33 +1085,35 @@ const PreviewLabelModal = ({ labels, printContainerRef, onClose, onPrint }: Prev
 
         <div className="preview-content">
           <div className="preview-info">
-            <p><strong>HCF:</strong> {labels[0]?.hcfCode} - {labels[0]?.hcfName}</p>
-            <p><strong>Company:</strong> {labels[0]?.companyName}</p>
-            <p><strong>Type:</strong> {labels[0]?.barcodeType}</p>
-            <p><strong>Color Block:</strong> {labels[0]?.colorBlock}</p>
-            <p><strong>Sequence Range:</strong> {labels[0]?.sequenceNumber} - {labels[labels.length - 1]?.sequenceNumber}</p>
+            <p><strong>HCF:</strong> {firstLabel?.hcfCode} - {firstLabel?.hcfName}</p>
+            <p><strong>Company:</strong> <span className="preview-company-link">{firstLabel?.companyName}</span></p>
+            <p><strong>Type:</strong> {firstLabel?.barcodeType}</p>
+            <p><strong>Color Block:</strong> {firstLabel?.colorBlock}</p>
+            <p><strong>Sequence Range:</strong> {firstLabel?.sequenceNumber} - {labels[labels.length - 1]?.sequenceNumber}</p>
           </div>
-          <div className="preview-labels-grid">
-            {labels.slice(0, 6).map((label) => (
-              <div key={label.id} className="preview-label">
-                <div className="preview-label-header">
-                  <div className={`preview-color-block-square preview-color-block-square--${label.colorBlock.toLowerCase()}`}>
-                    {label.colorBlock.toUpperCase()}
-                  </div>
-                  <div className="preview-sequence-text">Seq. No. {label.sequenceNumber.toString().padStart(15, '0')}</div>
-                </div>
-                <div className="preview-barcode-placeholder">
-                  {label.barcodeType === 'QR Code' ? 'QR Code' : 'Barcode'}
-                </div>
-                <div className="preview-barcode-value">{label.barcodeValue}</div>
-                <div className="preview-label-footer">
-                  <div className="preview-type-label">{label.barcodeType === 'QR Code' ? 'QR Code' : 'Bar Code'}</div>
-                </div>
+          
+          {firstLabel && (
+            <div className="preview-label-single">
+              <div className="preview-label-single-header">
+                <div className="preview-label-seq-label">Seq. No:</div>
+                <div className="preview-label-seq-number">{firstLabel.sequenceNumber.toString().padStart(15, '0')}</div>
               </div>
-            ))}
-          </div>
-          {labels.length > 6 && (
-            <p className="preview-more-info">... and {labels.length - 6} more labels</p>
+              <div className="preview-label-single-body">
+                <div className="preview-label-single-color-text">{firstLabel.colorBlock.toUpperCase()}</div>
+                <div className="preview-label-single-barcode-container">
+                  {firstLabel.barcodeType === 'Barcode' ? (
+                    <svg ref={previewBarcodeRef} className="preview-barcode-svg"></svg>
+                  ) : (
+                    <canvas ref={previewQrRef} className="preview-qr-canvas"></canvas>
+                  )}
+                </div>
+                <div className="preview-label-single-barcode-value">{firstLabel.barcodeValue}</div>
+                <div className="preview-label-single-type-badge">{firstLabel.barcodeType}</div>
+              </div>
+              <div className="preview-label-single-footer">
+                <div className="preview-label-single-footer-text">BAR CODE</div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -808,10 +1123,145 @@ const PreviewLabelModal = ({ labels, printContainerRef, onClose, onPrint }: Prev
           </button>
           <button 
             type="button" 
-            className="btn btn--primary" 
+            className="btn btn--print-label" 
             onClick={onPrint}
           >
-            Print Labels
+            Print Label
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Filters Modal Component
+interface FiltersModalProps {
+  companies: CompanyResponse[];
+  hcfs: HcfResponse[];
+  filters: {
+    companyId: string;
+    hcfId: string;
+    barcodeType: string;
+    colorBlock: string;
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    companyId: string;
+    hcfId: string;
+    barcodeType: string;
+    colorBlock: string;
+  }>>;
+  onClose: () => void;
+  onClear: () => void;
+}
+
+const FiltersModal = ({ companies, hcfs, filters, setFilters, onClose, onClear }: FiltersModalProps) => {
+  // Filter HCFs by company if company is selected, otherwise show all
+  const filteredHcfs = filters.companyId 
+    ? hcfs.filter(hcf => hcf.companyId === filters.companyId)
+    : hcfs;
+
+  return (
+    <div className="modal-overlay bg-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content bg-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-filter-modal-header">
+          <div className="bg-filter-modal-titlewrap">
+            <div className="bg-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <h2 className="bg-filter-modal-title">Advanced Filters</h2>
+              <p className="bg-filter-modal-subtitle">Refine results by multiple criteria</p>
+            </div>
+          </div>
+          <button className="bg-filter-close" onClick={onClose} aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="bg-filter-modal-body">
+          <div className="bg-filter-form-group">
+            <label htmlFor="filter-hcf">HCF CODE</label>
+            <select
+              id="filter-hcf"
+              value={filters.hcfId}
+              onChange={(e) => setFilters({ ...filters, hcfId: e.target.value })}
+              className="bg-filter-select"
+            >
+              <option value="">All Codes</option>
+              {filteredHcfs.map((hcf) => (
+                <option key={hcf.id} value={hcf.hcfCode}>
+                  {hcf.hcfCode}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="bg-filter-form-group">
+            <label htmlFor="filter-company">COMPANY</label>
+            <select
+              id="filter-company"
+              value={filters.companyId}
+              onChange={(e) => {
+                const newCompanyId = e.target.value;
+                setFilters({ 
+                  ...filters, 
+                  companyId: newCompanyId,
+                  // Clear HCF filter if company changes, but keep it if company is cleared
+                  hcfId: newCompanyId ? '' : filters.hcfId
+                });
+              }}
+              className="bg-filter-select"
+            >
+              <option value="">All Companies</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.companyName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="bg-filter-form-group">
+            <label htmlFor="filter-type">LABEL TYPE</label>
+            <select
+              id="filter-type"
+              value={filters.barcodeType}
+              onChange={(e) => setFilters({ ...filters, barcodeType: e.target.value })}
+              className="bg-filter-select"
+            >
+              <option value="">All Types</option>
+              <option value="Barcode">Barcode</option>
+              <option value="QR Code">QR Code</option>
+            </select>
+          </div>
+
+          <div className="bg-filter-form-group">
+            <label htmlFor="filter-color">COLOR BLOCK</label>
+            <select
+              id="filter-color"
+              value={filters.colorBlock}
+              onChange={(e) => setFilters({ ...filters, colorBlock: e.target.value })}
+              className="bg-filter-select"
+            >
+              <option value="">All Colors</option>
+              <option value="Yellow">Yellow</option>
+              <option value="Red">Red</option>
+              <option value="White">White</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="bg-filter-modal-footer">
+          <button type="button" className="bg-link-btn" onClick={onClear}>
+            Clear Filters
+          </button>
+          <button type="button" className="bg-filter-btn-primary" onClick={onClose}>
+            Apply Filters
           </button>
         </div>
       </div>

@@ -53,6 +53,8 @@ const InvoiceReportPage = () => {
   // Ref for filter button to position modal
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const [filterModalPosition, setFilterModalPosition] = useState<{ top: number; left: number } | null>(null);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
 
   // Summary state
   const [summary, setSummary] = useState({
@@ -61,6 +63,23 @@ const InvoiceReportPage = () => {
     paidAmount: 0,
     balanceAmount: 0,
   });
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showExportDropdown && exportButtonRef.current && !exportButtonRef.current.contains(event.target as Node)) {
+        const dropdown = document.querySelector('.export-dropdown-menu');
+        if (dropdown && !dropdown.contains(event.target as Node)) {
+          setShowExportDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportDropdown]);
 
   // Load master data
   useEffect(() => {
@@ -191,7 +210,7 @@ const InvoiceReportPage = () => {
       return '';
     }
 
-    const hasAnyFilter = companyId || hcfId || (status && status !== 'All') || (billingType && billingType !== 'All') || dateFrom || dateTo || searchQuery;
+    const hasAnyFilter = filters.companyId || filters.hcfId || (filters.status && filters.status !== 'All') || (filters.billingType && filters.billingType !== 'All') || filters.invoiceFromDate || filters.invoiceToDate || searchQuery;
     
     if (!hasAnyFilter) {
       return 'Showing all invoices (no filters applied)';
@@ -200,46 +219,46 @@ const InvoiceReportPage = () => {
     const filterParts: string[] = [];
 
     // Company
-    if (companyId) {
-      const company = companies.find(c => c.id === companyId);
+    if (filters.companyId) {
+      const company = companies.find(c => c.id === filters.companyId);
       if (company) {
         filterParts.push(`Company: ${company.companyName}`);
       }
     }
 
     // HCF
-    if (hcfId) {
-      const hcf = filteredHcfs.find(h => h.id === hcfId);
+    if (filters.hcfId) {
+      const hcf = filteredHcfs.find(h => h.id === filters.hcfId);
       if (hcf) {
         filterParts.push(`HCF: ${hcf.hcfCode}`);
       }
     }
 
     // Date range
-    if (dateFrom && dateTo) {
-      const fromDate = new Date(dateFrom);
-      const toDate = new Date(dateTo);
+    if (filters.invoiceFromDate && filters.invoiceToDate) {
+      const fromDate = new Date(filters.invoiceFromDate);
+      const toDate = new Date(filters.invoiceToDate);
       const fromStr = fromDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const toStr = toDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       filterParts.push(`Date: ${fromStr}–${toStr}`);
-    } else if (dateFrom) {
-      const fromDate = new Date(dateFrom);
+    } else if (filters.invoiceFromDate) {
+      const fromDate = new Date(filters.invoiceFromDate);
       const fromStr = fromDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       filterParts.push(`Date: From ${fromStr}`);
-    } else if (dateTo) {
-      const toDate = new Date(dateTo);
+    } else if (filters.invoiceToDate) {
+      const toDate = new Date(filters.invoiceToDate);
       const toStr = toDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       filterParts.push(`Date: Until ${toStr}`);
     }
 
     // Status
-    if (status && status !== 'All') {
-      filterParts.push(`Status: ${status}`);
+    if (filters.status && filters.status !== 'All') {
+      filterParts.push(`Status: ${filters.status}`);
     }
 
     // Billing Type
-    if (billingType && billingType !== 'All') {
-      filterParts.push(`Billing: ${billingType}`);
+    if (filters.billingType && filters.billingType !== 'All') {
+      filterParts.push(`Billing: ${filters.billingType}`);
     }
 
     // Search (only show if other filters exist, otherwise it's redundant)
@@ -642,13 +661,15 @@ const InvoiceReportPage = () => {
       case 'Partially Paid':
         return 'status-badge status-badge--partial';
       case 'Generated':
-        return 'status-badge status-badge--generated';
+      case 'Unpaid':
+        return 'status-badge status-badge--unpaid';
       case 'Draft':
         return 'status-badge status-badge--draft';
       case 'Cancelled':
-        return 'status-badge status-badge--cancelled';
+      case 'Overdue':
+        return 'status-badge status-badge--overdue';
       default:
-        return 'status-badge status-badge--generated';
+        return 'status-badge status-badge--unpaid';
     }
   };
 
@@ -761,28 +782,22 @@ const InvoiceReportPage = () => {
       <div className="invoice-report-page">
         {/* Breadcrumb Navigation */}
         <div className="report-breadcrumb">
-          <button
-            className="back-button"
-            onClick={() => navigate('/report')}
-          >
+          <Link to="/dashboard" className="breadcrumb-home">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5"></path>
-              <path d="M12 19l-7-7 7-7"></path>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            Back to Reports
-          </button>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-item">Reports</span>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-item">Invoice Generation & Printing</span>
+          </Link>
+          <span className="breadcrumb-separator">&gt;</span>
+          <Link to="/report" className="breadcrumb-item">Reports</Link>
+          <span className="breadcrumb-separator">&gt;</span>
+          <span className="breadcrumb-item breadcrumb-item--active">Invoice Generation & Printing</span>
         </div>
           <div className="report-content-wrapper">
             {/* Page Header - Compact */}
             <div className="page-header">
               <h1 className="page-title">Invoice Generation & Printing Report</h1>
-              {!hasFiltersApplied() && (
-                <div className="page-context-subtitle">{getContextSubtitle()}</div>
-              )}
+              <div className="page-context-subtitle">{getContextSubtitle()}</div>
             </div>
 
             {/* Global Search & Actions Row - Directly below title */}
@@ -795,7 +810,7 @@ const InvoiceReportPage = () => {
                 <input
                   type="text"
                   className="global-search-input"
-                  placeholder="Search by Invoice Number, Company, HCF, Status, or Amount"
+                  placeholder="Search by Invoice Number, Company, HCF, Status..."
                   value={searchQuery}
                   onChange={(e) => updateSearchText(e.target.value)}
                   onKeyDown={(e) => {
@@ -826,57 +841,135 @@ const InvoiceReportPage = () => {
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                ref={filterButtonRef}
-                className={`btn btn-filters-toggle ${showAdvancedFilters ? 'active' : ''} ${loading ? 'loading' : ''}`}
-                onClick={() => {
-                  if (loading) return;
-                  // Sync pendingFilters with current filters when opening modal
-                  if (!showAdvancedFilters) {
-                    updatePendingFilter('companyId', filters.companyId || '');
-                    updatePendingFilter('hcfId', filters.hcfId || '');
-                    updatePendingFilter('status', filters.status || 'All');
-                    updatePendingFilter('billingType', filters.billingType || 'All');
-                    updatePendingFilter('invoiceFromDate', filters.invoiceFromDate || '');
-                    updatePendingFilter('invoiceToDate', filters.invoiceToDate || '');
-                  }
-                  if (filterButtonRef.current) {
-                    const rect = filterButtonRef.current.getBoundingClientRect();
-                    setFilterModalPosition({
-                      top: rect.bottom + 8, // 8px gap below button
-                      left: rect.left // Align to left edge of button
-                    });
-                  }
-                  setShowAdvancedFilters(!showAdvancedFilters);
-                }}
-                disabled={loading}
-                title="Open filters"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                Filter
-                {[
-                  filters.companyId,
-                  filters.hcfId,
-                  filters.status && filters.status !== 'All' ? filters.status : '',
-                  filters.billingType && filters.billingType !== 'All' ? filters.billingType : '',
-                  filters.invoiceFromDate,
-                  filters.invoiceToDate
-                ].filter(Boolean).length > 0 && (
-                  <span className="filter-count">
-                    {[
-                      filters.companyId,
-                      filters.hcfId,
-                      filters.status && filters.status !== 'All' ? filters.status : '',
-                      filters.billingType && filters.billingType !== 'All' ? filters.billingType : '',
-                      filters.invoiceFromDate,
-                      filters.invoiceToDate
-                    ].filter(Boolean).length}
-                  </span>
-                )}
-              </button>
+              <div className="action-buttons-group">
+                <button
+                  type="button"
+                  ref={filterButtonRef}
+                  className={`btn btn-filters-toggle ${showAdvancedFilters ? 'active' : ''} ${loading ? 'loading' : ''}`}
+                  onClick={() => {
+                    if (loading) return;
+                    setShowExportDropdown(false);
+                    // Sync pendingFilters with current filters when opening modal
+                    if (!showAdvancedFilters) {
+                      updatePendingFilter('companyId', filters.companyId || '');
+                      updatePendingFilter('hcfId', filters.hcfId || '');
+                      updatePendingFilter('status', filters.status || 'All');
+                      updatePendingFilter('billingType', filters.billingType || 'All');
+                      updatePendingFilter('invoiceFromDate', filters.invoiceFromDate || '');
+                      updatePendingFilter('invoiceToDate', filters.invoiceToDate || '');
+                    }
+                    if (filterButtonRef.current) {
+                      const rect = filterButtonRef.current.getBoundingClientRect();
+                      setFilterModalPosition({
+                        top: rect.bottom + 8, // 8px gap below button
+                        left: rect.left // Align to left edge of button
+                      });
+                    }
+                    setShowAdvancedFilters(!showAdvancedFilters);
+                  }}
+                  disabled={loading}
+                  title="Open filters"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                  </svg>
+                  Filter
+                  {[
+                    filters.companyId,
+                    filters.hcfId,
+                    filters.status && filters.status !== 'All' ? filters.status : '',
+                    filters.billingType && filters.billingType !== 'All' ? filters.billingType : '',
+                    filters.invoiceFromDate,
+                    filters.invoiceToDate
+                  ].filter(Boolean).length > 0 && (
+                    <span className="filter-count">
+                      {[
+                        filters.companyId,
+                        filters.hcfId,
+                        filters.status && filters.status !== 'All' ? filters.status : '',
+                        filters.billingType && filters.billingType !== 'All' ? filters.billingType : '',
+                        filters.invoiceFromDate,
+                        filters.invoiceToDate
+                      ].filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+                <div className="export-dropdown-wrapper">
+                  <button
+                    type="button"
+                    ref={exportButtonRef}
+                    className={`btn btn-export ${showExportDropdown ? 'active' : ''}`}
+                    onClick={() => {
+                      setShowAdvancedFilters(false);
+                      setShowExportDropdown(!showExportDropdown);
+                    }}
+                    disabled={loading || filteredInvoices.length === 0}
+                    title="Export"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="dropdown-arrow">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  {showExportDropdown && (
+                    <div className="export-dropdown-menu">
+                      <button
+                        type="button"
+                        className="export-option"
+                        onClick={() => {
+                          handleExport('pdf');
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                          <line x1="16" y1="13" x2="8" y2="13"></line>
+                          <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        className="export-option"
+                        onClick={() => {
+                          handleExport('excel');
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                          <line x1="16" y1="13" x2="8" y2="13"></line>
+                          <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        className="export-option"
+                        onClick={() => {
+                          handleExport('csv');
+                          setShowExportDropdown(false);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                          <line x1="16" y1="13" x2="8" y2="13"></line>
+                          <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        CSV
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
           {/* Filter Modal Overlay - Rendered via Portal */}
@@ -1053,15 +1146,15 @@ const InvoiceReportPage = () => {
               <table className="invoice-table">
                 <thead className="table-header">
                   <tr>
-                    <th>Invoice No</th>
-                    <th>Company</th>
+                    <th>INVOICE NO</th>
+                    <th>COMPANY</th>
                     <th>HCF</th>
-                    <th>Invoice Date</th>
-                    <th>Billing Type</th>
-                    <th className="text-right">Invoice Amount</th>
-                    <th className="text-right">Paid Amount</th>
-                    <th className="text-right">Balance</th>
-                    <th className="text-center">Status</th>
+                    <th>INVOICE DATE</th>
+                    <th>BILLING TYPE</th>
+                    <th className="text-right">INVOICE AMOUNT</th>
+                    <th className="text-right">PAID AMOUNT</th>
+                    <th className="text-right">BALANCE</th>
+                    <th className="text-center">STATUS</th>
                   </tr>
                 </thead>
                 <tbody className="table-body">
@@ -1159,8 +1252,8 @@ const InvoiceReportPage = () => {
             <div className="pagination-controls">
                   <div className="pagination-info">
                     {dataLoaded && filteredInvoices.length > 0 
-                      ? `Showing ${rowsPerPage} of ${summary.totalInvoices} items`
-                      : 'Showing 0 of 0 items'}
+                      ? `Showing ${startIndex + 1} to ${endIndex} of ${summary.totalInvoices} items`
+                      : 'Showing 0 to 0 of 0 items'}
                   </div>
                   <div className="pagination-right">
                     <select
