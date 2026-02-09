@@ -6,20 +6,43 @@
 }
 
 .barcode-generation-header {
-  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.barcode-generation-header-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  border-radius: 8px;
+  color: #ffffff;
+}
+
+.barcode-generation-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .barcode-generation-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
   color: #1e293b;
-  margin: 0 0 4px 0;
-  line-height: 1.2;
+  margin: 0;
+  line-height: 1.3;
 }
 
 .barcode-generation-subtitle {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 400;
   color: #64748b;
+  margin: 0;
+  line-height: 1.5;
   margin: 0;
 }
 

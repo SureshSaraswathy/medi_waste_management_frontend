@@ -5,7 +5,6 @@ import { userService, UserResponse } from '../../services/userService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { roleService, RoleResponse } from '../../services/roleService';
 import { activateUserWithPassword, resetPassword } from '../../services/passwordService';
-import ProfileModal from '../../components/profile/ProfileModal';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -75,8 +74,8 @@ const UserManagementPage = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [viewMode, setViewMode] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [selectedRoleForPermissions, setSelectedRoleForPermissions] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
@@ -600,6 +599,7 @@ const UserManagementPage = () => {
     console.log('[handleEditUser] Editing user:', user.id);
     setLoading(true);
     setError(null);
+    setViewMode(false);
     
     try {
       // Fetch complete user data from backend (including all related entities)
@@ -618,6 +618,39 @@ const UserManagementPage = () => {
       setShowUserModal(true);
     } catch (err) {
       console.error('[handleEditUser] Error fetching user data:', err);
+      const errorMessage = extractErrorMessage(err);
+      setError(errorMessage || 'Failed to load user data. Please try again.');
+      // Still open modal with existing data if fetch fails
+    setEditingUser(user);
+    setShowUserModal(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewUser = async (user: User) => {
+    console.log('[handleViewUser] Viewing user:', user.id);
+    setLoading(true);
+    setError(null);
+    setViewMode(true);
+    
+    try {
+      // Fetch complete user data from backend (including all related entities)
+      const completeUserData = await userService.getUserById(user.id);
+      console.log('[handleViewUser] Complete user data fetched:', completeUserData);
+      
+      // Find company name from companies list
+      const userCompany = companies.find(c => c.id === completeUserData.companyId);
+      const companyName = userCompany?.companyName || user.companyName;
+      
+      // Map the complete API response to frontend User interface
+      const mappedUser = mapUserResponseToUser(completeUserData, companyName);
+      console.log('[handleViewUser] Mapped user data:', mappedUser);
+      
+      setEditingUser(mappedUser);
+      setShowUserModal(true);
+    } catch (err) {
+      console.error('[handleViewUser] Error fetching user data:', err);
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to load user data. Please try again.');
       // Still open modal with existing data if fetch fails
@@ -1152,6 +1185,10 @@ const UserManagementPage = () => {
     temporaryPassword: string;
     expiry: string | null;
   } | null>(null);
+  
+  // Reset password confirmation modal
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; userName: string } | null>(null);
 
   const handleActivateUser = async (userId: string, activationData: {
     passwordEnabled: boolean;
@@ -1187,16 +1224,22 @@ const UserManagementPage = () => {
     }
   };
 
-  // Reset password handler
-  const handleResetPassword = async (userId: string, userName: string) => {
-    if (!window.confirm(`Are you sure you want to reset the password for ${userName}? A new temporary password will be generated.`)) {
-      return;
-    }
+  // Reset password handler - show confirmation modal
+  const handleResetPassword = (userId: string, userName: string) => {
+    setResetPasswordUser({ id: userId, userName });
+    setShowResetPasswordModal(true);
+  };
+
+  // Confirm reset password
+  const handleConfirmResetPassword = async () => {
+    if (!resetPasswordUser) return;
     
     setLoading(true);
     setError(null);
+    setShowResetPasswordModal(false);
+    
     try {
-      const result = await resetPassword(userId);
+      const result = await resetPassword(resetPasswordUser.id);
       // Show temporary password modal
       setTemporaryPasswordData({
         userName: result.userName,
@@ -1204,6 +1247,7 @@ const UserManagementPage = () => {
         expiry: result.temporaryPasswordExpiry,
       });
       setShowTemporaryPasswordModal(true);
+      setResetPasswordUser(null);
       await loadUsers();
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
@@ -1307,6 +1351,14 @@ const UserManagementPage = () => {
         {/* User Management Content */}
         <div className="user-management-page">
           <div className="user-management-header">
+            <div className="user-management-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
             <h1 className="user-management-title">
               {activeTab === 'roles' ? 'Roles & Permissions' : 'User Management'}
             </h1>
@@ -1385,12 +1437,24 @@ const UserManagementPage = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <div className="user-management-action-buttons">
+              <button className="filter-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Filter
+              </button>
             <button 
               className="add-btn" 
               onClick={activeTab === 'users' ? handleAddUser : handleAddRole}
             >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
               {activeTab === 'users' ? 'Add User' : 'Add Role'}
             </button>
+            </div>
           </div>
 
           {/* Users Table */}
@@ -1422,11 +1486,19 @@ const UserManagementPage = () => {
                       filteredUsers.map((user) => (
                       <tr key={user.id}>
                         <td>{user.companyName || '-'}</td>
-                        <td>{user.userName || '-'}</td>
+                        <td>
+                          <span className="user-name-link">{user.userName || '-'}</span>
+                        </td>
                         <td>{user.empCode || '-'}</td>
                         <td>{user.emailAddress || '-'}</td>
                         <td>{user.mobileNumber || '-'}</td>
-                        <td>{user.userRoleID || '-'}</td>
+                        <td>
+                          {(() => {
+                            // Try to find role name from roles array
+                            const role = roles.find(r => r.id === user.userRoleID || r.roleName === user.userRoleID);
+                            return role ? role.roleName : (user.userRoleID || '-');
+                          })()}
+                        </td>
                         <td>{user.employmentType || '-'}</td>
                         <td>
                           <span className={`status-badge status-badge--${user.status.toLowerCase()}`}>
@@ -1434,9 +1506,9 @@ const UserManagementPage = () => {
                           </span>
                         </td>
                         <td>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <button
-                            className="action-btn action-btn--edit"
+                          <span className="action-icons">
+                            <span
+                              className="action-icon action-icon--edit"
                             onClick={() => handleEditUser(user)}
                             title="Edit"
                           >
@@ -1444,32 +1516,31 @@ const UserManagementPage = () => {
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
-                          </button>
-                              <button
-                                className="action-btn action-btn--reset"
+                            </span>
+                            <span
+                              className="action-icon action-icon--view"
+                              onClick={() => handleViewUser(user)}
+                              title="View"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            </span>
+                            <span
+                              className="action-icon action-icon--reset"
                                 onClick={() => handleResetPassword(user.id, user.userName)}
-                                title="Reset Password - Generate new temporary password"
-                                style={{ 
-                                  color: '#ffffff',
-                                  background: '#f59e0b',
-                                  border: '1px solid #f59e0b',
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              title="Reset Password"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
                                   <path d="M21 3v5h-5"></path>
                                   <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
                                   <path d="M3 21v-5h5"></path>
                                 </svg>
-                                <span style={{ fontSize: '12px', fontWeight: '600' }}>Reset</span>
-                          </button>
-                          <button
-                            className="action-btn action-btn--delete"
+                            </span>
+                            <span
+                              className="action-icon action-icon--delete"
                             onClick={() => handleDeleteUser(user.id)}
                             title="Delete"
                           >
@@ -1477,8 +1548,8 @@ const UserManagementPage = () => {
                               <polyline points="3 6 5 6 21 6"></polyline>
                               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             </svg>
-                          </button>
-                            </div>
+                            </span>
+                          </span>
                         </td>
                       </tr>
                       ))
@@ -1487,7 +1558,7 @@ const UserManagementPage = () => {
                 </table>
               </div>
               <div className="user-management-pagination-info">
-                Showing {filteredUsers.length} of {users.length} Items
+                Showing {filteredUsers.length} of {users.length} {filteredUsers.length === 1 ? 'user' : 'users'}
               </div>
             </>
           )}
@@ -1578,9 +1649,11 @@ const UserManagementPage = () => {
           user={editingUser}
           roles={roles.filter(r => r.status === 'Active')} // Pass full role objects
           companies={companies.filter(c => c.status === 'Active')}
+          viewMode={viewMode}
           onClose={() => {
             setShowUserModal(false);
             setEditingUser(null);
+            setViewMode(false);
           }}
           onSave={handleSaveUser}
           onActivate={handleActivateUser}
@@ -1589,12 +1662,83 @@ const UserManagementPage = () => {
         />
       )}
 
+      {/* Reset Password Confirmation Modal */}
+      {showResetPasswordModal && resetPasswordUser && (
+        <div className="modal-overlay" onClick={() => {
+          setShowResetPasswordModal(false);
+          setResetPasswordUser(null);
+        }}>
+          <div className="modal-content reset-password-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="reset-password-modal-header">
+              <div className="reset-password-modal-header-left">
+                <div className="reset-password-modal-icon-box">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                    <path d="M21 3v5h-5"></path>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                    <path d="M3 21v-5h5"></path>
+                  </svg>
+                </div>
+                <h2 className="reset-password-modal-title">Reset Password</h2>
+              </div>
+              <button className="modal-close-btn" onClick={() => {
+                setShowResetPasswordModal(false);
+                setResetPasswordUser(null);
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="reset-password-modal-body">
+              <p className="reset-password-modal-message">
+                Are you sure you want to reset the password for the user <strong>{resetPasswordUser.userName}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            <div className="reset-password-modal-footer">
+              <button 
+                type="button" 
+                className="btn btn--cancel-reset" 
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setResetPasswordUser(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn--confirm-reset" 
+                onClick={handleConfirmResetPassword}
+                disabled={loading}
+              >
+                Reset Password
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Temporary Password Modal */}
       {showTemporaryPasswordModal && temporaryPasswordData && (
         <div className="modal-overlay" onClick={() => setShowTemporaryPasswordModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h2 className="modal-title">Temporary Password Generated</h2>
+          <div className="modal-content temp-password-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="temp-password-modal-header">
+              <div className="temp-password-modal-header-left">
+                <div className="temp-password-modal-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                    <path d="M21 3v5h-5"></path>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                    <path d="M3 21v-5h5"></path>
+                  </svg>
+                </div>
+                <div className="temp-password-modal-title-wrap">
+                  <h2 className="temp-password-modal-title">Temporary Password Generated</h2>
+                  <p className="temp-password-modal-subtitle">Password will only be shown once.</p>
+                </div>
+              </div>
               <button className="modal-close-btn" onClick={() => setShowTemporaryPasswordModal(false)}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1602,118 +1746,104 @@ const UserManagementPage = () => {
                 </svg>
               </button>
             </div>
-            <div className="modal-body" style={{ padding: '24px' }}>
-              <div style={{ 
-                background: '#fef3c7', 
-                border: '1px solid #fbbf24', 
-                borderRadius: '8px', 
-                padding: '16px', 
-                marginBottom: '20px' 
-              }}>
-                <p style={{ margin: '0 0 12px 0', fontWeight: '600', color: '#92400e' }}>
-                  Important: This password will only be shown once!
-                </p>
-                <p style={{ margin: 0, fontSize: '14px', color: '#78350f' }}>
-                  Please copy this password and share it securely with the user. The user must change this password on their first login.
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                  User Name:
-                </label>
-                <div style={{ 
-                  padding: '12px', 
-                  background: '#f3f4f6', 
-                  borderRadius: '6px', 
-                  fontFamily: 'monospace',
-                  fontSize: '14px'
-                }}>
-                  {temporaryPasswordData.userName}
+            <div className="temp-password-modal-body">
+              {/* Security Notice */}
+              <div className="temp-password-security-notice">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <div className="temp-password-security-notice-content">
+                  <h3 className="temp-password-security-notice-title">Important Security Notice</h3>
+                  <p className="temp-password-security-notice-text">This temporary password will only be displayed once for security reasons. Please copy it now and share it securely with the user through a secure channel.</p>
                 </div>
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                  Temporary Password:
-                </label>
-                <div style={{ 
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <div style={{ 
-                    flex: 1,
-                    padding: '12px', 
-                    background: '#f3f4f6', 
-                    borderRadius: '6px', 
-                    fontFamily: 'monospace',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    letterSpacing: '2px',
-                    color: '#1f2937'
-                  }}>
+              {/* User Name */}
+              <div className="temp-password-field">
+                <label className="temp-password-field-label">USER NAME</label>
+                <div className="temp-password-field-value">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span>{temporaryPasswordData.userName}</span>
+                </div>
+              </div>
+
+              {/* Temporary Password */}
+              <div className="temp-password-field">
+                <label className="temp-password-field-label">TEMPORARY PASSWORD</label>
+                <div className="temp-password-password-row">
+                  <div className="temp-password-password-value">
                     {temporaryPasswordData.temporaryPassword}
                   </div>
                   <button
                     type="button"
+                    className="temp-password-copy-btn"
                     onClick={() => {
                       navigator.clipboard.writeText(temporaryPasswordData.temporaryPassword);
                       alert('Password copied to clipboard!');
                     }}
-                    style={{
-                      padding: '8px 12px',
-                      background: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px'
-                    }}
                   >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
                     Copy
                   </button>
                 </div>
               </div>
 
+              {/* Expiry Details */}
               {temporaryPasswordData.expiry && (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
-                    Password Expires:
-                  </label>
-                  <div style={{ 
-                    padding: '12px', 
-                    background: '#f3f4f6', 
-                    borderRadius: '6px', 
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
-                    {new Date(temporaryPasswordData.expiry).toLocaleString()}
+                <div className="temp-password-expiry-row">
+                  <div className="temp-password-field">
+                    <label className="temp-password-field-label">EXPIRES ON</label>
+                    <div className="temp-password-field-value">
+                      {new Date(temporaryPasswordData.expiry).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                  <div className="temp-password-field">
+                    <label className="temp-password-field-label">VALID FOR</label>
+                    <div className="temp-password-field-value">24 Hours</div>
                   </div>
                 </div>
               )}
 
-              <div style={{ 
-                background: '#dbeafe', 
-                border: '1px solid #93c5fd', 
-                borderRadius: '8px', 
-                padding: '12px',
-                fontSize: '14px',
-                color: '#1e40af'
-              }}>
-                <strong>Note:</strong> The user will be forced to change this password on their first login. This temporary password expires in 24 hours.
+              {/* Password Requirements */}
+              <div className="temp-password-requirements">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <div className="temp-password-requirements-content">
+                  <h3 className="temp-password-requirements-title">Password Requirements</h3>
+                  <ul className="temp-password-requirements-list">
+                    <li>User must change password on first login</li>
+                    <li>Password expires automatically after 24 hours</li>
+                    <li>Share through secure communication channels only</li>
+                  </ul>
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb' }}>
+            </div>
+            <div className="temp-password-modal-footer">
               <button
                 type="button"
-                className="btn btn--primary"
+                className="btn btn--copied-password" 
                 onClick={() => {
                   setShowTemporaryPasswordModal(false);
                   setTemporaryPasswordData(null);
                 }}
-                style={{ width: '100%' }}
               >
                 I've Copied the Password
               </button>
@@ -1721,6 +1851,7 @@ const UserManagementPage = () => {
           </div>
         </div>
       )}
+
 
       {/* Role Add/Edit Modal */}
       {showRoleModal && (
@@ -1752,11 +1883,6 @@ const UserManagementPage = () => {
         />
       )}
 
-      {/* Profile Modal */}
-      <ProfileModal 
-        isOpen={showProfileModal} 
-        onClose={() => setShowProfileModal(false)} 
-      />
     </div>
   );
 };
@@ -1766,6 +1892,7 @@ interface UserFormModalProps {
   user: User | null;
   roles: Role[]; // Pass full role objects to allow filtering by company
   companies: Company[];
+  viewMode?: boolean;
   onClose: () => void;
   onSave: (data: Partial<User>) => void;
   onActivate?: (userId: string, data: {
@@ -1779,7 +1906,7 @@ interface UserFormModalProps {
   loading?: boolean;
 }
 
-const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, onDeactivate, loading }: UserFormModalProps) => {
+const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSave, onActivate, onDeactivate, loading }: UserFormModalProps) => {
   // Helper function to convert role name to role ID for dropdown
   const getRoleIdFromNameOrId = (roleNameOrId: string | undefined): string => {
     if (!roleNameOrId) return '';
@@ -1882,6 +2009,7 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
   };
 
   const handleNext = () => {
+    // Allow navigation in view mode (users can view all steps, just not edit)
     console.log('handleNext called - Current step:', currentStep);
     if (currentStep < 6) {
       const nextStep = currentStep + 1;
@@ -1893,6 +2021,7 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
   };
 
   const handleBack = () => {
+    // Allow navigation in view mode (users can view all steps, just not edit)
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
@@ -2055,19 +2184,29 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
   };
 
   const steps = [
-    { number: 1, title: 'Create user' },
-    { number: 2, title: 'Employee profile' },
-    { number: 3, title: 'Identity & compliance' },
-    { number: 4, title: 'Address & emergency' },
-    { number: 5, title: 'User activation' },
-    { number: 6, title: 'Summary & confirm' },
+    { number: 1, title: 'Create user', icon: 'user-plus' },
+    { number: 2, title: 'Employee profile', icon: 'building' },
+    { number: 3, title: 'Identity & compliance', icon: 'document' },
+    { number: 4, title: 'Address & emergency', icon: 'map-pin' },
+    { number: 5, title: 'User activation', icon: 'shield' },
+    { number: 6, title: 'Summary & confirm', icon: 'sparkle' },
   ];
 
   return (
     <div className="modal-overlay" onClick={handleCancel}>
       <div className="modal-content wizard-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">{user ? 'Edit User' : 'Create User'}</h2>
+          <div className="modal-header-left">
+            <div className="modal-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+            </div>
+            <h2 className="modal-title">{viewMode ? 'View User' : (user ? 'Edit User' : 'Add User')}</h2>
+          </div>
           <button className="modal-close-btn" onClick={handleCancel}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -2078,26 +2217,131 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
 
         {/* Progress Steps */}
         <div className="wizard-progress">
-          {steps.map((step) => (
-            <div key={step.number} className={`wizard-step ${currentStep >= step.number ? 'wizard-step--active' : ''} ${currentStep === step.number ? 'wizard-step--current' : ''}`}>
+          {steps.map((step) => {
+            const isActive = currentStep >= step.number;
+            const isCurrent = currentStep === step.number;
+            // Show icon only for the current step
+            const showIcon = isCurrent;
+            
+            const getStepIcon = (iconType: string) => {
+              switch (iconType) {
+                case 'user-plus':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="8.5" cy="7" r="4"></circle>
+                      <line x1="20" y1="8" x2="20" y2="14"></line>
+                      <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                  );
+                case 'building':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                      <path d="M9 22v-4h6v4"></path>
+                      <path d="M8 6h.01"></path>
+                      <path d="M16 6h.01"></path>
+                      <path d="M12 6h.01"></path>
+                      <path d="M12 10h.01"></path>
+                      <path d="M12 14h.01"></path>
+                      <path d="M8 10h.01"></path>
+                      <path d="M8 14h.01"></path>
+                      <path d="M16 10h.01"></path>
+                      <path d="M16 14h.01"></path>
+                    </svg>
+                  );
+                case 'document':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                  );
+                case 'map-pin':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                  );
+                case 'shield':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                  );
+                case 'sparkle':
+                  return (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
+                    </svg>
+                  );
+                default:
+                  return null;
+              }
+            };
+            
+            return (
+              <div 
+                key={step.number} 
+                className={`wizard-step ${isActive ? 'wizard-step--active' : ''} ${isCurrent ? 'wizard-step--current' : ''} ${viewMode ? 'wizard-step--clickable' : ''}`}
+                onClick={viewMode ? () => setCurrentStep(step.number) : undefined}
+                style={viewMode ? { cursor: 'pointer' } : {}}
+              >
+                <div className="wizard-step-icon-wrapper">
+                  {showIcon ? (
+                    <div className="wizard-step-icon">{getStepIcon(step.icon)}</div>
+                  ) : (
               <div className="wizard-step-number">{step.number}</div>
+                  )}
+                </div>
               <div className="wizard-step-title">{step.title}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="wizard-content">
           {/* Step 1: Create User */}
           {currentStep === 1 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">Create user</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">{viewMode ? 'User Information' : 'Create user'}</h3>
+              </div>
             <div className="form-grid">
               <div className="form-group">
-                  <label>Company *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <path d="M9 22v-4h6v4"></path>
+                    <path d="M8 6h.01"></path>
+                    <path d="M16 6h.01"></path>
+                    <path d="M12 6h.01"></path>
+                    <path d="M12 10h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M8 14h.01"></path>
+                    <path d="M16 10h.01"></path>
+                    <path d="M16 14h.01"></path>
+                  </svg>
+                  Company *
+                </label>
                 <select
                   value={formData.companyName || ''}
                     onChange={(e) => handleFieldChange('companyName', e.target.value)}
                   required
+                  disabled={viewMode}
                 >
                     <option value="">Select company</option>
                   {companies.map((company) => (
@@ -2108,7 +2352,13 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                 </select>
               </div>
               <div className="form-group">
-                  <label>User name *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  User name *
+                </label>
                 <input
                   type="text"
                   value={formData.userName || ''}
@@ -2118,39 +2368,61 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                     minLength={3}
                     maxLength={100}
                     pattern="^[a-zA-Z0-9_]+$"
+                    disabled={viewMode}
                 />
                   <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
                     Minimum 3 characters, only letters, numbers, and underscores allowed (e.g., johndoe, user_123)
                   </small>
               </div>
                 <div className="form-group field-mobile">
-                  <label>Mobile number *</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    Mobile number *
+                  </label>
                 <input
                     type="tel"
                     value={formData.mobileNumber || ''}
                     onChange={(e) => handleFieldChange('mobileNumber', e.target.value)}
                     placeholder="e.g., 9876543210 or +91-9876543210"
                   required
+                  disabled={viewMode}
                 />
                   <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
                     Format: 10-digit Indian mobile number (9876543210, +91-9876543210, or 98765 43210)
                   </small>
               </div>
               <div className="form-group">
-                  <label>Email address</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  Email address
+                </label>
                 <input
                     type="email"
                     value={formData.emailAddress || ''}
                     onChange={(e) => handleFieldChange('emailAddress', e.target.value)}
                     placeholder="e.g., user@example.com"
                     maxLength={255}
+                    disabled={viewMode}
                   />
                   <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
                     Valid email address (e.g., user@example.com)
                   </small>
               </div>
                 <div className="form-group field-emp-code">
-                  <label>Employee code *</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="4" y1="9" x2="20" y2="9"></line>
+                      <line x1="4" y1="15" x2="20" y2="15"></line>
+                      <line x1="10" y1="3" x2="8" y2="21"></line>
+                      <line x1="16" y1="3" x2="14" y2="21"></line>
+                    </svg>
+                    # Employee code *
+                  </label>
                 <input
                   type="text"
                   value={formData.empCode || ''}
@@ -2158,18 +2430,24 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                     placeholder="e.g., EMP001, E12345"
                   required
                     maxLength={50}
+                    disabled={viewMode}
                 />
                   <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
                     Maximum 50 characters (e.g., EMP001, E12345)
                   </small>
               </div>
               <div className="form-group">
-                  <label>User role *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                  User role *
+                </label>
                 <select
                   value={formData.userRoleID || ''}
                     onChange={(e) => handleFieldChange('userRoleID', e.target.value)}
                   required
-                    disabled={!formData.companyName}
+                    disabled={viewMode || !formData.companyName}
                   >
                     <option value="">{formData.companyName ? 'Select role' : 'Select company first'}</option>
                     {formData.companyName && roles
@@ -2201,14 +2479,41 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
           {/* Step 2: Employee Profile */}
           {currentStep === 2 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">Employee profile</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon icon-green">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <path d="M9 22v-4h6v4"></path>
+                    <path d="M8 6h.01"></path>
+                    <path d="M16 6h.01"></path>
+                    <path d="M12 6h.01"></path>
+                    <path d="M12 10h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M8 14h.01"></path>
+                    <path d="M16 10h.01"></path>
+                    <path d="M16 14h.01"></path>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">Employee profile</h3>
+              </div>
               <div className="form-grid">
               <div className="form-group">
-                  <label>Employment type *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  Employment type *
+                </label>
                 <select
                   value={formData.employmentType || ''}
                     onChange={(e) => handleFieldChange('employmentType', e.target.value)}
                   required
+                  disabled={viewMode}
                 >
                     <option value="">Select type</option>
                   <option value="Permanent">Permanent</option>
@@ -2216,39 +2521,78 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                 </select>
               </div>
               <div className="form-group">
-                  <label>Designation *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
+                  Designation *
+                </label>
                 <input
                     type="text"
                     value={formData.designation || ''}
                     onChange={(e) => handleFieldChange('designation', e.target.value)}
                   required
+                  disabled={viewMode}
                 />
               </div>
                 {formData.employmentType === 'Contract' && (
               <div className="form-group">
-                    <label>Contractor name *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  Contractor name *
+                </label>
                     <input
                       type="text"
                       value={formData.contractorName || ''}
                       onChange={(e) => handleFieldChange('contractorName', e.target.value)}
                       required
+                      disabled={viewMode}
                     />
               </div>
                 )}
               <div className="form-group">
-                  <label>Company name (if third-party)</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <path d="M9 22v-4h6v4"></path>
+                    <path d="M8 6h.01"></path>
+                    <path d="M16 6h.01"></path>
+                    <path d="M12 6h.01"></path>
+                    <path d="M12 10h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M8 14h.01"></path>
+                    <path d="M16 10h.01"></path>
+                    <path d="M16 14h.01"></path>
+                  </svg>
+                  Company name (if third-party)
+                </label>
                   <input
                     type="text"
                     value={formData.companyNameThirdParty || ''}
                     onChange={(e) => handleFieldChange('companyNameThirdParty', e.target.value)}
+                    disabled={viewMode}
                   />
               </div>
               <div className="form-group">
-                  <label>Gross salary</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  Gross salary
+                </label>
                   <input
                     type="text"
                     value={formData.grossSalary || ''}
                     onChange={(e) => handleFieldChange('grossSalary', e.target.value)}
+                    disabled={viewMode}
                   />
               </div>
             </div>
@@ -2258,54 +2602,119 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
           {/* Step 3: Identity & Compliance Details */}
           {currentStep === 3 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">Identity & compliance details</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon icon-orange">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">Identity & compliance details</h3>
+              </div>
             <div className="form-grid">
                 <div className="form-group field-aadhaar">
-                <label>Aadhaar</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  # Aadhaar
+                </label>
                 <input
                   type="text"
                   value={formData.aadhaar || ''}
                     onChange={(e) => handleFieldChange('aadhaar', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
                 <div className="form-group field-pan">
-                <label>PAN</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  # PAN
+                </label>
                 <input
                   type="text"
                   value={formData.pan || ''}
                     onChange={(e) => handleFieldChange('pan', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                  <label>Driving license</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  # Driving license
+                </label>
                 <input
                   type="text"
                     value={formData.dlNum || ''}
                     onChange={(e) => handleFieldChange('dlNum', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                  <label>PF number</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  # PF number
+                </label>
                 <input
                   type="text"
                   value={formData.pfNum || ''}
                     onChange={(e) => handleFieldChange('pfNum', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                  <label>UAN</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  # UAN
+                </label>
                   <input
                     type="text"
                     value={formData.uan || ''}
                     onChange={(e) => handleFieldChange('uan', e.target.value)}
+                    disabled={viewMode}
                   />
                 </div>
                 <div className="form-group">
-                  <label>ESI number</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="4" y1="9" x2="20" y2="9"></line>
+                      <line x1="4" y1="15" x2="20" y2="15"></line>
+                      <line x1="10" y1="3" x2="8" y2="21"></line>
+                      <line x1="16" y1="3" x2="14" y2="21"></line>
+                    </svg>
+                    # ESI number
+                  </label>
                 <input
                   type="text"
                   value={formData.esiNum || ''}
                     onChange={(e) => handleFieldChange('esiNum', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
             </div>
@@ -2315,54 +2724,115 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
           {/* Step 4: Address & Emergency */}
           {currentStep === 4 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">Address & emergency</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon icon-pink">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">Address & emergency</h3>
+              </div>
             <div className="form-grid">
                 <div className="form-group">
-                <label>Address</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  Address
+                </label>
                 <textarea
                   value={formData.address || ''}
                     onChange={(e) => handleFieldChange('address', e.target.value)}
                   rows={3}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                <label>Area</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                  Area
+                </label>
                 <input
                   type="text"
                   value={formData.area || ''}
                     onChange={(e) => handleFieldChange('area', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                <label>City</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <path d="M9 22v-4h6v4"></path>
+                    <path d="M8 6h.01"></path>
+                    <path d="M16 6h.01"></path>
+                    <path d="M12 6h.01"></path>
+                    <path d="M12 10h.01"></path>
+                    <path d="M12 14h.01"></path>
+                    <path d="M8 10h.01"></path>
+                    <path d="M8 14h.01"></path>
+                    <path d="M16 10h.01"></path>
+                    <path d="M16 14h.01"></path>
+                  </svg>
+                  City
+                </label>
                 <input
                   type="text"
                   value={formData.city || ''}
                     onChange={(e) => handleFieldChange('city', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                <label>District</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  District
+                </label>
                 <input
                   type="text"
                   value={formData.district || ''}
                     onChange={(e) => handleFieldChange('district', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
               <div className="form-group">
-                <label>Pincode</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                  </svg>
+                  Pincode
+                </label>
                 <input
                   type="text"
                   value={formData.pincode || ''}
                     onChange={(e) => handleFieldChange('pincode', e.target.value)}
+                  disabled={viewMode}
                 />
               </div>
                 <div className="form-group field-mobile">
-                  <label>Emergency contact number</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    Emergency contact number
+                  </label>
                   <input
                     type="tel"
                     value={formData.emergencyContact || ''}
                     onChange={(e) => handleFieldChange('emergencyContact', e.target.value)}
+                    disabled={viewMode}
                   />
             </div>
           </div>
@@ -2372,36 +2842,64 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
           {/* Step 5: User Activation & Access Enablement */}
           {currentStep === 5 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">User activation & access enablement</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon icon-purple">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">User activation & access enablement</h3>
+              </div>
             <div className="form-grid">
               <div className="form-group">
-                  <label>Web login *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                  Web login *
+                </label>
                   <select
                     value={formData.webLogin ? 'Yes' : 'No'}
                     onChange={(e) => handleFieldChange('webLogin', e.target.value === 'Yes')}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
               </div>
               <div className="form-group">
-                  <label>Mobile app access *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                  Mobile app access *
+                </label>
                   <select
                     value={formData.mobileApp ? 'Yes' : 'No'}
                     onChange={(e) => handleFieldChange('mobileApp', e.target.value === 'Yes')}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
               </div>
               <div className="form-group">
-                  <label>Status *</label>
+                <label className="form-label-with-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  Status *
+                </label>
                   <select
                     value={formData.status || 'Draft'}
                     onChange={(e) => handleFieldChange('status', e.target.value)}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Draft">Draft</option>
                     <option value="Active">Active</option>
@@ -2409,33 +2907,51 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
                   </select>
               </div>
                 <div className="form-group">
-                  <label>Password enabled *</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Password enabled *
+                  </label>
                   <select
                     value={formData.passwordEnabled ? 'Yes' : 'No'}
                     onChange={(e) => handleFieldChange('passwordEnabled', e.target.value === 'Yes')}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
             </div>
                 <div className="form-group field-otp">
-                  <label>OTP enabled *</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    OTP enabled *
+                  </label>
                   <select
                     value={formData.otpEnabled ? 'Yes' : 'No'}
                     onChange={(e) => handleFieldChange('otpEnabled', e.target.value === 'Yes')}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
                 </div>
                 <div className="form-group field-otp">
-                  <label>Force OTP on next login *</label>
+                  <label className="form-label-with-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Force OTP on next login *
+                  </label>
                   <select
                     value={formData.forceOtpOnNextLogin ? 'Yes' : 'No'}
                     onChange={(e) => handleFieldChange('forceOtpOnNextLogin', e.target.value === 'Yes')}
                     required
+                    disabled={viewMode}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
@@ -2448,98 +2964,178 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
           {/* Step 6: User Summary & Confirmation */}
           {currentStep === 6 && (
             <div className="wizard-step-content">
-              <h3 className="wizard-step-header">User summary & confirmation</h3>
+              <div className="wizard-step-header">
+                <div className="wizard-step-header-icon icon-purple">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path>
+                  </svg>
+                </div>
+                <h3 className="wizard-step-header-title">User summary & confirmation</h3>
+              </div>
               
-              {/* Summary Section */}
-              <div className="activation-summary">
-                <div className="summary-card">
-                  <h4>User summary</h4>
-                  <div className="summary-info">
-                    <div className="info-row">
-                      <span className="info-label">Company:</span>
-                      <span className="info-value">{formData.companyName || '-'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">User name:</span>
-                      <span className="info-value">{formData.userName || '-'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Employee code:</span>
-                      <span className="info-value">{formData.empCode || '-'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Role:</span>
-                      <span className="info-value">{formData.userRoleID || '-'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Profile completeness:</span>
-                      <span className="info-value">{calculateCompleteness()}%</span>
-                    </div>
+              {/* Profile Completeness */}
+              <div className="profile-completeness-box">
+                <div className="completeness-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+                <div className="completeness-text">
+                  <span className="completeness-label">Profile Completeness</span>
+                  <span className="completeness-value">{calculateCompleteness()}%</span>
+                </div>
+                <button className="btn-ready-activate">Ready to activate</button>
+              </div>
+              
+              {/* Summary Cards */}
+              <div className="summary-cards-grid">
+                <div className="summary-card-item">
+                  <div className="summary-card-icon summary-card-icon--blue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                      <path d="M9 22v-4h6v4"></path>
+                    </svg>
                   </div>
-                  
-                  {/* Activation Actions inside summary */}
-                  <div className="activation-actions">
-                    <button
-                      type="button"
-                      className="btn btn--activate"
-                      onClick={async () => {
-                        if (user?.id && onActivate) {
-                          await onActivate(user.id, {
-                            passwordEnabled: formData.passwordEnabled || false,
-                            otpEnabled: formData.otpEnabled || false,
-                            webLogin: formData.webLogin || false,
-                            mobileAppAccess: formData.mobileApp || false,
-                            forceOtpOnNextLogin: formData.forceOtpOnNextLogin || false,
-                          });
-                          onClose();
-                        }
-                      }}
-                      disabled={!user?.id || loading}
-                    >
-                      Activate User
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--deactivate"
-                      onClick={async () => {
-                        if (user?.id && onDeactivate) {
-                          await onDeactivate(user.id);
-                          onClose();
-                        }
-                      }}
-                      disabled={!user?.id || loading}
-                    >
-                      ❌ Deactivate User
-                    </button>
+                  <div className="summary-card-content">
+                    <span className="summary-card-label">Company</span>
+                    <span className="summary-card-value">{formData.companyName || '-'}</span>
                   </div>
                 </div>
+                
+                <div className="summary-card-item">
+                  <div className="summary-card-icon summary-card-icon--purple">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                  </div>
+                  <div className="summary-card-content">
+                    <span className="summary-card-label">User Name</span>
+                    <span className="summary-card-value">{formData.userName || '-'}</span>
+                  </div>
+                </div>
+                
+                <div className="summary-card-item">
+                  <div className="summary-card-icon summary-card-icon--orange">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                  </div>
+                  <div className="summary-card-content">
+                    <span className="summary-card-label">Employee Code</span>
+                    <span className="summary-card-value">{formData.empCode || '-'}</span>
+                  </div>
+                </div>
+                
+                <div className="summary-card-item">
+                  <div className="summary-card-icon summary-card-icon--pink">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                  </div>
+                  <div className="summary-card-content">
+                    <span className="summary-card-label">Role</span>
+                    <span className="summary-card-value">
+                      {(() => {
+                        const role = roles.find(r => r.id === formData.userRoleID);
+                        return role ? role.roleName : (formData.userRoleID || '-');
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Activation Actions */}
+              <div className="activation-actions">
+                <button
+                  type="button"
+                  className="btn btn--activate"
+                  onClick={async () => {
+                    if (user?.id && onActivate) {
+                      await onActivate(user.id, {
+                        passwordEnabled: formData.passwordEnabled || false,
+                        otpEnabled: formData.otpEnabled || false,
+                        webLogin: formData.webLogin || false,
+                        mobileAppAccess: formData.mobileApp || false,
+                        forceOtpOnNextLogin: formData.forceOtpOnNextLogin || false,
+                      });
+                      onClose();
+                    }
+                  }}
+                  disabled={!user?.id || loading}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  Activate User
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--deactivate"
+                  onClick={async () => {
+                    if (user?.id && onDeactivate) {
+                      await onDeactivate(user.id);
+                      onClose();
+                    }
+                  }}
+                  disabled={!user?.id || loading}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  Deactivate
+                </button>
               </div>
             </div>
           )}
           </div>
 
           <div className="modal-footer">
+          {viewMode ? (
+            <>
           {currentStep > 1 && (
-            <button type="button" className="btn btn--secondary" onClick={handleBack}>
-              Back
+                <button type="button" className="btn btn--cancel" onClick={handleBack}>
+                  Previous
             </button>
           )}
-          <button type="button" className="btn btn--secondary" onClick={handleCancel}>
+              {currentStep < 6 ? (
+                <button type="button" className="btn btn--next" onClick={handleNext}>
+                  Next
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              ) : (
+                <button type="button" className="btn btn--cancel" onClick={handleCancel}>
+                  Close
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn btn--cancel" onClick={handleCancel}>
               Cancel
             </button>
           {currentStep < 6 ? (
             <button 
               type="button" 
-              className="btn btn--primary" 
+                  className="btn btn--next" 
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Save & Continue button clicked!');
+                    console.log('Next button clicked!');
                 handleSaveAndContinue(e);
               }}
               disabled={loading}
             >
-              Save & Continue
+                  Next
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
             </button>
           ) : (
             <button 
@@ -2555,6 +3151,8 @@ const UserFormModal = ({ user, roles, companies, onClose, onSave, onActivate, on
             >
               Save & Complete
             </button>
+              )}
+            </>
           )}
           </div>
       </div>

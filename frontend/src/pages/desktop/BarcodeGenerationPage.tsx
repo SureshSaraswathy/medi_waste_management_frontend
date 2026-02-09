@@ -461,8 +461,19 @@ const BarcodeGenerationPage = () => {
 
         <div className="barcode-generation-page">
           <div className="barcode-generation-header">
-            <h1 className="barcode-generation-title">Barcode & QR Code Label Generation</h1>
-            <p className="barcode-generation-subtitle">Generate and print labels with sequence numbers</p>
+            <div className="barcode-generation-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
+                <line x1="7" y1="8" x2="7" y2="16"></line>
+                <line x1="11" y1="8" x2="11" y2="16"></line>
+                <line x1="15" y1="8" x2="15" y2="16"></line>
+                <line x1="19" y1="8" x2="19" y2="16"></line>
+              </svg>
+            </div>
+            <div className="barcode-generation-header-text">
+              <h1 className="barcode-generation-title">Barcode & QR Code Label Generation</h1>
+              <p className="barcode-generation-subtitle">Generate and print labels with sequence numbers</p>
+            </div>
           </div>
 
           <div className="barcode-generation-actions">

@@ -521,65 +521,41 @@ const RouteAssignmentPage = () => {
         <div className="route-assignment-page">
           {/* Page Header */}
           <div className="ra-page-header">
-            <h1 className="ra-page-title">Route Assignment</h1>
-            <p className="ra-page-subtitle">Manage and assign routes to vehicles and drivers</p>
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Route Assignment</h1>
+              <p className="ra-page-subtitle">Manage and assign routes to vehicles and drivers</p>
+            </div>
           </div>
 
-          {/* Toolbar (template-style) */}
-          <div className="ra-toolbar">
-            <div className="ra-toolbar-left">
-              <div className="ra-control">
-                <label htmlFor="assignment-date">Assignment Date</label>
-                <input
-                  id="assignment-date"
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="date-input"
-                />
-              </div>
-              <div className="ra-control">
-                <label htmlFor="status-filter">Status</label>
-                <select
-                  id="status-filter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="status-select"
-                >
-                  <option value="all">All Status</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-              <div className="ra-control ra-control--search">
-                <label htmlFor="search">Search</label>
-                <div className="search-box">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                  </svg>
-                  <input
-                    id="search"
-                    type="text"
-                    placeholder="Search by route, vehicle, driver..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="search-input"
-                  />
-                </div>
-              </div>
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by route, vehicle, driver..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
             </div>
-
-            <div className="ra-toolbar-right">
-              <button className="ra-btn ra-btn--secondary" onClick={() => setShowAdvancedFilters(true)}>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
-                Filters
+                Advanced Filter
               </button>
-              <button className="ra-btn ra-btn--primary" onClick={handleAdd}>
+              <button className="ra-add-btn" onClick={handleAdd}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -594,14 +570,14 @@ const RouteAssignmentPage = () => {
             <table className="route-assignment-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Route</th>
-                  <th>Vehicle</th>
-                  <th>Driver</th>
-                  <th>Picker</th>
-                  <th>Supervisor</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>DATE</th>
+                  <th>ROUTE</th>
+                  <th>VEHICLE</th>
+                  <th>DRIVER</th>
+                  <th>PICKER</th>
+                  <th>SUPERVISOR</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -612,9 +588,19 @@ const RouteAssignmentPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredAssignments.map((assignment) => (
+                  filteredAssignments.map((assignment) => {
+                    // Format date to DD/MM/YYYY
+                    const formatDate = (dateString: string) => {
+                      const date = new Date(dateString);
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    };
+
+                    return (
                     <tr key={assignment.id} className={!canEdit(assignment) ? 'read-only-row' : ''}>
-                      <td>{new Date(assignment.assignmentDate).toLocaleDateString()}</td>
+                      <td>{formatDate(assignment.assignmentDate)}</td>
                       <td>
                         {/* UI-only: single-line route display to match template and keep row height compact */}
                         <div className="route-info route-info--single" title={`${assignment.routeCode} - ${assignment.routeName}`}>
@@ -719,7 +705,8 @@ const RouteAssignmentPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

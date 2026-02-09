@@ -39,12 +39,15 @@ const WasteTransactionPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<WasteTransaction | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Master data
   const [companies, setCompanies] = useState<CompanyResponse[]>([]);
@@ -406,6 +409,15 @@ const WasteTransactionPage = () => {
     setShowDetailModal(true);
   };
 
+  // Format date to DD/MM/YYYY
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Filter transactions by search query (client-side filtering)
   const filteredTransactions = transactions.filter((transaction) => {
     if (!searchQuery.trim()) {
@@ -565,55 +577,45 @@ const WasteTransactionPage = () => {
 
         <div className="waste-transaction-page">
           <div className="waste-transaction-header">
+            <div className="waste-transaction-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+                <line x1="8" y1="4" x2="8" y2="24"></line>
+              </svg>
+            </div>
             <h1 className="waste-transaction-title">Waste Transaction Data</h1>
           </div>
 
-          {/* Filters */}
-          <div className="waste-transaction-filters">
-            <div className="filter-group">
-              <label htmlFor="pickup-date">Pickup Date</label>
+          {/* Search and Actions */}
+          <div className="waste-transaction-search-actions">
+            <div className="waste-transaction-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
               <input
-                id="pickup-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="date-input"
+                type="text"
+                placeholder="Search by company, HCF, code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="waste-transaction-search-input"
               />
             </div>
-            <div className="filter-group">
-              <label htmlFor="status-filter">Status</label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="status-select"
+            <div className="waste-transaction-actions">
+              <button 
+                className="waste-transaction-filter-btn" 
+                onClick={() => setShowAdvancedFilter(true)}
               >
-                <option value="all">All Status</option>
-                <option value="Draft">Draft</option>
-                <option value="Submitted">Submitted</option>
-                <option value="Verified">Verified</option>
-              </select>
-            </div>
-            <div className="filter-group filter-group--search">
-              <label htmlFor="search">Search</label>
-              <div className="search-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
-                <input
-                  id="search"
-                  type="text"
-                  placeholder="Search by company, HCF..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
-              </div>
-            </div>
-            <div className="filter-group filter-group--action">
-              <label>&nbsp;</label>
-              <button className="add-transaction-btn" onClick={() => { resetForm(); setShowFormModal(true); }}>
+                Advanced Filter
+              </button>
+              <button 
+                className="waste-transaction-add-btn" 
+                onClick={() => { resetForm(); setShowFormModal(true); }}
+              >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -628,16 +630,16 @@ const WasteTransactionPage = () => {
             <table className="waste-transaction-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Company</th>
+                  <th>DATE</th>
+                  <th>COMPANY</th>
                   <th>HCF</th>
                   <th>NIL</th>
-                  <th>Yellow</th>
-                  <th>Red</th>
-                  <th>White</th>
-                  <th>Total Weight</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>YELLOW</th>
+                  <th>RED</th>
+                  <th>WHITE</th>
+                  <th>TOTAL WEIGHT</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -653,76 +655,79 @@ const WasteTransactionPage = () => {
                       (Number(transaction.yellowWeightKg) || 0) +
                       (Number(transaction.redWeightKg) || 0) +
                       (Number(transaction.whiteWeightKg) || 0);
-                    
+
                     return (
                       <tr key={transaction.id}>
-                        <td>{new Date(transaction.pickupDate).toLocaleDateString()}</td>
+                        <td>{formatDate(transaction.pickupDate)}</td>
                         <td>{transaction.companyName}</td>
                         <td>
-                          <div className="hcf-info">
-                            <span className="hcf-code">{transaction.hcfCode}</span>
-                            <span className="hcf-name">{transaction.hcfName}</span>
+                          <div className="wt-hcf-info">
+                            <span className="wt-hcf-code">{transaction.hcfCode}</span>
+                            <span className="wt-hcf-number">{transaction.id.slice(-3)}</span>
                           </div>
                         </td>
                         <td>
                           {transaction.isNilPickup ? (
-                            <span className="nil-badge">NIL</span>
+                            <span className="wt-nil-badge">NIL</span>
                           ) : (
-                            <span className="pickup-badge">Yes</span>
+                            <span className="wt-yes-badge">Yes</span>
                           )}
                         </td>
                         <td>
                           {transaction.yellowBagCount > 0 ? (
-                            <div className="bag-info">
-                              <span className="color-indicator color-indicator--yellow"></span>
-                              {transaction.yellowBagCount}
-                              {transaction.yellowWeightKg && ` (${transaction.yellowWeightKg}kg)`}
+                            <div className="wt-bag-info">
+                              <span className="wt-color-circle wt-color-circle--yellow"></span>
+                              <span className="wt-bag-text">
+                                {transaction.yellowBagCount}
+                                {transaction.yellowWeightKg && ` (${Number(transaction.yellowWeightKg).toFixed(2)}kg)`}
+                              </span>
                             </div>
                           ) : '-'}
                         </td>
                         <td>
                           {transaction.redBagCount > 0 ? (
-                            <div className="bag-info">
-                              <span className="color-indicator color-indicator--red"></span>
-                              {transaction.redBagCount}
-                              {transaction.redWeightKg && ` (${transaction.redWeightKg}kg)`}
+                            <div className="wt-bag-info">
+                              <span className="wt-color-circle wt-color-circle--red"></span>
+                              <span className="wt-bag-text">
+                                {transaction.redBagCount}
+                                {transaction.redWeightKg && ` (${Number(transaction.redWeightKg).toFixed(2)}kg)`}
+                              </span>
                             </div>
                           ) : '-'}
                         </td>
                         <td>
                           {transaction.whiteBagCount > 0 ? (
-                            <div className="bag-info">
-                              <span className="color-indicator color-indicator--white"></span>
-                              {transaction.whiteBagCount}
-                              {transaction.whiteWeightKg && ` (${transaction.whiteWeightKg}kg)`}
+                            <div className="wt-bag-info">
+                              <span className="wt-color-circle wt-color-circle--white"></span>
+                              <span className="wt-bag-text">{transaction.whiteBagCount}</span>
                             </div>
                           ) : '-'}
                         </td>
                         <td>{totalWeight > 0 ? `${Number(totalWeight).toFixed(2)} kg` : '-'}</td>
                         <td>
-                          <span className={`status-badge status-badge--${transaction.status.toLowerCase()}`}>
+                          <span className={`wt-status-badge wt-status-badge--${transaction.status.toLowerCase()}`}>
                             {transaction.status}
                           </span>
                         </td>
                         <td>
-                          <div className="action-buttons">
+                          <div className="wt-action-buttons">
                             <button
-                              className="action-btn action-btn--view"
+                              className="wt-action-btn wt-action-btn--view"
                               onClick={() => handleViewDetails(transaction)}
                               title="View Details"
                             >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                               </svg>
                             </button>
                             {transaction.status === 'Draft' && (
                               <button
-                                className="action-btn action-btn--edit"
+                                className="wt-action-btn wt-action-btn--edit"
                                 onClick={() => handleEdit(transaction)}
                                 title="Edit"
                               >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
@@ -738,20 +743,50 @@ const WasteTransactionPage = () => {
             </table>
           </div>
           <div className="waste-transaction-pagination-info">
-            Showing {filteredTransactions.length} of {transactions.length} Items
+            Showing {filteredTransactions.length} of {transactions.length} items
           </div>
         </div>
       </main>
 
+      {/* Advanced Filter Modal */}
+      {showAdvancedFilter && (
+        <AdvancedFilterModal
+          filterDate={filterDate}
+          filterStatus={filterStatus}
+          onFilterDateChange={setFilterDate}
+          onFilterStatusChange={setFilterStatus}
+          onClearFilters={() => {
+            setFilterDate('');
+            setFilterStatus('all');
+          }}
+          onApplyFilters={() => {
+            if (filterDate) {
+              setSelectedDate(filterDate);
+            }
+            setStatusFilter(filterStatus);
+            setShowAdvancedFilter(false);
+          }}
+          onClose={() => setShowAdvancedFilter(false)}
+        />
+      )}
+
       {/* Form Modal */}
       {showFormModal && (
-        <div className="modal-overlay" onClick={() => { setShowFormModal(false); resetForm(); }}>
-          <div className="modal-content modal-content--large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">
-                {formData.editingId ? 'Edit Transaction' : 'Add Waste Transaction'}
-              </h2>
-              <button className="modal-close-btn" onClick={() => { setShowFormModal(false); resetForm(); }}>
+        <div className="wt-form-modal-overlay" onClick={() => { setShowFormModal(false); resetForm(); }}>
+          <div className="wt-form-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="wt-form-modal-header">
+              <div className="wt-form-header-left">
+                <div className="wt-form-header-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </div>
+                <h2 className="wt-form-modal-title">
+                  {formData.editingId ? 'Edit Transaction' : 'Add Waste Transaction'}
+                </h2>
+              </div>
+              <button className="wt-form-modal-close" onClick={() => { setShowFormModal(false); resetForm(); }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -759,14 +794,14 @@ const WasteTransactionPage = () => {
               </button>
             </div>
 
-            <form className="waste-transaction-form" onSubmit={handleSubmit}>
-              {/* Basic Information */}
-              <div className="form-section">
-                <h3 className="form-section-title">Basic Information</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Company *</label>
+            <form className="wt-form-modal-form" onSubmit={handleSubmit}>
+              <div className="wt-form-body">
+                {/* Top Row: Company, HCF, Pickup Date */}
+                <div className="wt-form-row">
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">Company <span className="wt-required">*</span></label>
                     <select
+                      className="wt-form-select"
                       value={formData.companyId}
                       onChange={(e) => setFormData({ ...formData, companyId: e.target.value, hcfId: '' })}
                       required
@@ -781,224 +816,240 @@ const WasteTransactionPage = () => {
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>HCF *</label>
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">HCF <span className="wt-required">*</span></label>
                     <select
+                      className="wt-form-input wt-form-input--hcf"
                       value={formData.hcfId}
                       onChange={(e) => setFormData({ ...formData, hcfId: e.target.value })}
                       required
                       disabled={!formData.companyId || !isFormEditable}
                     >
-                      <option value="">Select HCF</option>
+                      <option value="">e.g., SET12</option>
                       {filteredHcfs.map((hcf) => (
                         <option key={hcf.id} value={hcf.id}>
-                          {hcf.hcfCode} - {hcf.hcfName}
+                          {hcf.hcfCode}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>Pickup Date *</label>
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">Pickup Date <span className="wt-required">*</span></label>
                     <input
                       type="date"
+                      className="wt-form-input"
                       value={formData.pickupDate}
                       onChange={(e) => setFormData({ ...formData, pickupDate: e.target.value })}
                       required
                       disabled={!isFormEditable}
                     />
                   </div>
+                </div>
 
-                  <div className="form-group">
-                    <label>
+                {/* NIL Pickup Checkbox */}
+                <div className="wt-form-row">
+                  <div className="wt-form-group">
+                    <label className="wt-form-checkbox-label">
                       <input
                         type="checkbox"
+                        className="wt-form-checkbox"
                         checked={formData.isNilPickup}
                         onChange={(e) => setFormData({ ...formData, isNilPickup: e.target.checked })}
                         disabled={!isFormEditable}
                       />
-                      NIL Pickup (No waste collected)
+                      <span>NIL Pickup</span>
                     </label>
                   </div>
                 </div>
-              </div>
 
-              {/* GPS Location */}
-              <div className="form-section">
-                <h3 className="form-section-title">GPS Location</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Latitude</label>
+                {/* GPS Location Row */}
+                <div className="wt-form-row">
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">Latitude</label>
                     <input
                       type="number"
                       step="any"
+                      className="wt-form-input"
                       value={formData.latitude || ''}
                       onChange={(e) => setFormData({ ...formData, latitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      placeholder="Auto-capture or enter manually"
+                      placeholder="28.7041"
                       disabled={!isFormEditable}
                     />
                   </div>
-                  <div className="form-group">
-                    <label>Longitude</label>
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">Longitude</label>
                     <input
                       type="number"
                       step="any"
+                      className="wt-form-input"
                       value={formData.longitude || ''}
                       onChange={(e) => setFormData({ ...formData, longitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      placeholder="Auto-capture or enter manually"
+                      placeholder="77.1025"
                       disabled={!isFormEditable}
                     />
                   </div>
-                  <div className="form-group">
-                    <label>&nbsp;</label>
+                  <div className="wt-form-group">
+                    <label className="wt-form-label">&nbsp;</label>
                     <button
                       type="button"
-                      className="btn btn--secondary"
+                      className="wt-form-gps-btn"
                       onClick={getGPSLocation}
                       disabled={!isFormEditable || gpsLoading}
                     >
-                      {gpsLoading ? 'Capturing...' : 'Capture GPS Location'}
+                      {gpsLoading ? 'Capturing...' : 'Capture GPS'}
                     </button>
-                    {gpsError && <div className="form-error">{gpsError}</div>}
+                    {gpsError && <div className="wt-form-error">{gpsError}</div>}
                   </div>
                 </div>
-              </div>
 
-              {/* Color-wise Bag Counts and Weights */}
-              {!formData.isNilPickup && (
-                <>
-                  <div className="form-section">
-                    <h3 className="form-section-title">Bag Counts & Weights</h3>
-                    <div className="color-inputs-grid">
-                      {/* Yellow */}
-                      <div className="color-input-group color-input-group--yellow">
-                        <h4 className="color-input-title">Yellow Bags</h4>
-                        <div className="form-group">
-                          <label>Bag Count</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formData.yellowBagCount || 0}
-                            onChange={(e) => setFormData({ ...formData, yellowBagCount: parseInt(e.target.value) || 0 })}
-                            disabled={!isFormEditable}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Weight (kg)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.yellowWeightKg || ''}
-                            onChange={(e) => setFormData({ ...formData, yellowWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                            placeholder="0.00"
-                            disabled={!isFormEditable}
-                          />
+                {/* Color-wise Bag Counts and Weights */}
+                {!formData.isNilPickup && (
+                  <>
+                    <div className="wt-form-row">
+                      {/* Yellow Bags */}
+                      <div className="wt-color-group wt-color-group--yellow">
+                        <h4 className="wt-color-title">Yellow Bags</h4>
+                        <div className="wt-color-inputs">
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Count</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.yellowBagCount || 0}
+                              onChange={(e) => setFormData({ ...formData, yellowBagCount: parseInt(e.target.value) || 0 })}
+                              disabled={!isFormEditable}
+                            />
+                          </div>
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Weight (kg)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.yellowWeightKg || ''}
+                              onChange={(e) => setFormData({ ...formData, yellowWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                              placeholder="0.00"
+                              disabled={!isFormEditable}
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* Red */}
-                      <div className="color-input-group color-input-group--red">
-                        <h4 className="color-input-title">Red Bags</h4>
-                        <div className="form-group">
-                          <label>Bag Count</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formData.redBagCount || 0}
-                            onChange={(e) => setFormData({ ...formData, redBagCount: parseInt(e.target.value) || 0 })}
-                            disabled={!isFormEditable}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Weight (kg)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.redWeightKg || ''}
-                            onChange={(e) => setFormData({ ...formData, redWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                            placeholder="0.00"
-                            disabled={!isFormEditable}
-                          />
+                      {/* Red Bags */}
+                      <div className="wt-color-group wt-color-group--red">
+                        <h4 className="wt-color-title">Red Bags</h4>
+                        <div className="wt-color-inputs">
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Count</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.redBagCount || 0}
+                              onChange={(e) => setFormData({ ...formData, redBagCount: parseInt(e.target.value) || 0 })}
+                              disabled={!isFormEditable}
+                            />
+                          </div>
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Weight (kg)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.redWeightKg || ''}
+                              onChange={(e) => setFormData({ ...formData, redWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                              placeholder="0.00"
+                              disabled={!isFormEditable}
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* White */}
-                      <div className="color-input-group color-input-group--white">
-                        <h4 className="color-input-title">White Bags</h4>
-                        <div className="form-group">
-                          <label>Bag Count</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formData.whiteBagCount || 0}
-                            onChange={(e) => setFormData({ ...formData, whiteBagCount: parseInt(e.target.value) || 0 })}
-                            disabled={!isFormEditable}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Weight (kg)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.whiteWeightKg || ''}
-                            onChange={(e) => setFormData({ ...formData, whiteWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                            placeholder="0.00"
-                            disabled={!isFormEditable}
-                          />
+                      {/* White Bags */}
+                      <div className="wt-color-group wt-color-group--white">
+                        <h4 className="wt-color-title">White Bags</h4>
+                        <div className="wt-color-inputs">
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Count</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.whiteBagCount || 0}
+                              onChange={(e) => setFormData({ ...formData, whiteBagCount: parseInt(e.target.value) || 0 })}
+                              disabled={!isFormEditable}
+                            />
+                          </div>
+                          <div className="wt-color-input-group">
+                            <label className="wt-color-label">Weight (kg)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="wt-color-input"
+                              value={formData.whiteWeightKg || ''}
+                              onChange={(e) => setFormData({ ...formData, whiteWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                              placeholder="0.00"
+                              disabled={!isFormEditable}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Segregation Quality */}
-                  <div className="form-section">
-                    <h3 className="form-section-title">Segregation Quality</h3>
-                    <div className="form-group">
-                      <select
-                        value={formData.segregationQuality || ''}
-                        onChange={(e) => setFormData({ ...formData, segregationQuality: e.target.value as any || null })}
-                        disabled={!isFormEditable}
-                      >
-                        <option value="">Select Quality</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Good">Good</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Poor">Poor</option>
-                      </select>
+                    {/* Quality */}
+                    <div className="wt-form-row">
+                      <div className="wt-form-group">
+                        <label className="wt-form-label">Quality</label>
+                        <select
+                          className="wt-form-select"
+                          value={formData.segregationQuality || ''}
+                          onChange={(e) => setFormData({ ...formData, segregationQuality: e.target.value as any || null })}
+                          disabled={!isFormEditable}
+                        >
+                          <option value="">Select Quality</option>
+                          <option value="Excellent">Excellent</option>
+                          <option value="Good">Good</option>
+                          <option value="Fair">Fair</option>
+                          <option value="Poor">Poor</option>
+                        </select>
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
-              {/* Notes */}
-              <div className="form-section">
-                <h3 className="form-section-title">Additional Notes</h3>
-                <div className="form-group">
-                  <textarea
-                    value={formData.notes || ''}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
-                    placeholder="Enter any additional notes or remarks..."
-                    rows={3}
-                    disabled={!isFormEditable}
-                  />
+                {/* Notes */}
+                <div className="wt-form-row">
+                  <div className="wt-form-group wt-form-group--full">
+                    <label className="wt-form-label">Notes</label>
+                    <textarea
+                      className="wt-form-textarea"
+                      value={formData.notes || ''}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
+                      placeholder="Additional notes or remarks..."
+                      rows={3}
+                      disabled={!isFormEditable}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Form Actions */}
-              <div className="modal-footer">
+              <div className="wt-form-modal-footer">
                 <button
                   type="button"
-                  className="btn btn--secondary"
+                  className="wt-form-btn wt-form-btn--cancel"
                   onClick={() => { setShowFormModal(false); resetForm(); }}
                   disabled={loading}
                 >
                   Cancel
                 </button>
                 {isFormEditable && (
-                  <button type="submit" className="btn btn--primary" disabled={loading}>
+                  <button type="submit" className="wt-form-btn wt-form-btn--create" disabled={loading}>
                     {loading ? 'Saving...' : formData.editingId ? 'Update' : 'Create'}
                   </button>
                 )}
@@ -1168,6 +1219,109 @@ const WasteTransactionPage = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Advanced Filter Modal Component
+interface AdvancedFilterModalProps {
+  filterDate: string;
+  filterStatus: string;
+  onFilterDateChange: (date: string) => void;
+  onFilterStatusChange: (status: string) => void;
+  onClearFilters: () => void;
+  onApplyFilters: () => void;
+  onClose: () => void;
+}
+
+const AdvancedFilterModal = ({
+  filterDate,
+  filterStatus,
+  onFilterDateChange,
+  onFilterStatusChange,
+  onClearFilters,
+  onApplyFilters,
+  onClose,
+}: AdvancedFilterModalProps) => {
+  const getDateInputValue = () => {
+    if (!filterDate) return '';
+    if (filterDate.includes('-') && filterDate.length === 10 && filterDate.split('-')[0].length === 4) {
+      return filterDate;
+    }
+    if (filterDate.includes('-') && filterDate.split('-')[0].length === 2) {
+      const parts = filterDate.split('-');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+      }
+    }
+    return filterDate;
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value) {
+      onFilterDateChange(value);
+    } else {
+      onFilterDateChange('');
+    }
+  };
+
+  return (
+    <div className="wt-filter-modal-overlay" onClick={onClose}>
+      <div className="wt-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wt-filter-modal-header">
+          <div className="wt-filter-header-left">
+            <div className="wt-filter-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <h2 className="wt-filter-modal-title">Advanced Filter</h2>
+          </div>
+          <button className="wt-filter-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="wt-filter-modal-body">
+          <div className="wt-filter-form-group">
+            <label className="wt-filter-label">Pickup Date</label>
+            <input
+              type="date"
+              value={getDateInputValue()}
+              onChange={handleDateChange}
+              className="wt-filter-date-input"
+            />
+          </div>
+
+          <div className="wt-filter-form-group">
+            <label className="wt-filter-label">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => onFilterStatusChange(e.target.value)}
+              className="wt-filter-select"
+            >
+              <option value="all">All Status</option>
+              <option value="Draft">Draft</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Verified">Verified</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="wt-filter-modal-footer">
+          <button type="button" className="wt-filter-btn-clear" onClick={onClearFilters}>
+            Clear Filters
+          </button>
+          <button type="button" className="wt-filter-btn-apply" onClick={onApplyFilters}>
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

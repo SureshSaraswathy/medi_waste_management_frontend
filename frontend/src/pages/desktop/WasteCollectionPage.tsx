@@ -41,9 +41,17 @@ const WasteCollectionPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [colorFilter, setColorFilter] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterColor, setFilterColor] = useState<string>('all');
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<WasteCollection | null>(null);
+  const [collectionToEdit, setCollectionToEdit] = useState<WasteCollection | null>(null);
+  const [collectionToDelete, setCollectionToDelete] = useState<WasteCollection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -249,6 +257,60 @@ const WasteCollectionPage = () => {
     setShowDetailModal(true);
   };
 
+  // Handle edit collection
+  const handleEditCollection = (collection: WasteCollection) => {
+    setCollectionToEdit(collection);
+    setShowEditModal(true);
+  };
+
+  // Handle update collection
+  const handleUpdateCollection = async (data: { weightKg: number }) => {
+    if (!collectionToEdit) return;
+    try {
+      setLoading(true);
+      setError(null);
+      await wasteCollectionService.collectWaste(collectionToEdit.id, data.weightKg);
+      setSuccessMessage('Collection updated successfully');
+      await loadCollections();
+      setShowEditModal(false);
+      setCollectionToEdit(null);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update collection';
+      setError(errorMessage);
+      console.error('Error updating collection:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle delete collection click
+  const handleDeleteClick = (collection: WasteCollection) => {
+    setCollectionToDelete(collection);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!collectionToDelete) return;
+    try {
+      setLoading(true);
+      setError(null);
+      await wasteCollectionService.deleteWasteCollection(collectionToDelete.id);
+      setSuccessMessage('Collection deleted successfully');
+      await loadCollections();
+      setShowDeleteModal(false);
+      setCollectionToDelete(null);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete collection';
+      setError(errorMessage);
+      console.error('Error deleting collection:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter collections
   const filteredCollections = collections.filter(collection => {
     const matchesSearch = 
@@ -265,15 +327,15 @@ const WasteCollectionPage = () => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'Pending':
-        return 'status-badge--pending';
+        return 'wc-status-badge--pending';
       case 'Collected':
-        return 'status-badge--collected';
+        return 'wc-status-badge--collected';
       case 'In Transit':
-        return 'status-badge--in-transit';
+        return 'wc-status-badge--in-transit';
       case 'Processed':
-        return 'status-badge--processed';
+        return 'wc-status-badge--verified';
       case 'Disposed':
-        return 'status-badge--disposed';
+        return 'wc-status-badge--rejected';
       default:
         return '';
     }
@@ -434,195 +496,195 @@ const WasteCollectionPage = () => {
           </div>
         )}
 
-        <div className="waste-collection-page">
-          <div className="waste-collection-header">
-            <h1 className="waste-collection-title">Waste Collection</h1>
+        <div className="wc-page">
+          {/* Page Header */}
+          <div className="wc-page-header">
+            <div className="wc-header-left">
+              <div className="wc-header-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+              </div>
+              <h1 className="wc-page-title">Waste Collection</h1>
+            </div>
+            <div className="wc-header-actions">
+            </div>
           </div>
 
-          {/* Barcode Scanner Section */}
-          <div className="barcode-scanner-section">
-            <form onSubmit={handleBarcodeSubmit} className="barcode-scanner-form">
-              <div className="barcode-input-group">
-                <label htmlFor="barcode-input">Scan Barcode</label>
-                <div className="barcode-input-wrapper">
+          {/* Search Section */}
+          <div className="wc-search-section">
+            {/* Barcode Scan Row */}
+            <div className="wc-barcode-row">
+              <div className="wc-barcode-search">
+                <svg className="wc-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <form onSubmit={handleBarcodeSubmit} className="wc-barcode-form">
                   <input
-                    id="barcode-input"
                     ref={barcodeInputRef}
                     type="text"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     placeholder="Scan or enter barcode..."
-                    className="barcode-input"
+                    className="wc-barcode-input"
                     autoFocus
                     disabled={lookupLoading}
                   />
-                  <button
-                    type="submit"
-                    className="barcode-scan-btn"
-                    disabled={lookupLoading || !barcodeInput.trim()}
-                  >
-                    {lookupLoading ? (
-                      <span>Looking up...</span>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"></path>
-                        </svg>
-                        Scan
-                      </>
-                    )}
-                  </button>
-                </div>
+                </form>
               </div>
-            </form>
-          </div>
-
-          {/* Filters */}
-          <div className="waste-collection-filters">
-            <div className="filter-group">
-              <label htmlFor="collection-date">Collection Date</label>
-              <input
-                id="collection-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="date-input"
-              />
-            </div>
-            <div className="filter-group">
-              <label htmlFor="status-filter">Status</label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="status-select"
+              <button 
+                type="button"
+                className="wc-btn wc-btn--scan-inline" 
+                onClick={handleBarcodeSubmit}
+                disabled={lookupLoading || !barcodeInput.trim()}
               >
-                <option value="all">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Collected">Collected</option>
-                <option value="In Transit">In Transit</option>
-                <option value="Processed">Processed</option>
-                <option value="Disposed">Disposed</option>
-              </select>
+                {lookupLoading ? (
+                  <span>Scanning...</span>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
+                      <line x1="7" y1="8" x2="7" y2="16"></line>
+                      <line x1="11" y1="8" x2="11" y2="16"></line>
+                      <line x1="15" y1="8" x2="15" y2="16"></line>
+                      <line x1="19" y1="8" x2="19" y2="16"></line>
+                    </svg>
+                    Scan
+                  </>
+                )}
+              </button>
             </div>
-            <div className="filter-group">
-              <label htmlFor="color-filter">Color</label>
-              <select
-                id="color-filter"
-                value={colorFilter}
-                onChange={(e) => setColorFilter(e.target.value)}
-                className="color-select"
-              >
-                <option value="all">All Colors</option>
-                <option value="Yellow">Yellow</option>
-                <option value="Red">Red</option>
-                <option value="White">White</option>
-              </select>
-            </div>
-            <div className="filter-group filter-group--search">
-              <label htmlFor="search">Search</label>
-              <div className="search-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            
+            {/* General Search Row */}
+            <div className="wc-search-row">
+              <div className="wc-general-search">
+                <svg className="wc-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8"></circle>
                   <path d="m21 21-4.35-4.35"></path>
                 </svg>
                 <input
-                  id="search"
                   type="text"
                   placeholder="Search by barcode, HCF, company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
+                  className="wc-search-input"
                 />
               </div>
+              <button className="wc-btn wc-btn--filter-inline" onClick={() => {
+                // Initialize filter values from current state
+                setFilterDate(selectedDate);
+                setFilterStatus(statusFilter);
+                setFilterColor(colorFilter);
+                setShowAdvancedFilter(!showAdvancedFilter);
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
             </div>
           </div>
 
           {/* Collections Table */}
-          <div className="waste-collection-table-container">
-            <table className="waste-collection-table">
+          <div className="wc-table-container">
+            <table className="wc-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Barcode</th>
+                  <th>DATE</th>
+                  <th>BARCODE</th>
                   <th>HCF</th>
-                  <th>Company</th>
-                  <th>Color</th>
-                  <th>Weight (Kg)</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>COMPANY</th>
+                  <th>COLOR</th>
+                  <th>WEIGHT (KG)</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCollections.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="empty-message">
-                      {loading ? 'Loading...' : 'No collections found for the selected date'}
+                    <td colSpan={8} className="wc-empty-message">
+                      {loading ? 'Loading...' : 'No collections found'}
                     </td>
                   </tr>
                 ) : (
-                  filteredCollections.map((collection) => (
-                    <tr key={collection.id}>
-                      <td>{new Date(collection.collectionDate).toLocaleDateString()}</td>
-                      <td>
-                        <span className="barcode-display">{collection.barcode}</span>
-                      </td>
-                      <td>
-                        <div className="hcf-info">
-                          <span className="hcf-code">{collection.hcfCode}</span>
-                          <span className="hcf-name">{collection.hcfName}</span>
-                        </div>
-                      </td>
-                      <td>{collection.companyName}</td>
-                      <td>
-                        <span className={`color-badge ${getColorBadgeClass(collection.wasteColor)}`}>
-                          {collection.wasteColor}
-                        </span>
-                      </td>
-                      <td>{collection.weightKg ? `${collection.weightKg} kg` : '-'}</td>
-                      <td>
-                        <span className={`status-badge ${getStatusBadgeClass(collection.status)}`}>
-                          {collection.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="action-btn action-btn--view"
-                            onClick={() => handleViewDetails(collection)}
-                            title="View Details"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                          </button>
-                          {collection.status === 'Pending' && (
+                  filteredCollections.map((collection) => {
+                    const collectionDate = new Date(collection.collectionDate);
+                    const formattedDate = `${String(collectionDate.getDate()).padStart(2, '0')}/${String(collectionDate.getMonth() + 1).padStart(2, '0')}/${collectionDate.getFullYear()}`;
+                    return (
+                      <tr key={collection.id}>
+                        <td>{formattedDate}</td>
+                        <td>
+                          <span className="wc-barcode-display">{collection.barcode}</span>
+                        </td>
+                        <td>
+                          <span className="wc-hcf-code">{collection.hcfCode}</span>
+                        </td>
+                        <td>{collection.companyName}</td>
+                        <td>
+                          <div className="wc-color-badge-wrapper">
+                            <span className={`wc-color-swatch wc-color-swatch--${collection.wasteColor.toLowerCase()}`}></span>
+                            <span className="wc-color-text">{collection.wasteColor.toUpperCase()}</span>
+                          </div>
+                        </td>
+                        <td>{collection.weightKg != null && !isNaN(Number(collection.weightKg)) ? Number(collection.weightKg).toFixed(2) : '-'}</td>
+                        <td>
+                          <span className={`wc-status-badge ${getStatusBadgeClass(collection.status)}`}>
+                            {collection.status === 'Collected' ? 'COLLECTED' : 
+                             collection.status === 'Processed' ? 'VERIFIED' : 
+                             collection.status === 'Disposed' ? 'REJECTED' :
+                             collection.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="wc-action-buttons">
                             <button
-                              className="action-btn action-btn--collect"
-                              onClick={() => {
-                                const weight = prompt('Enter weight in kg:');
-                                if (weight && !isNaN(parseFloat(weight)) && parseFloat(weight) > 0) {
-                                  handleCollectWaste(collection.id, parseFloat(weight));
-                                }
-                              }}
-                              title="Collect Waste"
+                              className="wc-action-btn wc-action-btn--view"
+                              onClick={() => handleViewDetails(collection)}
+                              title="View"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="20 6 9 17 4 12"></polyline>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
                               </svg>
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {collection.status === 'Pending' && (
+                              <>
+                                <button
+                                  className="wc-action-btn wc-action-btn--edit"
+                                  onClick={() => handleEditCollection(collection)}
+                                  title="Edit"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="wc-action-btn wc-action-btn--delete"
+                                  onClick={() => handleDeleteClick(collection)}
+                                  title="Delete"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                  </svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
-          <div className="waste-collection-pagination-info">
-            Showing {filteredCollections.length} of {collections.length} Items
+          <div className="wc-table-footer">
+            Showing {filteredCollections.length} of {collections.length} items
           </div>
         </div>
       </main>
@@ -648,6 +710,59 @@ const WasteCollectionPage = () => {
             setShowDetailModal(false);
             setSelectedCollection(null);
           }}
+        />
+      )}
+
+      {/* Advanced Filter Modal */}
+      {showAdvancedFilter && (
+        <AdvancedFilterModal
+          filterDate={filterDate}
+          filterStatus={filterStatus}
+          filterColor={filterColor}
+          onFilterDateChange={setFilterDate}
+          onFilterStatusChange={setFilterStatus}
+          onFilterColorChange={setFilterColor}
+          onClearFilters={() => {
+            setFilterDate('');
+            setFilterStatus('all');
+            setFilterColor('all');
+          }}
+          onApplyFilters={() => {
+            // filterDate is already in yyyy-mm-dd format from date input
+            if (filterDate) {
+              setSelectedDate(filterDate);
+            }
+            setStatusFilter(filterStatus);
+            setColorFilter(filterColor);
+            setShowAdvancedFilter(false);
+          }}
+          onClose={() => setShowAdvancedFilter(false)}
+        />
+      )}
+
+      {/* Edit Collection Modal */}
+      {showEditModal && collectionToEdit && (
+        <EditCollectionModal
+          collection={collectionToEdit}
+          onClose={() => {
+            setShowEditModal(false);
+            setCollectionToEdit(null);
+          }}
+          onUpdate={handleUpdateCollection}
+          loading={loading}
+        />
+      )}
+
+      {/* Delete Collection Modal */}
+      {showDeleteModal && collectionToDelete && (
+        <DeleteCollectionModal
+          collection={collectionToDelete}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setCollectionToDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          loading={loading}
         />
       )}
     </div>
@@ -678,12 +793,28 @@ const CollectionFormModal = ({
     onSave(formData);
   };
 
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-content--medium" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">Record Waste Collection</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="wc-collection-modal-overlay" onClick={onClose}>
+      <div className="wc-collection-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-collection-modal-header">
+          <div className="wc-collection-header-left">
+            <div className="wc-collection-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </div>
+            <h2 className="wc-collection-modal-title">Record Waste Collection</h2>
+          </div>
+          <button className="wc-collection-modal-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -691,63 +822,65 @@ const CollectionFormModal = ({
           </button>
         </div>
 
-        <form className="collection-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Barcode Information</h3>
-            <div className="form-grid form-grid--two-columns">
-              <div className="form-group">
-                <label>Barcode</label>
+        <form className="wc-collection-form" onSubmit={handleSubmit}>
+          <div className="wc-collection-form-section">
+            <h3 className="wc-collection-section-title">BARCODE INFORMATION</h3>
+            <div className="wc-collection-form-grid">
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Barcode</label>
                 <input
                   type="text"
                   value={barcodeLookup.barcode}
                   disabled
-                  className="form-input form-input--readonly"
+                  className="wc-collection-input wc-collection-input--readonly"
                 />
               </div>
-              <div className="form-group">
-                <label>Collection Date</label>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Collection Date</label>
                 <input
-                  type="date"
-                  value={collectionDate}
+                  type="text"
+                  value={formatDateForDisplay(collectionDate)}
                   disabled
-                  className="form-input form-input--readonly"
+                  className="wc-collection-input wc-collection-input--readonly"
                 />
               </div>
-              <div className="form-group">
-                <label>Company</label>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Company</label>
                 <input
                   type="text"
                   value={barcodeLookup.companyName}
                   disabled
-                  className="form-input form-input--readonly"
+                  className="wc-collection-input wc-collection-input--readonly"
                 />
               </div>
-              <div className="form-group">
-                <label>HCF</label>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">HCF</label>
                 <input
                   type="text"
-                  value={`${barcodeLookup.hcfCode} - ${barcodeLookup.hcfName}`}
+                  value={barcodeLookup.hcfCode}
                   disabled
-                  className="form-input form-input--readonly"
+                  className="wc-collection-input wc-collection-input--readonly"
                 />
               </div>
-              <div className="form-group">
-                <label>Waste Color</label>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Waste Color</label>
                 <input
                   type="text"
                   value={barcodeLookup.wasteColor}
                   disabled
-                  className="form-input form-input--readonly"
+                  className="wc-collection-input wc-collection-input--readonly"
                 />
               </div>
             </div>
           </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">Collection Details</h3>
-            <div className="form-grid form-grid--two-columns">
-              <div className="form-group">
-                <label>Weight (Kg) *</label>
+          <div className="wc-collection-form-section">
+            <h3 className="wc-collection-section-title">COLLECTION DETAILS</h3>
+            <div className="wc-collection-form-grid">
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">
+                  Weight (Kg) <span className="wc-collection-required">*</span>
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -755,28 +888,28 @@ const CollectionFormModal = ({
                   value={formData.weightKg || ''}
                   onChange={(e) => setFormData({ ...formData, weightKg: parseFloat(e.target.value) || null })}
                   required
-                  className="form-input"
+                  className="wc-collection-input"
                   placeholder="Enter weight"
                 />
               </div>
-            </div>
-            <div className="form-group form-group--full-width">
-              <label>Notes</label>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
-                rows={3}
-                className="form-textarea"
-                placeholder="Additional notes or observations..."
-              />
+              <div className="wc-collection-form-group wc-collection-form-group--full">
+                <label className="wc-collection-label">Notes</label>
+                <textarea
+                  value={formData.notes || ''}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
+                  rows={3}
+                  className="wc-collection-textarea"
+                  placeholder="Additional notes or observations..."
+                />
+              </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="wc-collection-modal-footer">
+            <button type="button" className="wc-collection-btn wc-collection-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="wc-collection-btn wc-collection-btn--submit">
               Record Collection
             </button>
           </div>
@@ -790,15 +923,61 @@ const CollectionFormModal = ({
 interface CollectionDetailModalProps {
   collection: WasteCollection;
   onClose: () => void;
+  onVerify?: () => void;
 }
 
-const CollectionDetailModal = ({ collection, onClose }: CollectionDetailModalProps) => {
+const CollectionDetailModal = ({ collection, onClose, onVerify }: CollectionDetailModalProps) => {
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'Pending':
+        return 'wc-view-status-badge--pending';
+      case 'Collected':
+        return 'wc-view-status-badge--collected';
+      case 'Processed':
+        return 'wc-view-status-badge--verified';
+      case 'Disposed':
+        return 'wc-view-status-badge--rejected';
+      default:
+        return '';
+    }
+  };
+
+  const getColorBadgeClass = (color: string) => {
+    return `wc-view-color-badge--${color.toLowerCase()}`;
+  };
+
+  const handleVerify = () => {
+    if (onVerify) {
+      onVerify();
+    }
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content modal-content--large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">Collection Details</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="wc-view-modal-overlay" onClick={onClose}>
+      <div className="wc-view-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-view-modal-header">
+          <div className="wc-view-header-left">
+            <div className="wc-view-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </div>
+            <div className="wc-view-title-wrap">
+              <h2 className="wc-view-modal-title">View Collection Details</h2>
+              <p className="wc-view-modal-subtitle">Barcode: {collection.barcode}</p>
+            </div>
+          </div>
+          <button className="wc-view-modal-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -806,87 +985,385 @@ const CollectionDetailModal = ({ collection, onClose }: CollectionDetailModalPro
           </button>
         </div>
 
-        <div className="collection-detail-content">
-          <div className="detail-section">
-            <h3 className="detail-section-title">Basic Information</h3>
-            <div className="detail-grid">
-              <div className="detail-item">
-                <label>Barcode</label>
-                <span>{collection.barcode}</span>
+        <div className="wc-view-modal-body">
+          <div className="wc-view-detail-grid">
+            <div className="wc-view-detail-column">
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">COLLECTION DATE</label>
+                <span className="wc-view-detail-value">{formatDate(collection.collectionDate)}</span>
               </div>
-              <div className="detail-item">
-                <label>Collection Date</label>
-                <span>{new Date(collection.collectionDate).toLocaleDateString()}</span>
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">HCF</label>
+                <span className="wc-view-detail-value">{collection.hcfCode}</span>
               </div>
-              <div className="detail-item">
-                <label>Company</label>
-                <span>{collection.companyName}</span>
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">WASTE COLOR</label>
+                <div className={`wc-view-color-badge ${getColorBadgeClass(collection.wasteColor)}`}>
+                  <span className="wc-view-color-swatch"></span>
+                  <span className="wc-view-color-text">{collection.wasteColor.toUpperCase()}</span>
+                </div>
               </div>
-              <div className="detail-item">
-                <label>HCF Code</label>
-                <span>{collection.hcfCode}</span>
-              </div>
-              <div className="detail-item">
-                <label>HCF Name</label>
-                <span>{collection.hcfName}</span>
-              </div>
-              <div className="detail-item">
-                <label>Waste Color</label>
-                <span className={`color-badge ${collection.wasteColor.toLowerCase()}`}>
-                  {collection.wasteColor}
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">STATUS</label>
+                <span className={`wc-view-status-badge ${getStatusBadgeClass(collection.status)}`}>
+                  {collection.status === 'Collected' ? 'COLLECTED' : 
+                   collection.status === 'Processed' ? 'VERIFIED' : 
+                   collection.status === 'Disposed' ? 'REJECTED' :
+                   collection.status.toUpperCase()}
                 </span>
               </div>
             </div>
-          </div>
 
-          <div className="detail-section">
-            <h3 className="detail-section-title">Collection Details</h3>
-            <div className="detail-grid">
-              <div className="detail-item">
-                <label>Weight</label>
-                <span>{collection.weightKg ? `${collection.weightKg} kg` : 'Not recorded'}</span>
+            <div className="wc-view-detail-column">
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">BARCODE</label>
+                <span className="wc-view-detail-value">{collection.barcode}</span>
               </div>
-              <div className="detail-item">
-                <label>Status</label>
-                <span className={`status-badge ${collection.status.toLowerCase().replace(' ', '-')}`}>
-                  {collection.status}
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">COMPANY</label>
+                <span className="wc-view-detail-value">{collection.companyName}</span>
+              </div>
+              <div className="wc-view-detail-item">
+                <label className="wc-view-detail-label">WEIGHT</label>
+                <span className="wc-view-detail-value">
+                  {collection.weightKg != null && !isNaN(Number(collection.weightKg)) 
+                    ? `${Number(collection.weightKg).toFixed(2)} kg` 
+                    : 'Not recorded'}
                 </span>
-              </div>
-              {collection.collectedBy && (
-                <div className="detail-item">
-                  <label>Collected By</label>
-                  <span>{collection.collectedBy}</span>
-                </div>
-              )}
-              {collection.collectedAt && (
-                <div className="detail-item">
-                  <label>Collected At</label>
-                  <span>{new Date(collection.collectedAt).toLocaleString()}</span>
-                </div>
-              )}
-              {collection.notes && (
-                <div className="detail-item detail-item--full-width">
-                  <label>Notes</label>
-                  <span>{collection.notes}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="detail-section">
-            <h3 className="detail-section-title">Audit Information</h3>
-            <div className="detail-grid">
-              <div className="detail-item">
-                <label>Created On</label>
-                <span>{new Date(collection.createdOn).toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
+        <div className="wc-view-modal-footer">
+          <button type="button" className="wc-view-btn wc-view-btn--close" onClick={onClose}>
             Close
+          </button>
+          {(collection.status === 'Collected' || collection.status === 'Pending') && (
+            <button type="button" className="wc-view-btn wc-view-btn--verify" onClick={handleVerify}>
+              Verify Collection
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filter Modal Component
+interface AdvancedFilterModalProps {
+  filterDate: string;
+  filterStatus: string;
+  filterColor: string;
+  onFilterDateChange: (date: string) => void;
+  onFilterStatusChange: (status: string) => void;
+  onFilterColorChange: (color: string) => void;
+  onClearFilters: () => void;
+  onApplyFilters: () => void;
+  onClose: () => void;
+}
+
+const AdvancedFilterModal = ({
+  filterDate,
+  filterStatus,
+  filterColor,
+  onFilterDateChange,
+  onFilterStatusChange,
+  onFilterColorChange,
+  onClearFilters,
+  onApplyFilters,
+  onClose,
+}: AdvancedFilterModalProps) => {
+  // Convert filterDate to yyyy-mm-dd format for date input
+  const getDateInputValue = () => {
+    if (!filterDate) return '';
+    // If already in yyyy-mm-dd format, return as is
+    if (filterDate.includes('-') && filterDate.length === 10 && filterDate.split('-')[0].length === 4) {
+      return filterDate;
+    }
+    // Convert from dd-mm-yyyy to yyyy-mm-dd
+    if (filterDate.includes('-') && filterDate.split('-')[0].length === 2) {
+      const parts = filterDate.split('-');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+      }
+    }
+    return filterDate;
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Date input provides yyyy-mm-dd format
+    if (value) {
+      onFilterDateChange(value);
+    } else {
+      onFilterDateChange('');
+    }
+  };
+
+  return (
+    <div className="wc-filter-modal-overlay" onClick={onClose}>
+      <div className="wc-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-filter-modal-header">
+          <div className="wc-filter-modal-title-wrap">
+            <h2 className="wc-filter-modal-title">Advanced Filters</h2>
+            <p className="wc-filter-modal-subtitle">Refine results by multiple criteria</p>
+          </div>
+          <button className="wc-filter-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="wc-filter-modal-body">
+          <div className="wc-filter-form-group">
+            <label className="wc-filter-label">COLLECTION DATE</label>
+            <div className="wc-filter-date-wrapper">
+              <svg className="wc-filter-date-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <input
+                type="date"
+                value={getDateInputValue()}
+                onChange={handleDateChange}
+                className="wc-filter-date-input"
+              />
+            </div>
+          </div>
+
+          <div className="wc-filter-form-group">
+            <label className="wc-filter-label">STATUS</label>
+            <div className="wc-filter-select-wrapper">
+              <select
+                value={filterStatus}
+                onChange={(e) => onFilterStatusChange(e.target.value)}
+                className="wc-filter-select"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Collected">Collected</option>
+                <option value="In Transit">In Transit</option>
+                <option value="Processed">Processed</option>
+                <option value="Disposed">Disposed</option>
+              </select>
+              <svg className="wc-filter-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div className="wc-filter-form-group">
+            <label className="wc-filter-label">COLOR</label>
+            <div className="wc-filter-select-wrapper">
+              <select
+                value={filterColor}
+                onChange={(e) => onFilterColorChange(e.target.value)}
+                className="wc-filter-select"
+              >
+                <option value="all">All Colors</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Red">Red</option>
+                <option value="White">White</option>
+                <option value="Blue">Blue</option>
+                <option value="Black">Black</option>
+              </select>
+              <svg className="wc-filter-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="wc-filter-modal-footer">
+          <button type="button" className="wc-filter-clear-btn" onClick={onClearFilters}>
+            Clear Filters
+          </button>
+          <button type="button" className="wc-filter-apply-btn" onClick={onApplyFilters}>
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Edit Collection Modal Component
+interface EditCollectionModalProps {
+  collection: WasteCollection;
+  onClose: () => void;
+  onUpdate: (data: { weightKg: number }) => void;
+  loading: boolean;
+}
+
+const EditCollectionModal = ({ collection, onClose, onUpdate, loading }: EditCollectionModalProps) => {
+  const [formData, setFormData] = useState<{ weightKg: number }>({
+    weightKg: collection.weightKg != null && !isNaN(Number(collection.weightKg)) ? Number(collection.weightKg) : 0,
+  });
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.weightKg <= 0) {
+      return;
+    }
+    onUpdate(formData);
+  };
+
+  return (
+    <div className="wc-edit-modal-overlay" onClick={onClose}>
+      <div className="wc-edit-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-edit-modal-header">
+          <h2 className="wc-edit-modal-title">Edit Waste Collection</h2>
+          <button className="wc-edit-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <form className="wc-edit-form" onSubmit={handleSubmit}>
+          <div className="wc-edit-form-section">
+            <h3 className="wc-edit-section-title">BARCODE INFORMATION</h3>
+            <div className="wc-edit-form-grid">
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">Barcode</label>
+                <input
+                  type="text"
+                  value={collection.barcode}
+                  disabled
+                  className="wc-edit-input wc-edit-input--readonly"
+                />
+              </div>
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">Collection Date</label>
+                <input
+                  type="text"
+                  value={formatDate(collection.collectionDate)}
+                  disabled
+                  className="wc-edit-input wc-edit-input--readonly"
+                />
+              </div>
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">Company</label>
+                <input
+                  type="text"
+                  value={collection.companyName}
+                  disabled
+                  className="wc-edit-input wc-edit-input--readonly"
+                />
+              </div>
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">HCF</label>
+                <input
+                  type="text"
+                  value={collection.hcfCode}
+                  disabled
+                  className="wc-edit-input wc-edit-input--readonly"
+                />
+              </div>
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">Waste Color</label>
+                <input
+                  type="text"
+                  value={collection.wasteColor}
+                  disabled
+                  className="wc-edit-input wc-edit-input--readonly"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="wc-edit-form-section">
+            <h3 className="wc-edit-section-title">COLLECTION DETAILS</h3>
+            <div className="wc-edit-form-grid">
+              <div className="wc-edit-form-group">
+                <label className="wc-edit-label">
+                  Weight (Kg) <span className="wc-edit-required">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={formData.weightKg || ''}
+                  onChange={(e) => setFormData({ ...formData, weightKg: parseFloat(e.target.value) || 0 })}
+                  required
+                  className="wc-edit-input"
+                  placeholder="Enter weight"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="wc-edit-modal-footer">
+            <button type="button" className="wc-edit-btn wc-edit-btn--cancel" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="wc-edit-btn wc-edit-btn--update" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Collection'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Delete Collection Modal Component
+interface DeleteCollectionModalProps {
+  collection: WasteCollection;
+  onClose: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}
+
+const DeleteCollectionModal = ({ collection, onClose, onConfirm, loading }: DeleteCollectionModalProps) => {
+  return (
+    <div className="wc-delete-modal-overlay" onClick={onClose}>
+      <div className="wc-delete-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wc-delete-modal-header">
+          <div className="wc-delete-header-left">
+            <div className="wc-delete-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+            <h2 className="wc-delete-modal-title">Delete Waste Collection</h2>
+          </div>
+          <button className="wc-delete-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="wc-delete-modal-body">
+          <p className="wc-delete-message">
+            Are you sure you want to delete the collection record for barcode <strong>{collection.barcode}</strong>?
+          </p>
+        </div>
+
+        <div className="wc-delete-modal-footer">
+          <button type="button" className="wc-delete-btn wc-delete-btn--cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="wc-delete-btn wc-delete-btn--delete" onClick={onConfirm} disabled={loading}>
+            {loading ? 'Deleting...' : 'Delete Collection'}
           </button>
         </div>
       </div>

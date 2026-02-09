@@ -32,10 +32,13 @@ const VehicleWasteCollectionPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<VehicleWasteCollection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Master data
   const [vehicles, setVehicles] = useState<FleetResponse[]>([]);
@@ -396,56 +399,42 @@ const VehicleWasteCollectionPage = () => {
         )}
 
         <div className="vehicle-waste-collection-page">
-          <div className="vehicle-waste-collection-header">
-            <h1 className="vehicle-waste-collection-title">Vehicle Waste Collection</h1>
+          {/* Page Header */}
+          <div className="vwc-page-header">
+            <div className="vwc-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"></path>
+                <polygon points="12 15 17 21 7 21 12 15"></polygon>
+              </svg>
+            </div>
+            <div className="vwc-header-text">
+              <h1 className="vwc-page-title">Vehicle Waste Collection</h1>
+            </div>
           </div>
 
-          {/* Filters */}
-          <div className="vehicle-waste-collection-filters">
-            <div className="filter-group">
-              <label htmlFor="collection-date">Collection Date</label>
+          {/* Search and Actions */}
+          <div className="vwc-search-actions">
+            <div className="vwc-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
               <input
-                id="collection-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="date-input"
+                type="text"
+                placeholder="Search by vehicle number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="vwc-search-input"
               />
             </div>
-            <div className="filter-group">
-              <label htmlFor="status-filter">Status</label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="status-select"
-              >
-                <option value="all">All Status</option>
-                <option value="Draft">Draft</option>
-                <option value="Submitted">Submitted</option>
-                <option value="Verified">Verified</option>
-              </select>
-            </div>
-            <div className="filter-group filter-group--search">
-              <label htmlFor="search">Search</label>
-              <div className="search-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
+            <div className="vwc-actions">
+              <button className="vwc-filter-btn" onClick={() => setShowAdvancedFilter(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
-                <input
-                  id="search"
-                  type="text"
-                  placeholder="Search by vehicle number..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
-              </div>
-            </div>
-            <div className="filter-group filter-group--action">
-              <label>&nbsp;</label>
-              <button className="add-collection-btn" onClick={() => { resetForm(); setShowFormModal(true); }}>
+                Advanced Filter
+              </button>
+              <button className="vwc-add-btn" onClick={() => { resetForm(); setShowFormModal(true); }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -456,32 +445,44 @@ const VehicleWasteCollectionPage = () => {
           </div>
 
           {/* Table */}
-          <div className="table-container">
-            {filteredCollections.length === 0 ? (
-              <div className="empty-state">
-                <p>No collections found</p>
-              </div>
-            ) : (
-              <table className="data-table">
-                <thead>
+          <div className="vwc-table-container">
+            <table className="vwc-table">
+              <thead>
+                <tr>
+                  <th>DATE</th>
+                  <th>VEHICLE</th>
+                  <th>GROSS WEIGHT (KG)</th>
+                  <th>TARE WEIGHT (KG)</th>
+                  <th>NET WEIGHT (KG)</th>
+                  <th>INCINERATION (KG)</th>
+                  <th>AUTOCLAVE (KG)</th>
+                  <th>KM</th>
+                  <th>FUEL (L)</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCollections.length === 0 ? (
                   <tr>
-                    <th>Date</th>
-                    <th>Vehicle</th>
-                    <th>Gross Weight (kg)</th>
-                    <th>Tare Weight (kg)</th>
-                    <th>Net Weight (kg)</th>
-                    <th>Incineration (kg)</th>
-                    <th>Autoclave (kg)</th>
-                    <th>KM</th>
-                    <th>Fuel (L)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <td colSpan={11} className="vwc-empty-message">
+                      {loading ? 'Loading...' : 'No collections found for the selected date'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredCollections.map((collection) => (
+                ) : (
+                  filteredCollections.map((collection) => {
+                    // Format date to DD/MM/YYYY
+                    const formatDate = (dateString: string) => {
+                      const date = new Date(dateString);
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    };
+
+                    return (
                     <tr key={collection.id}>
-                      <td>{new Date(collection.collectionDate).toLocaleDateString()}</td>
+                      <td>{formatDate(collection.collectionDate)}</td>
                       <td>{collection.vehicleNum}</td>
                       <td>{collection.grossWeightKg.toFixed(2)}</td>
                       <td>{collection.tareWeightKg.toFixed(2)}</td>
@@ -496,9 +497,9 @@ const VehicleWasteCollectionPage = () => {
                         </span>
                       </td>
                       <td>
-                        <div className="action-buttons">
-                          <button
-                            className="btn btn-icon"
+                        <span className="action-icons">
+                          <span
+                            className="action-icon"
                             onClick={() => handleViewDetails(collection)}
                             title="View Details"
                           >
@@ -506,11 +507,11 @@ const VehicleWasteCollectionPage = () => {
                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                               <circle cx="12" cy="12" r="3"></circle>
                             </svg>
-                          </button>
+                          </span>
                           {collection.status === 'Draft' && (
                             <>
-                              <button
-                                className="btn btn-icon"
+                              <span
+                                className="action-icon"
                                 onClick={() => handleEdit(collection)}
                                 title="Edit"
                               >
@@ -518,18 +519,18 @@ const VehicleWasteCollectionPage = () => {
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
-                              </button>
-                              <button
-                                className="btn btn-icon"
+                              </span>
+                              <span
+                                className="action-icon"
                                 onClick={() => handleStatusChange(collection.id, 'submit')}
                                 title="Submit"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
-                              </button>
-                              <button
-                                className="btn btn-icon btn-icon--danger"
+                              </span>
+                              <span
+                                className="action-icon action-icon--danger"
                                 onClick={() => handleDelete(collection.id)}
                                 title="Delete"
                               >
@@ -537,12 +538,12 @@ const VehicleWasteCollectionPage = () => {
                                   <polyline points="3 6 5 6 21 6"></polyline>
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                 </svg>
-                              </button>
+                              </span>
                             </>
                           )}
                           {collection.status === 'Submitted' && (
-                            <button
-                              className="btn btn-icon"
+                            <span
+                              className="action-icon"
                               onClick={() => handleStatusChange(collection.id, 'verify')}
                               title="Verify"
                             >
@@ -550,86 +551,148 @@ const VehicleWasteCollectionPage = () => {
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
                               </svg>
-                            </button>
+                            </span>
                           )}
-                        </div>
+                        </span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
 
           {filteredCollections.length > 0 && (
-            <div className="table-footer">
-              Showing {filteredCollections.length} of {collections.length} Items
+            <div className="vwc-table-footer">
+              Showing {filteredCollections.length} of {collections.length} items
             </div>
           )}
         </div>
       </main>
 
+      {/* Advanced Filter Modal */}
+      {showAdvancedFilter && (
+        <AdvancedFilterModal
+          filterDate={filterDate}
+          filterStatus={filterStatus}
+          onFilterDateChange={setFilterDate}
+          onFilterStatusChange={setFilterStatus}
+          onClearFilters={() => {
+            setFilterDate('');
+            setFilterStatus('all');
+          }}
+          onApplyFilters={() => {
+            if (filterDate) {
+              setSelectedDate(filterDate);
+            }
+            setStatusFilter(filterStatus);
+            setShowAdvancedFilter(false);
+          }}
+          onClose={() => setShowAdvancedFilter(false)}
+        />
+      )}
+
       {/* Form Modal */}
       {showFormModal && (
-        <div className="modal-overlay" onClick={() => setShowFormModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{formData.editingId ? 'Edit Collection' : 'Add Collection'}</h2>
-              <button className="modal-close" onClick={() => setShowFormModal(false)}>×</button>
+        <div className="vwc-modal-overlay" onClick={() => setShowFormModal(false)}>
+          <div className="vwc-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="vwc-modal-header">
+              <div className="vwc-modal-header-left">
+                <div className="vwc-modal-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"></path>
+                    <polygon points="12 15 17 21 7 21 12 15"></polygon>
+                  </svg>
+                </div>
+                <h2 className="vwc-modal-title">{formData.editingId ? 'Edit Collection' : 'Add Collection'}</h2>
+              </div>
+              <button className="vwc-modal-close" onClick={() => setShowFormModal(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
             <form onSubmit={handleSave}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label htmlFor="vehicleId">Vehicle *</label>
-                  <select
-                    id="vehicleId"
-                    value={formData.vehicleId}
-                    onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
-                    required
-                    disabled={!!formData.editingId}
-                  >
-                    <option value="">Select Vehicle</option>
-                    {vehicles.filter(v => v.status === 'Active').map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.vehicleNum}
-                      </option>
-                    ))}
-                  </select>
+              <div className="vwc-modal-body">
+                <div className="vwc-form-group">
+                  <label htmlFor="vehicleId" className="vwc-form-label">
+                    Vehicle <span className="vwc-required">*</span>
+                  </label>
+                  <div className="vwc-select-wrapper">
+                    <select
+                      id="vehicleId"
+                      className="vwc-form-select"
+                      value={formData.vehicleId}
+                      onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
+                      required
+                      disabled={!!formData.editingId}
+                    >
+                      <option value="">Select Vehicle</option>
+                      {vehicles.filter(v => v.status === 'Active').map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.vehicleNum}
+                        </option>
+                      ))}
+                    </select>
+                    <svg className="vwc-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="collectionDate">Collection Date *</label>
-                  <input
-                    id="collectionDate"
-                    type="date"
-                    value={formData.collectionDate}
-                    onChange={(e) => setFormData({ ...formData, collectionDate: e.target.value })}
-                    required
-                    disabled={!!formData.editingId}
-                  />
+                <div className="vwc-form-group">
+                  <label htmlFor="collectionDate" className="vwc-form-label">
+                    Collection Date <span className="vwc-required">*</span>
+                  </label>
+                  <div className="vwc-date-wrapper">
+                    <input
+                      id="collectionDate"
+                      type="date"
+                      className="vwc-form-input vwc-date-input"
+                      value={formData.collectionDate}
+                      onChange={(e) => setFormData({ ...formData, collectionDate: e.target.value })}
+                      required
+                      disabled={!!formData.editingId}
+                    />
+                    <svg className="vwc-date-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                  </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="grossWeightKg">Gross Weight (kg) *</label>
+                <div className="vwc-form-row">
+                  <div className="vwc-form-group">
+                    <label htmlFor="grossWeightKg" className="vwc-form-label">
+                      Gross Weight (kg) <span className="vwc-required">*</span>
+                    </label>
                     <input
                       id="grossWeightKg"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.grossWeightKg}
                       onChange={(e) => setFormData({ ...formData, grossWeightKg: parseFloat(e.target.value) || 0 })}
                       required
                       disabled={!!formData.editingId && formData.editingStatus !== 'Draft'}
                     />
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="tareWeightKg">Tare Weight (kg) *</label>
+
+                  <div className="vwc-form-group">
+                    <label htmlFor="tareWeightKg" className="vwc-form-label">
+                      Tare Weight (kg) <span className="vwc-required">*</span>
+                    </label>
                     <input
                       id="tareWeightKg"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.tareWeightKg}
                       onChange={(e) => setFormData({ ...formData, tareWeightKg: parseFloat(e.target.value) || 0 })}
                       required
@@ -638,41 +701,50 @@ const VehicleWasteCollectionPage = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="netWeightKg">Net Weight (kg) *</label>
+                <div className="vwc-form-group">
+                  <label htmlFor="netWeightKg" className="vwc-form-label">
+                    Net Weight (kg) <span className="vwc-required">*</span>
+                  </label>
                   <input
                     id="netWeightKg"
                     type="number"
                     step="0.01"
                     min="0"
+                    className="vwc-form-input vwc-readonly-input"
                     value={formData.netWeightKg.toFixed(2)}
                     readOnly
-                    className="readonly-input"
                   />
-                  <small>Auto-calculated: Gross - Tare</small>
+                  <small className="vwc-helper-text">Auto-calculated: Gross - Tare</small>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="incinerationWeightKg">Incineration Weight (kg) *</label>
+                <div className="vwc-form-row">
+                  <div className="vwc-form-group">
+                    <label htmlFor="incinerationWeightKg" className="vwc-form-label">
+                      Incineration Weight (kg) <span className="vwc-required">*</span>
+                    </label>
                     <input
                       id="incinerationWeightKg"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.incinerationWeightKg}
                       onChange={(e) => setFormData({ ...formData, incinerationWeightKg: parseFloat(e.target.value) || 0 })}
                       required
                       disabled={!!formData.editingId && formData.editingStatus !== 'Draft'}
                     />
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="autoclaveWeightKg">Autoclave Weight (kg) *</label>
+
+                  <div className="vwc-form-group">
+                    <label htmlFor="autoclaveWeightKg" className="vwc-form-label">
+                      Autoclave Weight (kg) <span className="vwc-required">*</span>
+                    </label>
                     <input
                       id="autoclaveWeightKg"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.autoclaveWeightKg}
                       onChange={(e) => setFormData({ ...formData, autoclaveWeightKg: parseFloat(e.target.value) || 0 })}
                       required
@@ -681,27 +753,29 @@ const VehicleWasteCollectionPage = () => {
                   </div>
                 </div>
 
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="vehicleKm">Vehicle KM</label>
+                <div className="vwc-form-row">
+                  <div className="vwc-form-group">
+                    <label htmlFor="vehicleKm" className="vwc-form-label">Vehicle KM</label>
                     <input
                       id="vehicleKm"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.vehicleKm || ''}
                       onChange={(e) => setFormData({ ...formData, vehicleKm: e.target.value ? parseFloat(e.target.value) : null })}
                       disabled={!!formData.editingId && formData.editingStatus !== 'Draft'}
                     />
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="fuelUsageLiters">Fuel Usage (Liters)</label>
+
+                  <div className="vwc-form-group">
+                    <label htmlFor="fuelUsageLiters" className="vwc-form-label">Fuel Usage (Liters)</label>
                     <input
                       id="fuelUsageLiters"
                       type="number"
                       step="0.01"
                       min="0"
+                      className="vwc-form-input"
                       value={formData.fuelUsageLiters || ''}
                       onChange={(e) => setFormData({ ...formData, fuelUsageLiters: e.target.value ? parseFloat(e.target.value) : null })}
                       disabled={!!formData.editingId && formData.editingStatus !== 'Draft'}
@@ -709,22 +783,23 @@ const VehicleWasteCollectionPage = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="notes">Notes</label>
+                <div className="vwc-form-group">
+                  <label htmlFor="notes" className="vwc-form-label">Notes</label>
                   <textarea
                     id="notes"
                     rows={3}
+                    className="vwc-form-textarea"
                     value={formData.notes || ''}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
                     disabled={formData.editingId && formData.status !== 'Draft'}
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowFormModal(false)}>
+              <div className="vwc-modal-footer">
+                <button type="button" className="vwc-btn vwc-btn--cancel" onClick={() => setShowFormModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
+                <button type="submit" className="vwc-btn vwc-btn--save" disabled={loading}>
                   {loading ? 'Saving...' : 'Save'}
                 </button>
               </div>
@@ -801,6 +876,109 @@ const VehicleWasteCollectionPage = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Advanced Filter Modal Component
+interface AdvancedFilterModalProps {
+  filterDate: string;
+  filterStatus: string;
+  onFilterDateChange: (date: string) => void;
+  onFilterStatusChange: (status: string) => void;
+  onClearFilters: () => void;
+  onApplyFilters: () => void;
+  onClose: () => void;
+}
+
+const AdvancedFilterModal = ({
+  filterDate,
+  filterStatus,
+  onFilterDateChange,
+  onFilterStatusChange,
+  onClearFilters,
+  onApplyFilters,
+  onClose,
+}: AdvancedFilterModalProps) => {
+  const getDateInputValue = () => {
+    if (!filterDate) return '';
+    if (filterDate.includes('-') && filterDate.length === 10 && filterDate.split('-')[0].length === 4) {
+      return filterDate;
+    }
+    if (filterDate.includes('-') && filterDate.split('-')[0].length === 2) {
+      const parts = filterDate.split('-');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return `${year}-${month}-${day}`;
+      }
+    }
+    return filterDate;
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value) {
+      onFilterDateChange(value);
+    } else {
+      onFilterDateChange('');
+    }
+  };
+
+  return (
+    <div className="vwc-filter-modal-overlay" onClick={onClose}>
+      <div className="vwc-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="vwc-filter-modal-header">
+          <div className="vwc-filter-header-left">
+            <div className="vwc-filter-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <h2 className="vwc-filter-modal-title">Advanced Filter</h2>
+          </div>
+          <button className="vwc-filter-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="vwc-filter-modal-body">
+          <div className="vwc-filter-form-group">
+            <label className="vwc-filter-label">Collection Date</label>
+            <input
+              type="date"
+              value={getDateInputValue()}
+              onChange={handleDateChange}
+              className="vwc-filter-date-input"
+            />
+          </div>
+
+          <div className="vwc-filter-form-group">
+            <label className="vwc-filter-label">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => onFilterStatusChange(e.target.value)}
+              className="vwc-filter-select"
+            >
+              <option value="all">All Status</option>
+              <option value="Draft">Draft</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Verified">Verified</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="vwc-filter-modal-footer">
+          <button type="button" className="vwc-filter-btn-clear" onClick={onClearFilters}>
+            Clear Filters
+          </button>
+          <button type="button" className="vwc-filter-btn-apply" onClick={onApplyFilters}>
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
