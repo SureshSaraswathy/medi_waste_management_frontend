@@ -3,10 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { areaService, AreaResponse } from '../../services/areaService';
-import MasterPageLayout from '../../components/common/MasterPageLayout';
-import Tabs from '../../components/common/Tabs';
-import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
+import './areaMasterPage.css';
 
 interface Area {
   id: string;
@@ -29,12 +27,25 @@ const AreaMasterPage = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  interface AdvancedFilters {
+    areaCode: string;
+    areaName: string;
+    areaPincode: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    areaCode: '',
+    areaName: '',
+    areaPincode: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Load areas from API
   const loadAreas = async () => {
@@ -70,11 +81,24 @@ const AreaMasterPage = () => {
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
-  const filteredAreas = areas.filter(area =>
-    area.areaName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    area.areaCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    area.areaPincode.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAreas = areas.filter(area => {
+    const query = searchQuery.trim().toLowerCase();
+    const codeQuery = advancedFilters.areaCode.trim().toLowerCase();
+    const nameQuery = advancedFilters.areaName.trim().toLowerCase();
+    const pincodeQuery = advancedFilters.areaPincode.trim().toLowerCase();
+    
+    const matchesSearch = !query ||
+      area.areaName.toLowerCase().includes(query) ||
+      area.areaCode.toLowerCase().includes(query) ||
+      area.areaPincode.toLowerCase().includes(query);
+    
+    const matchesCode = !codeQuery || area.areaCode.toLowerCase().includes(codeQuery);
+    const matchesName = !nameQuery || area.areaName.toLowerCase().includes(nameQuery);
+    const matchesPincode = !pincodeQuery || area.areaPincode.toLowerCase().includes(pincodeQuery);
+    const matchesStatus = statusFilter === 'all' || area.status === statusFilter;
+    
+    return matchesSearch && matchesCode && matchesName && matchesPincode && matchesStatus;
+  });
 
   const handleAdd = () => {
     setEditingArea(null);
@@ -142,22 +166,6 @@ const AreaMasterPage = () => {
     }
   };
 
-  // Define columns for the table
-  const columns: Column<Area>[] = [
-    { key: 'areaCode', label: 'Area Code', minWidth: 120 },
-    { key: 'areaName', label: 'Area Name', minWidth: 200, allowWrap: true },
-    { key: 'areaPincode', label: 'Area Pincode', minWidth: 130 },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 100,
-      render: (area) => (
-        <span className={`status-badge status-badge--${area.status.toLowerCase()}`}>
-          {area.status}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="dashboard-page">
@@ -238,7 +246,7 @@ const AreaMasterPage = () => {
         {/* Top Header */}
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Masters / Area Master</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Area Master</span>
           </div>
         </header>
 
@@ -249,46 +257,180 @@ const AreaMasterPage = () => {
             background: '#fee', 
             color: '#c33', 
             marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc'
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            {error}
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#c33', 
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px'
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
 
         {/* Loading Indicator */}
         {loading && !areas.length && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             Loading areas...
           </div>
         )}
 
-        {/* Area Master Content using reusable template */}
-        <MasterPageLayout
-          title="Area Master"
-          breadcrumb="/ Masters / Area Master"
-          data={areas}
-          filteredData={filteredAreas}
-          columns={columns}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          getId={(area) => area.id}
-          addButtonLabel="Add Area"
-          createPermissions={['AREA_CREATE', 'AREA.CREATE']}
-          editPermissions={['AREA_EDIT', 'AREA.EDIT', 'AREA_UPDATE', 'AREA.UPDATE']}
-          deletePermissions={['AREA_DELETE', 'AREA.DELETE']}
-        >
-          {/* Tabs */}
-          <Tabs
-            tabs={[{ id: 'list', label: 'Area List' }]}
-            activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
-          />
-        </MasterPageLayout>
+        <div className="area-master-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Area Master</h1>
+              <p className="ra-page-subtitle">Manage area information and details</p>
+            </div>
+          </div>
+
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by area code, name, pincode..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
+            </div>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Area
+              </button>
+            </div>
+          </div>
+
+          {/* Areas Table */}
+          <div className="area-master-table-container">
+            <table className="area-master-table">
+              <thead>
+                <tr>
+                  <th>AREA CODE</th>
+                  <th>AREA NAME</th>
+                  <th>AREA PINCODE</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAreas.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="empty-message">
+                      {loading ? 'Loading...' : 'No areas found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAreas.map((area) => (
+                    <tr key={area.id}>
+                      <td>{area.areaCode || '-'}</td>
+                      <td>{area.areaName || '-'}</td>
+                      <td>{area.areaPincode || '-'}</td>
+                      <td>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge status-badge--${area.status.toLowerCase()}`}>
+                            {area.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="action-buttons ra-actions">
+                          <button
+                            className="action-btn action-btn--view"
+                            onClick={() => handleEdit(area)}
+                            title="View"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--edit"
+                            onClick={() => handleEdit(area)}
+                            title="Edit"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => handleDelete(area.id)}
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredAreas.length} of {areas.length} items
+          </div>
+        </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ areaCode: '', areaName: '', areaPincode: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -301,6 +443,125 @@ const AreaMasterPage = () => {
           onSave={handleSave}
         />
       )}
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter areas by multiple criteria</div>
+            </div>
+          </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>Area Code</label>
+              <input
+                type="text"
+                value={draft.areaCode}
+                onChange={(e) => setDraft({ ...draft, areaCode: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter area code"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Area Name</label>
+              <input
+                type="text"
+                value={draft.areaName}
+                onChange={(e) => setDraft({ ...draft, areaName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter area name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Area Pincode</label>
+              <input
+                type="text"
+                value={draft.areaPincode}
+                onChange={(e) => setDraft({ ...draft, areaPincode: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter area pincode"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ areaCode: '', areaName: '', areaPincode: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

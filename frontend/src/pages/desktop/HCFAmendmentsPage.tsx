@@ -39,6 +39,20 @@ const HCFAmendmentsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  interface AdvancedFilters {
+    hcfCode: string;
+    companyName: string;
+    amendmentType: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    hcfCode: '',
+    companyName: '',
+    amendmentType: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -177,12 +191,25 @@ const HCFAmendmentsPage = () => {
     };
   }, [loadAmendments]);
 
-  const filteredAmendments = amendments.filter(amendment =>
-    (amendment.companyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (amendment.hcfCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    amendment.amendmentType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (amendment.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAmendments = amendments.filter(amendment => {
+    const query = searchQuery.trim().toLowerCase();
+    const hcfQuery = advancedFilters.hcfCode.trim().toLowerCase();
+    const companyQuery = advancedFilters.companyName.trim().toLowerCase();
+    const typeQuery = advancedFilters.amendmentType.trim().toLowerCase();
+    
+    const matchesSearch = !query ||
+      (amendment.companyName || '').toLowerCase().includes(query) ||
+      (amendment.hcfCode || '').toLowerCase().includes(query) ||
+      amendment.amendmentType.toLowerCase().includes(query) ||
+      (amendment.description || '').toLowerCase().includes(query);
+    
+    const matchesHCF = !hcfQuery || (amendment.hcfCode || '').toLowerCase().includes(hcfQuery);
+    const matchesCompany = !companyQuery || (amendment.companyName || '').toLowerCase().includes(companyQuery);
+    const matchesType = !typeQuery || amendment.amendmentType.toLowerCase().includes(typeQuery);
+    const matchesStatus = statusFilter === 'all' || (amendment.status || 'Pending') === statusFilter;
+    
+    return matchesSearch && matchesHCF && matchesCompany && matchesType && matchesStatus;
+  });
 
   const handleAdd = () => {
     setEditingAmendment(null);
@@ -338,63 +365,112 @@ const HCFAmendmentsPage = () => {
       <main className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Masters / HCF Amendments</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; HCF Amendments</span>
           </div>
         </header>
 
+        {/* Error Message */}
+        {error && (
+          <div style={{ 
+            padding: '12px 16px', 
+            background: '#fee', 
+            color: '#c33', 
+            marginBottom: '16px', 
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#c33', 
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {loading && amendments.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+            Loading amendments...
+          </div>
+        )}
+
         <div className="hcf-amendments-page">
-          {error && (
-            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
-              {error}
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
             </div>
-          )}
-          {loading && amendments.length === 0 && (
-            <div className="loading-message" style={{ padding: '10px', marginBottom: '20px', textAlign: 'center' }}>
-              Loading amendments...
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">HCF Amendments</h1>
+              <p className="ra-page-subtitle">Manage HCF amendment information and details</p>
             </div>
-          )}
-          <div className="hcf-amendments-header">
-            <h1 className="hcf-amendments-title">HCF Amendments</h1>
           </div>
 
-          <div className="hcf-amendments-actions">
-            <div className="hcf-amendments-search-box">
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="hcf-amendments-search-input"
-                placeholder="Search Amendments..."
+                placeholder="Search by HCF code, company, amendment type..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
               />
             </div>
-            {canCreate && (
-              <button className="add-amendment-btn" onClick={handleAdd}>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
-                Add Amendment
+                Advanced Filter
               </button>
-            )}
+              {canCreate && (
+                <button className="ra-add-btn" onClick={handleAdd}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Amendment
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Amendments Table */}
           <div className="hcf-amendments-table-container">
             <table className="hcf-amendments-table">
               <thead>
                 <tr>
-                  <th>Company Name</th>
+                  <th>COMPANY NAME</th>
                   <th>HCF</th>
-                  <th>Amendment Type</th>
-                  <th>Amendment Date</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Approved By</th>
-                  <th>Approved Date</th>
-                  <th>Actions</th>
+                  <th>AMENDMENT TYPE</th>
+                  <th>AMENDMENT DATE</th>
+                  <th>DESCRIPTION</th>
+                  <th>STATUS</th>
+                  <th>APPROVED BY</th>
+                  <th>APPROVED DATE</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -421,33 +497,47 @@ const HCFAmendmentsPage = () => {
                         <td>{amendment.amendmentDate ? new Date(amendment.amendmentDate).toLocaleDateString() : '-'}</td>
                         <td>{amendment.description || '-'}</td>
                         <td>
-                          <span className={`status-badge status-badge--${(amendment.status || 'Pending').toLowerCase()}`}>
-                            {amendment.status || 'Pending'}
-                          </span>
+                          <div className="ra-cell-center">
+                            <span className={`status-badge status-badge--${(amendment.status || 'Pending').toLowerCase()}`}>
+                              {amendment.status || 'Pending'}
+                            </span>
+                          </div>
                         </td>
                         <td>{amendment.approvedBy || '-'}</td>
                         <td>{amendment.approvedDate ? new Date(amendment.approvedDate).toLocaleDateString() : '-'}</td>
                         <td>
-                          <button
-                            className="action-btn action-btn--edit"
-                            onClick={() => handleEdit(amendment)}
-                            title="Edit"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </button>
-                          <button
-                            className="action-btn action-btn--delete"
-                            onClick={() => handleDelete(amendment.id)}
-                            title="Delete"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                          </button>
+                          <div className="action-buttons ra-actions">
+                            <button
+                              className="action-btn action-btn--view"
+                              onClick={() => handleEdit(amendment)}
+                              title="View"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            </button>
+                            <button
+                              className="action-btn action-btn--edit"
+                              onClick={() => handleEdit(amendment)}
+                              title="Edit"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="action-btn action-btn--delete"
+                              onClick={() => handleDelete(amendment.id)}
+                              title="Delete"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -456,11 +546,32 @@ const HCFAmendmentsPage = () => {
               </tbody>
             </table>
           </div>
-          <div className="hcf-amendments-pagination-info">
-            Showing {filteredAmendments.length} of {amendments.length} Items
+
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredAmendments.length} of {amendments.length} items
           </div>
         </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ hcfCode: '', companyName: '', amendmentType: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Amendment Add/Edit Modal */}
       {showModal && (
@@ -477,6 +588,128 @@ const HCFAmendmentsPage = () => {
           saving={saving}
         />
       )}
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter amendments by multiple criteria</div>
+            </div>
+          </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>HCF Code</label>
+              <input
+                type="text"
+                value={draft.hcfCode}
+                onChange={(e) => setDraft({ ...draft, hcfCode: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter HCF code"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Amendment Type</label>
+              <input
+                type="text"
+                value={draft.amendmentType}
+                onChange={(e) => setDraft({ ...draft, amendmentType: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter amendment type"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ hcfCode: '', companyName: '', amendmentType: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

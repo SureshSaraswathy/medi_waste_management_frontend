@@ -133,6 +133,20 @@ const HCFMasterPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  interface AdvancedFilters {
+    hcfCode: string;
+    hcfName: string;
+    companyName: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    hcfCode: '',
+    hcfName: '',
+    companyName: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -346,12 +360,25 @@ const HCFMasterPage = () => {
     }
   }, [companies.length, loadHcfs]);
 
-  const filteredHCFs = hcfs.filter(hcf =>
-    hcf.hcfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hcf.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hcf.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hcf.hcfShortName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredHCFs = hcfs.filter(hcf => {
+    const query = searchQuery.trim().toLowerCase();
+    const codeQuery = advancedFilters.hcfCode.trim().toLowerCase();
+    const nameQuery = advancedFilters.hcfName.trim().toLowerCase();
+    const companyQuery = advancedFilters.companyName.trim().toLowerCase();
+    
+    const matchesSearch = !query ||
+      hcf.hcfName.toLowerCase().includes(query) ||
+      hcf.hcfCode.toLowerCase().includes(query) ||
+      hcf.companyName.toLowerCase().includes(query) ||
+      hcf.hcfShortName.toLowerCase().includes(query);
+    
+    const matchesCode = !codeQuery || hcf.hcfCode.toLowerCase().includes(codeQuery);
+    const matchesName = !nameQuery || hcf.hcfName.toLowerCase().includes(nameQuery);
+    const matchesCompany = !companyQuery || hcf.companyName.toLowerCase().includes(companyQuery);
+    const matchesStatus = statusFilter === 'all' || hcf.status === statusFilter;
+    
+    return matchesSearch && matchesCode && matchesName && matchesCompany && matchesStatus;
+  });
 
   // Debug: Verify button rendering (moved after state declarations)
   useEffect(() => {
@@ -626,7 +653,7 @@ const HCFMasterPage = () => {
       <main className="dashboard-main">
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Masters / HCF Master</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; HCF Master</span>
           </div>
         </header>
 
@@ -641,95 +668,77 @@ const HCFMasterPage = () => {
               Loading HCFs...
             </div>
           )}
-          <div className="hcf-master-header">
-            <h1 className="hcf-master-title">HCF Master</h1>
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">HCF Master</h1>
+              <p className="ra-page-subtitle">Manage HCF information and details</p>
+            </div>
           </div>
 
-
-          <div className="hcf-master-actions" style={{ 
-            display: 'flex', 
-            width: '100%', 
-            justifyContent: 'flex-start', 
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '20px',
-            flexWrap: 'nowrap'
-          }}>
-            <div className="hcf-search-box" style={{ flex: '0 1 auto', maxWidth: '400px', minWidth: '200px' }}>
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="hcf-search-input"
-                placeholder="Search HCF..."
+                placeholder="Search by HCF code, name, company..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
               />
             </div>
-            <button 
-              className="add-hcf-btn" 
-              onClick={handleAdd}
-              disabled={!canCreate}
-              style={{ 
-                display: 'flex !important',
-                visibility: 'visible !important',
-                opacity: canCreate ? 1 : 0.6,
-                cursor: canCreate ? 'pointer' : 'not-allowed',
-                position: 'relative',
-                zIndex: 10,
-                minWidth: '120px',
-                minHeight: '40px',
-                backgroundColor: '#3b82f6',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 20px',
-                fontSize: '13px',
-                fontWeight: 600,
-                flexShrink: 0,
-                alignItems: 'center',
-                gap: '8px',
-                whiteSpace: 'nowrap'
-              }}
-              title={!canCreate ? 'No permission to create HCF' : 'Add new HCF'}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add HCF
-            </button>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              {canCreate && (
+                <button className="ra-add-btn" onClick={handleAdd}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add HCF
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="hcf-table-container">
-            <table className="hcf-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+          {/* HCFs Table */}
+          <div className="hcf-master-table-container">
+            <table className="hcf-master-table">
               <thead>
                 <tr>
-                  <th style={{ width: '12%' }}>Company Name</th>
-                  <th style={{ width: '8%' }}>HCF Code</th>
-                  <th style={{ width: '12%' }}>HCF Name</th>
-                  <th style={{ width: '10%' }}>HCF Short Name</th>
-                  <th style={{ width: '7%' }}>State Code</th>
-                  <th style={{ width: '10%' }}>District</th>
-                  <th style={{ width: '8%' }}>Pincode</th>
-                  <th style={{ width: '8%' }}>Status</th>
-                  <th style={{ 
-                    width: '120px',
-                    minWidth: '120px',
-                    maxWidth: '120px',
-                    padding: '10px 8px',
-                    textAlign: 'left',
-                    backgroundColor: '#f1f5f9'
-                  }}>Actions</th>
+                  <th>COMPANY NAME</th>
+                  <th>HCF CODE</th>
+                  <th>HCF NAME</th>
+                  <th>HCF SHORT NAME</th>
+                  <th>STATE CODE</th>
+                  <th>DISTRICT</th>
+                  <th>PINCODE</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && hcfs.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="empty-message">
-                      Loading HCFs...
+                      Loading...
                     </td>
                   </tr>
                 ) : filteredHCFs.length === 0 ? (
@@ -749,53 +758,32 @@ const HCFMasterPage = () => {
                       <td>{hcf.district || '-'}</td>
                       <td>{hcf.pincode || '-'}</td>
                       <td>
-                        <span className={`status-badge status-badge--${hcf.status.toLowerCase()}`}>
-                          {hcf.status}
-                        </span>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge status-badge--${hcf.status.toLowerCase()}`}>
+                            {hcf.status}
+                          </span>
+                        </div>
                       </td>
-                      <td style={{ 
-                        width: '120px',
-                        minWidth: '120px',
-                        maxWidth: '120px',
-                        padding: '8px',
-                        whiteSpace: 'nowrap',
-                        backgroundColor: '#ffffff'
-                      }}>
-                        <div style={{ 
-                          display: 'flex', 
-                          gap: '8px', 
-                          alignItems: 'center',
-                          justifyContent: 'flex-start',
-                          width: '100%',
-                          visibility: 'visible',
-                          flexWrap: 'nowrap'
-                        }}>
+                      <td>
+                        <div className="action-buttons ra-actions">
+                          <button
+                            className="action-btn action-btn--view"
+                            onClick={() => canEdit && handleEdit(hcf)}
+                            title={canEdit ? "View" : "No permission to view"}
+                            disabled={!canEdit}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
                           <button
                             className="action-btn action-btn--edit"
                             onClick={() => canEdit && handleEdit(hcf)}
                             title={canEdit ? "Edit" : "No permission to edit"}
                             disabled={!canEdit}
-                            style={{ 
-                              display: 'flex',
-                              visibility: 'visible',
-                              opacity: canEdit ? 1 : 0.5,
-                              cursor: canEdit ? 'pointer' : 'not-allowed',
-                              width: '32px',
-                              height: '32px',
-                              minWidth: '32px',
-                              minHeight: '32px',
-                              backgroundColor: canEdit ? '#3b82f6' : '#e5e7eb',
-                              color: canEdit ? '#ffffff' : '#6b7280',
-                              border: 'none',
-                              borderRadius: '6px',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              padding: 0,
-                              margin: 0
-                            }}
                           >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
@@ -805,27 +793,8 @@ const HCFMasterPage = () => {
                             onClick={() => canDelete && handleDelete(hcf.id)}
                             title={canDelete ? "Delete" : "No permission to delete"}
                             disabled={!canDelete}
-                            style={{ 
-                              display: 'flex',
-                              visibility: 'visible',
-                              opacity: canDelete ? 1 : 0.5,
-                              cursor: canDelete ? 'pointer' : 'not-allowed',
-                              width: '32px',
-                              height: '32px',
-                              minWidth: '32px',
-                              minHeight: '32px',
-                              backgroundColor: canDelete ? '#ef4444' : '#e5e7eb',
-                              color: canDelete ? '#ffffff' : '#6b7280',
-                              border: 'none',
-                              borderRadius: '6px',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                              padding: 0,
-                              margin: 0
-                            }}
                           >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polyline points="3 6 5 6 21 6"></polyline>
                               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             </svg>
@@ -838,11 +807,31 @@ const HCFMasterPage = () => {
               </tbody>
             </table>
           </div>
-          <div className="hcf-pagination-info">
-            Showing {filteredHCFs.length} of {hcfs.length} Items
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredHCFs.length} of {hcfs.length} items
           </div>
         </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ hcfCode: '', hcfName: '', companyName: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* HCF Add/Edit Modal */}
       {showModal && (
@@ -863,6 +852,125 @@ const HCFMasterPage = () => {
           onSave={handleSave}
         />
       )}
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter HCFs by multiple criteria</div>
+            </div>
+          </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>HCF Code</label>
+              <input
+                type="text"
+                value={draft.hcfCode}
+                onChange={(e) => setDraft({ ...draft, hcfCode: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter HCF code"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>HCF Name</label>
+              <input
+                type="text"
+                value={draft.hcfName}
+                onChange={(e) => setDraft({ ...draft, hcfName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter HCF name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ hcfCode: '', hcfName: '', companyName: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

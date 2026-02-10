@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import MasterPageLayout from '../../components/common/MasterPageLayout';
-import Tabs from '../../components/common/Tabs';
-import { Column } from '../../components/common/DataTable';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import '../desktop/dashboardPage.css';
+import './companyMasterPage.css';
 
 interface State {
   id: string;
@@ -73,11 +71,28 @@ const CompanyMasterPage = () => {
   };
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  interface AdvancedFilters {
+    companyCode: string;
+    companyName: string;
+    gstin: string;
+    state: string;
+    pcbZone: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    companyCode: '',
+    companyName: '',
+    gstin: '',
+    state: '',
+    pcbZone: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // States from State Master - Load active states only
   const [states] = useState<State[]>([
@@ -231,11 +246,27 @@ const CompanyMasterPage = () => {
 
   const filteredCompanies = companies.filter(company => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = !query || (
       (company.companyName || '').toLowerCase().includes(query) ||
       (company.companyCode || '').toLowerCase().includes(query) ||
       (company.gstin || '').toLowerCase().includes(query)
     );
+    
+    // Advanced filters (UI-only, no backend API changes)
+    const matchesCompanyCode = !advancedFilters.companyCode || 
+      (company.companyCode || '').toLowerCase().includes(advancedFilters.companyCode.toLowerCase());
+    const matchesCompanyName = !advancedFilters.companyName || 
+      (company.companyName || '').toLowerCase().includes(advancedFilters.companyName.toLowerCase());
+    const matchesGstin = !advancedFilters.gstin || 
+      (company.gstin || '').toLowerCase().includes(advancedFilters.gstin.toLowerCase());
+    const matchesState = !advancedFilters.state || 
+      (company.state || '').toLowerCase().includes(advancedFilters.state.toLowerCase());
+    const matchesPcbZone = !advancedFilters.pcbZone || 
+      (company.pcbZoneID || '').toLowerCase().includes(advancedFilters.pcbZone.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || company.status === statusFilter;
+    
+    return matchesSearch && matchesCompanyCode && matchesCompanyName && matchesGstin && 
+           matchesState && matchesPcbZone && matchesStatus;
   });
 
   const handleAdd = () => {
@@ -322,20 +353,6 @@ const CompanyMasterPage = () => {
     { key: 'companyName', label: 'Company Name', minWidth: 150, allowWrap: true },
     { key: 'gstin', label: 'GSTIN', minWidth: 130 },
     { key: 'state', label: 'State', minWidth: 120 },
-    { key: 'pcbauthNum', label: 'PCB Auth #', minWidth: 110 },
-    { key: 'ctoWaterNum', label: 'CTO Water #', minWidth: 120 },
-    { key: 'ctoWaterDate', label: 'CTO Wtr Date', minWidth: 130 },
-    { key: 'ctoWaterValidUpto', label: 'CTO Wtr Valid To', minWidth: 150 },
-    { key: 'ctoAirNum', label: 'CTO Air #', minWidth: 110 },
-    { key: 'ctoAirDate', label: 'CTO Air Date', minWidth: 130 },
-    { key: 'ctoAirValidUpto', label: 'CTO Air Valid To', minWidth: 150 },
-    { key: 'cteWaterNum', label: 'CTE Water #', minWidth: 120 },
-    { key: 'cteWaterDate', label: 'CTE Wtr Date', minWidth: 130 },
-    { key: 'cteWaterValidUpto', label: 'CTE Wtr Valid To', minWidth: 150 },
-    { key: 'cteAirNum', label: 'CTE Air #', minWidth: 110 },
-    { key: 'cteAirDate', label: 'CTE Air Date', minWidth: 130 },
-    { key: 'cteAirValidUpto', label: 'CTE Air Valid To', minWidth: 150 },
-    { key: 'hazardousWasteNum', label: 'Haz Waste #', minWidth: 140 },
     { key: 'pcbZoneID', label: 'PCB Zone', minWidth: 110 },
     { key: 'gstValidFrom', label: 'GST From', minWidth: 130 },
     { key: 'gstRate', label: 'GST Rate', minWidth: 100 },
@@ -430,7 +447,7 @@ const CompanyMasterPage = () => {
         {/* Top Header */}
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Masters / Company Master</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Company Master</span>
           </div>
         </header>
 
@@ -474,32 +491,168 @@ const CompanyMasterPage = () => {
           </div>
         )}
 
-        {/* Company Master Content using reusable template */}
-        <MasterPageLayout
-          title="Company Master"
-          breadcrumb="/ Masters / Company Master"
-          data={companies}
-          filteredData={filteredCompanies}
-          columns={columns}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          getId={(company) => company.id}
-          addButtonLabel="Add Company"
-          createPermissions={['COMPANY_CREATE', 'COMPANY.CREATE']}
-          editPermissions={['COMPANY_EDIT', 'COMPANY.EDIT', 'COMPANY_UPDATE', 'COMPANY.UPDATE']}
-          deletePermissions={['COMPANY_DELETE', 'COMPANY.DELETE']}
-        >
-          {/* Tabs */}
-          <Tabs
-            tabs={[{ id: 'list', label: 'Company List' }]}
-            activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
-          />
-        </MasterPageLayout>
+        <div className="company-master-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                <path d="M9 22v-4h6v4"></path>
+                <path d="M8 6h.01"></path>
+                <path d="M16 6h.01"></path>
+                <path d="M12 6h.01"></path>
+                <path d="M12 10h.01"></path>
+                <path d="M12 14h.01"></path>
+                <path d="M8 10h.01"></path>
+                <path d="M8 14h.01"></path>
+                <path d="M16 10h.01"></path>
+                <path d="M16 14h.01"></path>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Company Master</h1>
+              <p className="ra-page-subtitle">Manage company information and details</p>
+            </div>
+          </div>
+
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by company code, name, GSTIN..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
+            </div>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Company
+              </button>
+            </div>
+          </div>
+
+          {/* Companies Table */}
+          <div className="company-master-table-container">
+            <table className="company-master-table">
+                <thead>
+                  <tr>
+                    <th>CODE</th>
+                    <th>COMPANY NAME</th>
+                    <th>GSTIN</th>
+                    <th>STATE</th>
+                    <th>PCB ZONE</th>
+                    <th>GST FROM</th>
+                    <th>GST RATE</th>
+                    <th>STATUS</th>
+                    <th>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCompanies.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="empty-message">
+                        {loading ? 'Loading...' : 'No companies found'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCompanies.map((company) => (
+                      <tr key={company.id}>
+                        <td>{company.companyCode || '-'}</td>
+                        <td>{company.companyName || '-'}</td>
+                        <td>{company.gstin || '-'}</td>
+                        <td>{company.state || '-'}</td>
+                        <td>{company.pcbZoneID || '-'}</td>
+                        <td>{company.gstValidFrom || '-'}</td>
+                        <td>{company.gstRate || '-'}</td>
+                        <td>
+                          <div className="ra-cell-center">
+                            <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
+                              {company.status}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="action-buttons ra-actions">
+                            <button
+                              className="action-btn action-btn--view"
+                              onClick={() => handleEdit(company)}
+                              title="View"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            </button>
+                            <button
+                              className="action-btn action-btn--edit"
+                              onClick={() => handleEdit(company)}
+                              title="Edit"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="action-btn action-btn--delete"
+                              onClick={() => handleDelete(company.id)}
+                              title="Delete"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Info */}
+            <div className="cm-pagination-info">
+              Showing {filteredCompanies.length} of {companies.length} items
+            </div>
+        </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ companyCode: '', companyName: '', gstin: '', state: '', pcbZone: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -565,16 +718,144 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
     }
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
+  // Step-based navigation state
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  // Collapsible sections for Environmental Clearances
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    cto: true,
+    cte: true,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Helper function to check if expiry date is within 30 days
+  const isExpiringSoon = (expiryDate: string): boolean => {
+    if (!expiryDate) return false;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 30;
+  };
+
+  // Define steps
+  const steps = [
+    { number: 1, title: 'Basic Information', icon: 'building', key: 'basicInfo' },
+    { number: 2, title: 'Addresses', icon: 'map-pin', key: 'addresses' },
+    { number: 3, title: 'Authorized Person', icon: 'user', key: 'authorizedPerson' },
+    { number: 4, title: 'PCB & Compliance', icon: 'shield', key: 'pcbCompliance' },
+    { number: 5, title: 'Environmental Clearances', icon: 'water', key: 'environmentalClearances' },
+    { number: 6, title: 'GST Details', icon: 'document', key: 'gstDetails' },
+  ];
+
+  const handleNext = () => {
+    if (currentStep < 6) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    // Only allow submit on last step
+    if (currentStep === 6) {
+      onSave(formData);
+    }
+  };
+
+  const getStepIcon = (iconType: string) => {
+    switch (iconType) {
+      case 'building':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+            <path d="M9 22v-4h6v4"></path>
+            <path d="M8 6h.01"></path>
+            <path d="M16 6h.01"></path>
+            <path d="M12 6h.01"></path>
+            <path d="M12 10h.01"></path>
+            <path d="M12 14h.01"></path>
+            <path d="M8 10h.01"></path>
+            <path d="M8 14h.01"></path>
+            <path d="M16 10h.01"></path>
+            <path d="M16 14h.01"></path>
+          </svg>
+        );
+      case 'map-pin':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        );
+      case 'user':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        );
+      case 'shield':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        );
+      case 'water':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+          </svg>
+        );
+      case 'document':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal-content company-form-modal wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header company-form-header">
+          <div className="modal-header-content">
+            <div className="modal-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                <path d="M9 22v-4h6v4"></path>
+                <path d="M8 6h.01"></path>
+                <path d="M16 6h.01"></path>
+                <path d="M12 6h.01"></path>
+                <path d="M12 10h.01"></path>
+                <path d="M12 14h.01"></path>
+                <path d="M8 10h.01"></path>
+                <path d="M8 14h.01"></path>
+                <path d="M16 10h.01"></path>
+                <path d="M16 14h.01"></path>
+              </svg>
+            </div>
           <h2 className="modal-title">{company ? 'Edit Company' : 'Add Company'}</h2>
+          </div>
           <button className="modal-close-btn" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -583,319 +864,635 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
           </button>
         </div>
 
+        {/* Progress Steps */}
+        <div className="wizard-progress">
+          {steps.map((step) => {
+            const isActive = currentStep >= step.number;
+            const isCurrent = currentStep === step.number;
+            const showIcon = isCurrent;
+
+            return (
+              <div
+                key={step.number}
+                className={`wizard-step ${isActive ? 'wizard-step--active' : ''} ${isCurrent ? 'wizard-step--current' : ''}`}
+              >
+                <div className="wizard-step-icon-wrapper">
+                  {showIcon ? (
+                    <div className="wizard-step-icon">{getStepIcon(step.icon)}</div>
+                  ) : (
+                    <div className="wizard-step-number">{step.number}</div>
+                  )}
+                </div>
+                <div className="wizard-step-title">{step.title}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="wizard-content">
         <form className="company-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company Code *</label>
-                <input
-                  type="text"
-                  value={formData.companyCode || ''}
-                  onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
-                  required
-                />
+            {/* Step 1: Basic Information */}
+            {currentStep === 1 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon">
+                    {getStepIcon('building')}
+                  </div>
+                  <h3 className="wizard-step-header-title">Basic Information</h3>
+                </div>
+                <div className="form-grid-two-col">
+                  <div className="form-group">
+                    <label className="form-label">
+                      Company Code <span className="required-asterisk">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.companyCode || ''}
+                      onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
+                      placeholder="e.g., COMP001"
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      Company Name <span className="required-asterisk">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.companyName || ''}
+                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                      placeholder="Enter company name"
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      GSTIN <span className="required-asterisk">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.gstin || ''}
+                      onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      State <span className="required-asterisk">*</span>
+                    </label>
+                    <select
+                      value={formData.state || ''}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      required
+                      className="form-select"
+                    >
+                      <option value="">Select State</option>
+                      {states.map((state) => (
+                        <option key={state.id} value={state.stateCode}>
+                          {state.stateCode}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Pincode</label>
+                    <input
+                      type="text"
+                      value={formData.pincode || ''}
+                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Prefix</label>
+                    <input
+                      type="text"
+                      value={formData.prefix || ''}
+                      onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
+                      placeholder="e.g., TI"
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select
+                      value={formData.status || 'Active'}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                      className="form-select"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Company Name *</label>
-                <input
-                  type="text"
-                  value={formData.companyName || ''}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                  required
-                />
+            )}
+
+            {/* Step 2: Addresses */}
+            {currentStep === 2 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-pink">
+                    {getStepIcon('map-pin')}
+                  </div>
+                  <h3 className="wizard-step-header-title">Addresses</h3>
+                </div>
+                <div className="form-grid-two-col">
+                  <div className="form-group form-group--full">
+                    <label className="form-label">Registered Office Address</label>
+                    <textarea
+                      value={formData.regdOfficeAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, regdOfficeAddress: e.target.value })}
+                      rows={3}
+                      className="form-textarea"
+                    />
+                  </div>
+                  <div className="form-group form-group--full">
+                    <label className="form-label">Admin Office Address</label>
+                    <textarea
+                      value={formData.adminOfficeAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, adminOfficeAddress: e.target.value })}
+                      rows={3}
+                      className="form-textarea"
+                    />
+                  </div>
+                  <div className="form-group form-group--full">
+                    <label className="form-label">Factory Address</label>
+                    <textarea
+                      value={formData.factoryAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, factoryAddress: e.target.value })}
+                      rows={3}
+                      className="form-textarea"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>GSTIN *</label>
-                <input
-                  type="text"
-                  value={formData.gstin || ''}
-                  onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-                  required
-                />
+            )}
+
+            {/* Step 3: Authorized Person */}
+            {currentStep === 3 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-green">
+                    {getStepIcon('user')}
+                  </div>
+                  <h3 className="wizard-step-header-title">Authorized Person</h3>
+                </div>
+                <div className="form-grid-two-col">
+                  <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input
+                      type="text"
+                      value={formData.authPersonName || ''}
+                      onChange={(e) => setFormData({ ...formData, authPersonName: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Designation</label>
+                    <input
+                      type="text"
+                      value={formData.authPersonDesignation || ''}
+                      onChange={(e) => setFormData({ ...formData, authPersonDesignation: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={formData.authPersonDOB || ''}
+                      onChange={(e) => setFormData({ ...formData, authPersonDOB: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>State *</label>
-                <select
-                  value={formData.state || ''}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  required
-                >
-                  <option value="">Select State</option>
-                  {states.map((state) => (
-                    <option key={state.id} value={state.stateCode}>
-                      {state.stateCode}
-                    </option>
-                  ))}
-                </select>
+            )}
+
+            {/* Step 4: PCB & Compliance */}
+            {currentStep === 4 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-purple">
+                    {getStepIcon('shield')}
+                  </div>
+                  <h3 className="wizard-step-header-title">PCB & Compliance</h3>
+                </div>
+                <div className="form-grid-two-col">
+                  <div className="form-group">
+                    <label className="form-label">PCB Auth Num</label>
+                    <input
+                      type="text"
+                      value={formData.pcbauthNum || ''}
+                      onChange={(e) => setFormData({ ...formData, pcbauthNum: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Hazardous Waste Num</label>
+                    <input
+                      type="text"
+                      value={formData.hazardousWasteNum || ''}
+                      onChange={(e) => setFormData({ ...formData, hazardousWasteNum: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Pincode</label>
-                <input
-                  type="text"
-                  value={formData.pincode || ''}
-                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                />
+            )}
+
+            {/* Step 5: Environmental Clearances */}
+            {currentStep === 5 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-orange">
+                    {getStepIcon('water')}
+                  </div>
+                  <h3 className="wizard-step-header-title">Environmental Clearances</h3>
+                </div>
+
+                {/* CTO Section */}
+                <div className="env-clearance-section">
+                  <div className="env-clearance-section-header" onClick={() => toggleSection('cto')}>
+                    <h4 className="env-clearance-section-title">CTO (Consent To Operate)</h4>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={`env-clearance-section-arrow ${expandedSections.cto ? 'expanded' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                  {expandedSections.cto && (
+                    <div className="env-clearance-grid">
+                      {/* Water Column */}
+                      <div className="env-clearance-column">
+                        <div className="env-clearance-column-header">
+                          <h5 className="env-clearance-column-title">Water</h5>
+                          {isExpiringSoon(formData.ctoWaterValidUpto || '') && (
+                            <span className="env-clearance-warning-badge">Expiring Soon</span>
+                          )}
+                        </div>
+                        <div className="env-clearance-column-content">
+                          <div className="form-group">
+                            <label className="form-label">Certificate Number</label>
+                            <input
+                              type="text"
+                              value={formData.ctoWaterNum || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoWaterNum: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Issue Date</label>
+                            <input
+                              type="date"
+                              value={formData.ctoWaterDate || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoWaterDate: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Expiry Date</label>
+                            <input
+                              type="date"
+                              value={formData.ctoWaterValidUpto || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoWaterValidUpto: e.target.value })}
+                              className={`form-input ${isExpiringSoon(formData.ctoWaterValidUpto || '') ? 'form-input--warning' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Air Column */}
+                      <div className="env-clearance-column">
+                        <div className="env-clearance-column-header">
+                          <h5 className="env-clearance-column-title">Air</h5>
+                          {isExpiringSoon(formData.ctoAirValidUpto || '') && (
+                            <span className="env-clearance-warning-badge">Expiring Soon</span>
+                          )}
+                        </div>
+                        <div className="env-clearance-column-content">
+                          <div className="form-group">
+                            <label className="form-label">Certificate Number</label>
+                            <input
+                              type="text"
+                              value={formData.ctoAirNum || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoAirNum: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Issue Date</label>
+                            <input
+                              type="date"
+                              value={formData.ctoAirDate || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoAirDate: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Expiry Date</label>
+                            <input
+                              type="date"
+                              value={formData.ctoAirValidUpto || ''}
+                              onChange={(e) => setFormData({ ...formData, ctoAirValidUpto: e.target.value })}
+                              className={`form-input ${isExpiringSoon(formData.ctoAirValidUpto || '') ? 'form-input--warning' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* CTE Section */}
+                <div className="env-clearance-section">
+                  <div className="env-clearance-section-header" onClick={() => toggleSection('cte')}>
+                    <h4 className="env-clearance-section-title">CTE (Consent To Establish)</h4>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={`env-clearance-section-arrow ${expandedSections.cte ? 'expanded' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                  {expandedSections.cte && (
+                    <div className="env-clearance-grid">
+                      {/* Water Column */}
+                      <div className="env-clearance-column">
+                        <div className="env-clearance-column-header">
+                          <h5 className="env-clearance-column-title">Water</h5>
+                          {isExpiringSoon(formData.cteWaterValidUpto || '') && (
+                            <span className="env-clearance-warning-badge">Expiring Soon</span>
+                          )}
+                        </div>
+                        <div className="env-clearance-column-content">
+                          <div className="form-group">
+                            <label className="form-label">Certificate Number</label>
+                            <input
+                              type="text"
+                              value={formData.cteWaterNum || ''}
+                              onChange={(e) => setFormData({ ...formData, cteWaterNum: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Issue Date</label>
+                            <input
+                              type="date"
+                              value={formData.cteWaterDate || ''}
+                              onChange={(e) => setFormData({ ...formData, cteWaterDate: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Expiry Date</label>
+                            <input
+                              type="date"
+                              value={formData.cteWaterValidUpto || ''}
+                              onChange={(e) => setFormData({ ...formData, cteWaterValidUpto: e.target.value })}
+                              className={`form-input ${isExpiringSoon(formData.cteWaterValidUpto || '') ? 'form-input--warning' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Air Column */}
+                      <div className="env-clearance-column">
+                        <div className="env-clearance-column-header">
+                          <h5 className="env-clearance-column-title">Air</h5>
+                          {isExpiringSoon(formData.cteAirValidUpto || '') && (
+                            <span className="env-clearance-warning-badge">Expiring Soon</span>
+                          )}
+                        </div>
+                        <div className="env-clearance-column-content">
+                          <div className="form-group">
+                            <label className="form-label">Certificate Number</label>
+                            <input
+                              type="text"
+                              value={formData.cteAirNum || ''}
+                              onChange={(e) => setFormData({ ...formData, cteAirNum: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Issue Date</label>
+                            <input
+                              type="date"
+                              value={formData.cteAirDate || ''}
+                              onChange={(e) => setFormData({ ...formData, cteAirDate: e.target.value })}
+                              className="form-input"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Expiry Date</label>
+                            <input
+                              type="date"
+                              value={formData.cteAirValidUpto || ''}
+                              onChange={(e) => setFormData({ ...formData, cteAirValidUpto: e.target.value })}
+                              className={`form-input ${isExpiringSoon(formData.cteAirValidUpto || '') ? 'form-input--warning' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="form-group">
-                <label>Prefix</label>
-                <input
-                  type="text"
-                  value={formData.prefix || ''}
-                  onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
-                />
+            )}
+
+            {/* Step 6: GST Details */}
+            {currentStep === 6 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-purple">
+                    {getStepIcon('document')}
               </div>
+                  <h3 className="wizard-step-header-title">GST Details</h3>
+                </div>
+                <div className="form-grid-two-col">
+                  <div className="form-group">
+                    <label className="form-label">PCB Zone ID</label>
+                    <select
+                      value={formData.pcbZoneID || ''}
+                      onChange={(e) => setFormData({ ...formData, pcbZoneID: e.target.value })}
+                      className="form-select"
+                    >
+                      <option value="">Select PCB Zone</option>
+                      {pcbZones.map((zone) => (
+                        <option key={zone.id} value={zone.pcbZoneName}>
+                          {zone.pcbZoneName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">GST Valid From</label>
+                    <input
+                      type="date"
+                      value={formData.gstValidFrom || ''}
+                      onChange={(e) => setFormData({ ...formData, gstValidFrom: e.target.value })}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">GST Rate</label>
+                    <input
+                      type="text"
+                      value={formData.gstRate || ''}
+                      onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
+                      placeholder="e.g., 18%"
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+
+        <div className="modal-footer wizard-footer">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Cancel
+          </button>
+          {currentStep > 1 && (
+            <button type="button" className="btn btn--secondary" onClick={handleBack}>
+              Back
+            </button>
+          )}
+          {currentStep < 6 ? (
+            <button type="button" className="btn btn--primary" onClick={handleNext}>
+              Next
+            </button>
+          ) : (
+            <button type="submit" className="btn btn--primary" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Company'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter companies by multiple criteria</div>
             </div>
           </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">Addresses</h3>
-            <div className="form-grid">
-              <div className="form-group form-group--full">
-                <label>Registered Office Address</label>
-                <textarea
-                  value={formData.regdOfficeAddress || ''}
-                  onChange={(e) => setFormData({ ...formData, regdOfficeAddress: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="form-group form-group--full">
-                <label>Admin Office Address</label>
-                <textarea
-                  value={formData.adminOfficeAddress || ''}
-                  onChange={(e) => setFormData({ ...formData, adminOfficeAddress: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="form-group form-group--full">
-                <label>Factory Address</label>
-                <textarea
-                  value={formData.factoryAddress || ''}
-                  onChange={(e) => setFormData({ ...formData, factoryAddress: e.target.value })}
-                  rows={3}
-                />
-              </div>
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>Company Code</label>
+              <input
+                type="text"
+                value={draft.companyCode}
+                onChange={(e) => setDraft({ ...draft, companyCode: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter company code"
+              />
             </div>
-          </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">Authorized Person</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  value={formData.authPersonName || ''}
-                  onChange={(e) => setFormData({ ...formData, authPersonName: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Designation</label>
-                <input
-                  type="text"
-                  value={formData.authPersonDesignation || ''}
-                  onChange={(e) => setFormData({ ...formData, authPersonDesignation: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.authPersonDOB || ''}
-                  onChange={(e) => setFormData({ ...formData, authPersonDOB: e.target.value })}
-                />
-              </div>
+            <div className="cm-filter-field">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter company name"
+              />
             </div>
-          </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">PCB Authorization</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>PCB Auth Num</label>
-                <input
-                  type="text"
-                  value={formData.pcbauthNum || ''}
-                  onChange={(e) => setFormData({ ...formData, pcbauthNum: e.target.value })}
-                />
-              </div>
+            <div className="cm-filter-field">
+              <label>GSTIN</label>
+              <input
+                type="text"
+                value={draft.gstin}
+                onChange={(e) => setDraft({ ...draft, gstin: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter GSTIN"
+              />
             </div>
-          </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">CTO Water</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>CTO Water Num</label>
-                <input
-                  type="text"
-                  value={formData.ctoWaterNum || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoWaterNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTO Water Date</label>
-                <input
-                  type="date"
-                  value={formData.ctoWaterDate || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoWaterDate: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTO Water Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.ctoWaterValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoWaterValidUpto: e.target.value })}
-                />
-              </div>
+            <div className="cm-filter-field">
+              <label>State</label>
+              <input
+                type="text"
+                value={draft.state}
+                onChange={(e) => setDraft({ ...draft, state: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter state"
+              />
             </div>
-          </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">CTO Air</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>CTO Air Num</label>
-                <input
-                  type="text"
-                  value={formData.ctoAirNum || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoAirNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTO Air Date</label>
-                <input
-                  type="date"
-                  value={formData.ctoAirDate || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoAirDate: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTO Air Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.ctoAirValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, ctoAirValidUpto: e.target.value })}
-                />
-              </div>
+            <div className="cm-filter-field">
+              <label>PCB Zone</label>
+              <input
+                type="text"
+                value={draft.pcbZone}
+                onChange={(e) => setDraft({ ...draft, pcbZone: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter PCB zone"
+              />
             </div>
-          </div>
 
-          <div className="form-section">
-            <h3 className="form-section-title">CTE Water</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>CTE Water Num</label>
-                <input
-                  type="text"
-                  value={formData.cteWaterNum || ''}
-                  onChange={(e) => setFormData({ ...formData, cteWaterNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTE Water Date</label>
-                <input
-                  type="date"
-                  value={formData.cteWaterDate || ''}
-                  onChange={(e) => setFormData({ ...formData, cteWaterDate: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTE Water Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.cteWaterValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, cteWaterValidUpto: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="form-section-title">CTE Air</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>CTE Air Num</label>
-                <input
-                  type="text"
-                  value={formData.cteAirNum || ''}
-                  onChange={(e) => setFormData({ ...formData, cteAirNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTE Air Date</label>
-                <input
-                  type="date"
-                  value={formData.cteAirDate || ''}
-                  onChange={(e) => setFormData({ ...formData, cteAirDate: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>CTE Air Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.cteAirValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, cteAirValidUpto: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="form-section-title">Additional Details</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Hazardous Waste Num</label>
-                <input
-                  type="text"
-                  value={formData.hazardousWasteNum || ''}
-                  onChange={(e) => setFormData({ ...formData, hazardousWasteNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>PCB Zone ID</label>
-                <select
-                  value={formData.pcbZoneID || ''}
-                  onChange={(e) => setFormData({ ...formData, pcbZoneID: e.target.value })}
-                >
-                  <option value="">Select PCB Zone</option>
-                  {pcbZones.map((zone) => (
-                    <option key={zone.id} value={zone.pcbZoneName}>
-                      {zone.pcbZoneName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>GST Valid From</label>
-                <input
-                  type="date"
-                  value={formData.gstValidFrom || ''}
-                  onChange={(e) => setFormData({ ...formData, gstValidFrom: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>GST Rate</label>
-                <input
-                  type="text"
-                  value={formData.gstRate || ''}
-                  onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
-                  placeholder="e.g., 18%"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="form-section-title">Status</h3>
-            <div className="form-grid">
-              <div className="form-group">
+            <div className="cm-filter-field">
                 <label>Status</label>
                 <select
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
                 >
+                <option value="all">All Status</option>
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
@@ -903,15 +1500,31 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              Cancel
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ companyCode: '', companyName: '', gstin: '', state: '', pcbZone: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
             </button>
-            <button type="submit" className="btn btn--primary" disabled={loading}>
-              {loading ? 'Saving...' : (company ? 'Update' : 'Save')}
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
             </button>
           </div>
-        </form>
       </div>
     </div>
   );

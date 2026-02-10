@@ -4,10 +4,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { colorService, ColorResponse } from '../../services/colorService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import MasterPageLayout from '../../components/common/MasterPageLayout';
-import Tabs from '../../components/common/Tabs';
-import { Column } from '../../components/common/DataTable';
 import '../desktop/dashboardPage.css';
+import './colorCodeMasterPage.css';
 
 interface Company {
   id: string;
@@ -36,13 +34,24 @@ const ColorCodeMasterPage = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingColorCode, setEditingColorCode] = useState<ColorCode | null>(null);
   const [colorCodes, setColorCodes] = useState<ColorCode[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  interface AdvancedFilters {
+    colorName: string;
+    companyName: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    colorName: '',
+    companyName: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Load companies from API
   const loadCompanies = async () => {
@@ -108,10 +117,21 @@ const ColorCodeMasterPage = () => {
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
-  const filteredColorCodes = colorCodes.filter(colorCode =>
-    colorCode.colorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    colorCode.companyName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredColorCodes = colorCodes.filter(colorCode => {
+    const query = searchQuery.trim().toLowerCase();
+    const colorQuery = advancedFilters.colorName.trim().toLowerCase();
+    const companyQuery = advancedFilters.companyName.trim().toLowerCase();
+    
+    const matchesSearch = !query ||
+      colorCode.colorName.toLowerCase().includes(query) ||
+      colorCode.companyName.toLowerCase().includes(query);
+    
+    const matchesColor = !colorQuery || colorCode.colorName.toLowerCase().includes(colorQuery);
+    const matchesCompany = !companyQuery || colorCode.companyName.toLowerCase().includes(companyQuery);
+    const matchesStatus = statusFilter === 'all' || colorCode.status === statusFilter;
+    
+    return matchesSearch && matchesColor && matchesCompany && matchesStatus;
+  });
 
   const handleAdd = () => {
     setEditingColorCode(null);
@@ -279,7 +299,7 @@ const ColorCodeMasterPage = () => {
         {/* Top Header */}
         <header className="dashboard-header">
           <div className="header-left">
-            <span className="breadcrumb">/ Masters / Color Code Master</span>
+            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Color Code Master</span>
           </div>
         </header>
 
@@ -290,46 +310,178 @@ const ColorCodeMasterPage = () => {
             background: '#fee', 
             color: '#c33', 
             marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc'
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            {error}
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#c33', 
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px'
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
 
         {/* Loading Indicator */}
         {loading && !colorCodes.length && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             Loading color codes...
           </div>
         )}
 
-        {/* Color Code Master Content using reusable template */}
-        <MasterPageLayout
-          title="Color Code Master"
-          breadcrumb="/ Masters / Color Code Master"
-          data={colorCodes}
-          filteredData={filteredColorCodes}
-          columns={columns}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          getId={(colorCode) => colorCode.id}
-          addButtonLabel="Add Color Code"
-          createPermissions={['COLOR_CREATE', 'COLOR.CREATE']}
-          editPermissions={['COLOR_EDIT', 'COLOR.EDIT', 'COLOR_UPDATE', 'COLOR.UPDATE']}
-          deletePermissions={['COLOR_DELETE', 'COLOR.DELETE']}
-        >
-          {/* Tabs */}
-          <Tabs
-            tabs={[{ id: 'list', label: 'Color Code List' }]}
-            activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
-          />
-        </MasterPageLayout>
+        <div className="color-code-master-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Color Code Master</h1>
+              <p className="ra-page-subtitle">Manage color code information and details</p>
+            </div>
+          </div>
+
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by color name, company..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
+            </div>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Color Code
+              </button>
+            </div>
+          </div>
+
+          {/* Color Codes Table */}
+          <div className="color-code-master-table-container">
+            <table className="color-code-master-table">
+              <thead>
+                <tr>
+                  <th>COLOR NAME</th>
+                  <th>COMPANY NAME</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredColorCodes.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="empty-message">
+                      {loading ? 'Loading...' : 'No color codes found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredColorCodes.map((colorCode) => (
+                    <tr key={colorCode.id}>
+                      <td>{colorCode.colorName || '-'}</td>
+                      <td>{colorCode.companyName || '-'}</td>
+                      <td>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge status-badge--${colorCode.status.toLowerCase()}`}>
+                            {colorCode.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="action-buttons ra-actions">
+                          <button
+                            className="action-btn action-btn--view"
+                            onClick={() => handleEdit(colorCode)}
+                            title="View"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--edit"
+                            onClick={() => handleEdit(colorCode)}
+                            title="Edit"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => handleDelete(colorCode.id)}
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredColorCodes.length} of {colorCodes.length} items
+          </div>
+        </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ colorName: '', companyName: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -343,6 +495,114 @@ const ColorCodeMasterPage = () => {
           onSave={handleSave}
         />
       )}
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter color codes by multiple criteria</div>
+            </div>
+          </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>Color Name</label>
+              <input
+                type="text"
+                value={draft.colorName}
+                onChange={(e) => setDraft({ ...draft, colorName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter color name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ colorName: '', companyName: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
