@@ -95,6 +95,115 @@ const TransactionPage = () => {
       ),
       path: '/transaction/waste-processing',
     },
+    {
+      id: 'incident-register',
+      title: 'Incident Register',
+      description: 'Manage and track incident reports and safety issues',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      ),
+      path: '/transaction/incident-register',
+    },
+    {
+      id: 'incineration-register',
+      title: 'Incineration Register',
+      description: 'Manage and track incineration operations and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+          <path d="M8 12h8"></path>
+        </svg>
+      ),
+      path: '/transaction/incineration-register',
+    },
+    {
+      id: 'autoclave-register',
+      title: 'Autoclave Register',
+      description: 'Manage and track autoclave operations and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6"></path>
+        </svg>
+      ),
+      path: '/transaction/autoclave-register',
+    },
+    {
+      id: 'shredder-register',
+      title: 'Shredder Register',
+      description: 'Manage and track shredder operations and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+      ),
+      path: '/transaction/shredder-register',
+    },
+    {
+      id: 'disposal-register',
+      title: 'Disposal Register',
+      description: 'Manage and track waste disposal operations and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 3h18v18H3z"></path>
+          <path d="M9 9h6v6H9z"></path>
+          <path d="M3 12h18"></path>
+          <path d="M12 3v18"></path>
+        </svg>
+      ),
+      path: '/transaction/disposal-register',
+    },
+    {
+      id: 'emission-register',
+      title: 'Emission Register',
+      description: 'Manage and track emission monitoring and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2v4"></path>
+          <path d="M12 18v4"></path>
+          <path d="M4.93 4.93l2.83 2.83"></path>
+          <path d="M16.24 16.24l2.83 2.83"></path>
+          <path d="M2 12h4"></path>
+          <path d="M18 12h4"></path>
+          <path d="M4.93 19.07l2.83-2.83"></path>
+          <path d="M16.24 7.76l2.83-2.83"></path>
+        </svg>
+      ),
+      path: '/transaction/emission-register',
+    },
+    {
+      id: 'etp-register',
+      title: 'ETP Register',
+      description: 'Manage and track Effluent Treatment Plant operations and compliance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          <path d="M12 2v4"></path>
+          <path d="M12 18v4"></path>
+        </svg>
+      ),
+      path: '/transaction/etp-register',
+    },
+    {
+      id: 'downtime-register',
+      title: 'Downtime Register',
+      description: 'Manage and track equipment downtime and breakdowns',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+          <path d="M8 12h8"></path>
+        </svg>
+      ),
+      path: '/transaction/downtime-register',
+    },
   ];
 
   const filteredItems = transactionItems.filter((item) =>
@@ -224,6 +333,14 @@ const TransactionPage = () => {
     'waste-transaction-data': 'WASTE_TRANSACTION_VIEW',
     'vehicle-wise-waste-collection': 'VEHICLE_WASTE_COLLECTION_VIEW',
     'waste-processing': 'WASTE_PROCESS_VIEW',
+    'incident-register': 'INCIDENT_REGISTER_VIEW',
+    'incineration-register': 'INCINERATION_REGISTER_VIEW',
+    'autoclave-register': 'AUTOCLAVE_REGISTER_VIEW',
+    'shredder-register': 'SHREDDER_REGISTER_VIEW',
+    'disposal-register': 'DISPOSAL_REGISTER_VIEW',
+    'emission-register': 'EMISSION_REGISTER_VIEW',
+    'etp-register': 'ETP_REGISTER_VIEW',
+    'downtime-register': 'DOWNTIME_REGISTER_VIEW',
   };
 
   const canSeeTransactionCard = (itemId: string) => {

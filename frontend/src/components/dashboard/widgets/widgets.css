@@ -55,6 +55,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 /* Metric Widget Specific */
@@ -108,16 +109,23 @@
   font-weight: 400;
 }
 
-/* Chart Widget */
+/* Chart Widget - Fixed height body to prevent overflow */
 .widget-panel--chart .widget-panel__body {
-  min-height: 200px;
+  flex: 0 0 260px; /* Fixed height, no flex growth */
+  height: 260px;
+  min-height: 260px;
+  max-height: 260px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  height: 100%;
   background: #f8fafc;
   border-radius: 8px;
   padding: 20px;
@@ -136,7 +144,11 @@
 
 .chart-container {
   width: 100%;
-  min-height: 260px;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Table Widget */
@@ -343,6 +355,8 @@
   padding: 40px 20px;
   color: #94a3b8;
   text-align: center;
+  height: 100%;
+  min-height: 0;
 }
 
 .widget-empty-state svg {
@@ -360,6 +374,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+  min-height: 0;
 }
 
 .skeleton-line {
@@ -381,7 +397,8 @@
 }
 
 .skeleton-chart {
-  height: 200px;
+  height: 100%;
+  min-height: 0;
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s ease-in-out infinite;

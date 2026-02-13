@@ -130,7 +130,7 @@ export const companyService = {
     const response = await apiRequest<ApiResponse<CompanyResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data;
+    return response.data || [];
   },
 
   // Update company

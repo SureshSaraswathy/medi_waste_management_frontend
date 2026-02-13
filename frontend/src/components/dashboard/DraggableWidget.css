@@ -1,0 +1,83 @@
+.draggable-widget {
+  position: relative;
+  min-height: 200px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.draggable-widget:hover {
+  transform: translateY(-2px);
+}
+
+.draggable-widget--selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.draggable-widget__content {
+  height: 100%;
+  width: 100%;
+}
+
+.draggable-widget__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 8px;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.draggable-widget--selected .draggable-widget__overlay {
+  pointer-events: all;
+}
+
+.draggable-widget__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.draggable-widget__action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  pointer-events: all;
+}
+
+.draggable-widget__action-btn:hover {
+  background: #3b82f6;
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.draggable-widget__action-btn--danger:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

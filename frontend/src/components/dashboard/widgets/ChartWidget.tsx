@@ -113,7 +113,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({
           </div>
         ) : (
           <div className="chart-container">
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height="100%">
               {type === 'line' ? (
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />

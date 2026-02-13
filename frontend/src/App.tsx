@@ -31,6 +31,14 @@ import FleetManagementPage from './pages/desktop/FleetManagementPage';
 import RouteHCFMappingPage from './pages/desktop/RouteHCFMappingPage';
 import FrequencyMasterPage from './pages/desktop/FrequencyMasterPage';
 import RouteAssignmentPage from './pages/desktop/RouteAssignmentPage';
+import IncidentRegisterPage from './pages/desktop/IncidentRegisterPage';
+import IncinerationRegisterPage from './pages/desktop/IncinerationRegisterPage';
+import AutoclaveRegisterPage from './pages/desktop/AutoclaveRegisterPage';
+import ShredderRegisterPage from './pages/desktop/ShredderRegisterPage';
+import DisposalRegisterPage from './pages/desktop/DisposalRegisterPage';
+import EmissionRegisterPage from './pages/desktop/EmissionRegisterPage';
+import ETPRegisterPage from './pages/desktop/ETPRegisterPage';
+import DowntimeRegisterPage from './pages/desktop/DowntimeRegisterPage';
 import WasteCollectionPage from './pages/desktop/WasteCollectionPage';
 import WasteTransactionPage from './pages/desktop/WasteTransactionPage';
 import VehicleWasteCollectionPage from './pages/desktop/VehicleWasteCollectionPage';
@@ -248,6 +256,86 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['ROUTE_ASSIGNMENT_VIEW', 'ROUTE_ASSIGNMENT_CREATE', 'ROUTE_ASSIGNMENT_EDIT']}>
               <RouteAssignmentPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/incident-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['INCIDENT_REGISTER_VIEW', 'INCIDENT_REGISTER_CREATE', 'INCIDENT_REGISTER_EDIT']}>
+              <IncidentRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/incineration-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['INCINERATION_REGISTER_VIEW', 'INCINERATION_REGISTER_CREATE', 'INCINERATION_REGISTER_EDIT']}>
+              <IncinerationRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/autoclave-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['AUTOCLAVE_REGISTER_VIEW', 'AUTOCLAVE_REGISTER_CREATE', 'AUTOCLAVE_REGISTER_EDIT']}>
+              <AutoclaveRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/shredder-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['SHREDDER_REGISTER_VIEW', 'SHREDDER_REGISTER_CREATE', 'SHREDDER_REGISTER_EDIT']}>
+              <ShredderRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/disposal-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['DISPOSAL_REGISTER_VIEW', 'DISPOSAL_REGISTER_CREATE', 'DISPOSAL_REGISTER_EDIT']}>
+              <DisposalRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/emission-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['EMISSION_REGISTER_VIEW', 'EMISSION_REGISTER_CREATE', 'EMISSION_REGISTER_EDIT']}>
+              <EmissionRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/etp-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['ETP_REGISTER_VIEW', 'ETP_REGISTER_CREATE', 'ETP_REGISTER_EDIT']}>
+              <ETPRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/downtime-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['DOWNTIME_REGISTER_VIEW', 'DOWNTIME_REGISTER_CREATE', 'DOWNTIME_REGISTER_EDIT']}>
+              <DowntimeRegisterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }
