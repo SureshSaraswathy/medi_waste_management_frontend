@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import '../../pages/desktop/dashboardPage.css';
 import './reportDesignPage.css';
 
@@ -30,7 +31,7 @@ const ReportDesignPage = ({
   onGenerate,
   defaultParams = {},
 }: ReportDesignPageProps) => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, any>>(defaultParams);
@@ -69,21 +70,21 @@ const ReportDesignPage = ({
     onGenerate({ ...formData, exportFormat: format });
   };
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', active: location.pathname === '/dashboard' },
-    { path: '/transaction', label: 'Transaction', icon: '💼', active: location.pathname.startsWith('/transaction') },
-    { path: '/finance', label: 'Finance', icon: '💰', active: location.pathname.startsWith('/finance') },
-    { path: '/commercial-agreements', label: 'Commercial Agreements', icon: '📝', active: location.pathname.startsWith('/commercial-agreements') },
-    { path: '/compliance-training', label: 'Compliance & Training', icon: '✅', active: location.pathname.startsWith('/compliance-training') },
-    { path: '/master', label: 'Masters', icon: '📋', active: location.pathname.startsWith('/master') },
-    { path: '/report', label: 'Reports', icon: '📈', active: location.pathname.startsWith('/report') },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-container">
       <aside className="dashboard-sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-logo">Waste Management</h2>
+        <div className="sidebar-brand">
+          <div className="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          <span className="brand-name">MEDI-WASTE</span>
         </div>
         <nav className="sidebar-nav">
           <ul className="nav-list">
