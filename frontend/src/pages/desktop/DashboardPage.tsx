@@ -28,6 +28,7 @@ import { AlertWidget } from '../../components/dashboard/widgets/AlertWidget';
 import { ActivityTimelineWidget } from '../../components/dashboard/widgets/ActivityTimelineWidget';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import { DraggableWidget } from '../../components/dashboard/DraggableWidget';
+import { RowSection } from '../../components/dashboard/RowSection';
 import NotificationBell from '../../components/NotificationBell';
 import './dashboardPage.css';
 
@@ -870,22 +871,44 @@ const DashboardPage: React.FC = () => {
     String(widget?.type || '').toLowerCase().trim();
 
   const groupedWidgets = useMemo(() => {
-    const topSummary: WidgetConfig[] = [];
+    const kpiWidgets: WidgetConfig[] = [];
     const middleInfo: WidgetConfig[] = [];
     const bottomAnalytics: WidgetConfig[] = [];
 
     widgets.forEach((widget) => {
       const type = normalizeWidgetType(widget);
+      const widgetWithSpan = { ...widget };
+      
+      // Assign spans based on widget type for 12-column grid
+      // Desktop spans (will be overridden by CSS for tablet/mobile)
+      if (!widgetWithSpan.span) {
       if (type === 'metric' || type === 'kpi') {
-        topSummary.push(widget);
+          // KPIs: 4 columns = 3 per row on desktop
+          widgetWithSpan.span = 4;
       } else if (type === 'chart') {
-        bottomAnalytics.push(widget);
+          // Charts: 3 columns = 4 per row on desktop
+          const rawSize = String((widget as any)?.size || widget?.props?.size || '').toLowerCase().trim();
+          if (rawSize === 'xl' || (widget.gridColumn || 1) >= 4 || (widget.gridRow || 1) >= 3) {
+            widgetWithSpan.span = 12; // Large chart full width
       } else {
-        middleInfo.push(widget);
+            widgetWithSpan.span = 3; // Small chart 4 per row
+          }
+        } else {
+          // Medium widgets (list, table, task-list, approval-queue, alert): 4 columns = 3 per row on desktop
+          widgetWithSpan.span = 4;
+        }
+      }
+      
+      if (type === 'metric' || type === 'kpi') {
+        kpiWidgets.push(widgetWithSpan);
+      } else if (type === 'chart') {
+        bottomAnalytics.push(widgetWithSpan);
+      } else {
+        middleInfo.push(widgetWithSpan);
       }
     });
 
-    return { topSummary, middleInfo, bottomAnalytics };
+    return { kpiWidgets, middleInfo, bottomAnalytics };
   }, [widgets]);
 
   const getDashboardCardClasses = (widget: WidgetConfig): string => {
@@ -1104,15 +1127,16 @@ const DashboardPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {groupedWidgets.topSummary.length > 0 && (
-                    <section className="dashboard-section top-summary">
-                      {groupedWidgets.topSummary.map((widget, index) => (
+                  {/* Unified KPI Grid - All KPIs in one responsive grid container */}
+                  {groupedWidgets.kpiWidgets.length > 0 && (
+                    <div className="kpi-grid-container">
+                      {groupedWidgets.kpiWidgets.map((widget, index) => (
                         <DraggableWidget
-                          key={widget.id || `top-${index}`}
+                          key={widget.id || `kpi-${index}`}
                           widget={widget}
                           index={index}
                           className={getDashboardCardClasses(widget)}
-                          disableGridSizing={true}
+                          disableGridSizing={false}
                           isSelected={false}
                         >
                           <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
@@ -1124,18 +1148,18 @@ const DashboardPage: React.FC = () => {
                           </Suspense>
                         </DraggableWidget>
                       ))}
-                    </section>
+                    </div>
                   )}
 
                   {groupedWidgets.middleInfo.length > 0 && (
-                    <section className="dashboard-section middle-info">
+                    <RowSection className="middle-info">
                       {groupedWidgets.middleInfo.map((widget, index) => (
                         <DraggableWidget
                           key={widget.id || `middle-${index}`}
                           widget={widget}
                           index={index}
                           className={getDashboardCardClasses(widget)}
-                          disableGridSizing={true}
+                          disableGridSizing={false}
                           isSelected={false}
                         >
                           <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
@@ -1147,18 +1171,18 @@ const DashboardPage: React.FC = () => {
                           </Suspense>
                         </DraggableWidget>
                       ))}
-                    </section>
+                    </RowSection>
                   )}
 
                   {groupedWidgets.bottomAnalytics.length > 0 && (
-                    <section className="dashboard-section bottom-analytics">
+                    <RowSection className="bottom-analytics">
                       {groupedWidgets.bottomAnalytics.map((widget, index) => (
                         <DraggableWidget
                           key={widget.id || `bottom-${index}`}
                           widget={widget}
                           index={index}
                           className={getDashboardCardClasses(widget)}
-                          disableGridSizing={true}
+                          disableGridSizing={false}
                           isSelected={false}
                         >
                           <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
@@ -1170,8 +1194,11 @@ const DashboardPage: React.FC = () => {
                           </Suspense>
                         </DraggableWidget>
                       ))}
-                    </section>
+                    </RowSection>
                   )}
+                  
+                  {/* Bottom breathing space for scroll comfort */}
+                  <div className="page-end-space"></div>
                 </>
               )}
             </div>

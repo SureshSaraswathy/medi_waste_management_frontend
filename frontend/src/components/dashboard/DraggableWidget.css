@@ -1,8 +1,15 @@
 .draggable-widget {
   position: relative;
-  min-height: 200px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  min-width: 0;
+}
+
+.card-wrapper {
+  grid-column: span var(--span, 12);
+  min-width: 0;
+  height: auto;
+  align-self: start;
 }
 
 .draggable-widget:hover {
@@ -16,8 +23,8 @@
 }
 
 .draggable-widget__content {
-  height: 100%;
-  width: 100%;
+  min-width: 0;
+  height: auto;
 }
 
 .draggable-widget__overlay {

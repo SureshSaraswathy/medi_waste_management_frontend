@@ -34,21 +34,21 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   onDuplicate,
   onUpdateSize,
 }) => {
-  // Backend sends gridColumn as 1-4 (4-col layout). The new template uses a 12-col grid.
-  // Map 1->3, 2->6, 3->9, 4->12 to match the template card sizing.
-  const gridColumnSpan = Math.min(12, Math.max(1, (widget.gridColumn || 1) * 3));
-  const gridRowSpan = widget.gridRow || 1;
+  // Use span from widget config, or calculate from gridColumn
+  const span = widget.span || Math.min(12, Math.max(1, (widget.gridColumn || 1) * 3));
+  const widgetType = String(widget?.type || '').toLowerCase().trim();
 
   return (
     <div
-      className={`draggable-widget ${className} ${isSelected ? 'draggable-widget--selected' : ''}`.trim()}
+      className={`card-wrapper draggable-widget ${className} ${isSelected ? 'draggable-widget--selected' : ''}`.trim()}
+      data-widget-type={widgetType}
+      data-widget-span={span}
       style={
         disableGridSizing
           ? undefined
           : {
-              gridColumn: `span ${gridColumnSpan}`,
-              gridRow: `span ${gridRowSpan}`,
-            }
+              '--span': span,
+            } as React.CSSProperties
       }
       onClick={onSelect}
     >

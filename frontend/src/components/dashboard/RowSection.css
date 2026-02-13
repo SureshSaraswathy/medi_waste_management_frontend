@@ -1,0 +1,120 @@
+/**
+ * RowSection Styles
+ * 
+ * Layer 1: Row container styling
+ * Provides visual grouping for dashboard rows with proper spacing and background.
+ */
+
+.row-section {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+  margin-top: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  box-shadow: none;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.row-section.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.section-row {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Dashboard Row - Row Group Surface */
+.dashboard-row {
+  background: #eef2f7;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 22px;
+  margin-top: 0;
+  position: relative;
+}
+
+.dashboard-row:first-child {
+  margin-top: 0;
+}
+
+/* Remove separator lines */
+.dashboard-row::before {
+  display: none;
+}
+
+/* Section Title Emphasis */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #344054;
+}
+
+/* Card wrapper uses CSS custom property for span */
+.card-wrapper {
+  grid-column: span var(--span, 12);
+  min-width: 0;
+  height: auto;
+  align-self: start;
+}
+
+/* Responsive adjustments for grid spans */
+
+/* Tablet (768px - 1099px): Medium widgets → 2 per row, Charts → 2 per row */
+@media (min-width: 768px) and (max-width: 1099px) {
+  /* KPIs (span 4) become span 6 on tablet (2 per row) */
+  .dashboard-grid .card-wrapper[data-widget-type="metric"],
+  .dashboard-grid .card-wrapper[data-widget-type="kpi"],
+  .dashboard-grid .card-wrapper[data-widget-span="4"] {
+    grid-column: span 6;
+  }
+  
+  /* Charts (span 3) become span 6 on tablet (2 per row) */
+  .dashboard-grid .card-wrapper[data-widget-type="chart"][data-widget-span="3"] {
+    grid-column: span 6;
+  }
+  
+  /* Large widgets (span 12) stay full width */
+  .dashboard-grid .card-wrapper[data-widget-span="12"] {
+    grid-column: span 12;
+  }
+}
+
+/* Mobile (<768px): All widgets → 1 per row */
+@media (max-width: 767px) {
+  .dashboard-grid,
+  .row-section.dashboard-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 10px;
+  }
+  
+  .section-row {
+    padding: 10px;
+    margin-top: 12px;
+  }
+  
+  /* All widgets stack on mobile */
+  .card-wrapper {
+    grid-column: span 12 !important;
+  }
+}
