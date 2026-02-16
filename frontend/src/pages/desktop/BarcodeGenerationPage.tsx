@@ -8,6 +8,7 @@ import { barcodeLabelService, BarcodeLabelResponse } from '../../services/barcod
 // @ts-ignore - jsbarcode doesn't have TypeScript definitions
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
+import PageHeader from '../../components/layout/PageHeader';
 import './barcodeGenerationPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -453,11 +454,10 @@ const BarcodeGenerationPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Barcode Generation</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Barcode Generation"
+          subtitle="Generate barcodes and QR codes for waste labels"
+        />
 
         <div className="barcode-generation-page">
           <div className="barcode-generation-header">

@@ -5,7 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { useAgreementClauseFilters, AgreementClause } from '../../hooks/useAgreementClauseFilters';
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
 import { agreementService, AgreementResponse } from '../../services/agreementService';
-import DataTable, { Column } from '../../components/common/DataTable';
+import PageHeader from '../../components/layout/PageHeader';
 import './agreementClausePage.css';
 import '../desktop/dashboardPage.css';
 
@@ -16,17 +16,31 @@ interface Agreement {
   status: 'Draft' | 'Generated' | 'Signed';
 }
 
+interface AdvancedFilters {
+  agreementID: string;
+  pointNum: string;
+  pointTitle: string;
+  status: string;
+}
+
 const AgreementClausePage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
-  const [agreementFilter, setAgreementFilter] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingClause, setEditingClause] = useState<AgreementClause | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    agreementID: '',
+    pointNum: '',
+    pointTitle: '',
+    status: '',
+  });
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -61,8 +75,8 @@ const AgreementClausePage = () => {
     try {
       setLoading(true);
       setError(null);
-      const agreementIdParam = agreementFilter !== 'All' 
-        ? currentAgreements.find(a => a.agreementID === agreementFilter)?.id 
+      const agreementIdParam = advancedFilters.agreementID 
+        ? currentAgreements.find(a => a.agreementID === advancedFilters.agreementID)?.id 
         : undefined;
       const statusParam = statusFilter !== 'All' ? statusFilter : undefined;
       
@@ -98,7 +112,7 @@ const AgreementClausePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [agreementFilter, statusFilter]);
+  }, [statusFilter, advancedFilters.agreementID]);
 
   // Load agreements on mount
   useEffect(() => {
@@ -110,13 +124,14 @@ const AgreementClausePage = () => {
     if (agreements.length > 0) {
       loadClauses(agreements);
     }
-  }, [agreements.length, agreementFilter, statusFilter, loadClauses]);
+  }, [agreements.length, statusFilter, advancedFilters.agreementID, loadClauses]);
 
   // Use custom hook for filtering logic
   const { filteredClauses } = useAgreementClauseFilters({
     clauses,
-    agreementFilter,
+    searchQuery,
     statusFilter,
+    advancedFilters,
   });
 
   // Get agreement status for a clause
@@ -362,57 +377,10 @@ const AgreementClausePage = () => {
     );
   };
 
-  // Define table columns
-  const columns: Column<AgreementClause>[] = [
-    {
-      key: 'agreementID',
-      label: 'Agreement ID',
-      minWidth: 150,
-      render: (clause) => {
-        const agreement = agreements.find(a => a.agreementID === clause.agreementID);
-        return agreement 
-          ? `${clause.agreementID} - ${agreement.agreementNum}`
-          : clause.agreementID;
-      },
-    },
-    {
-      key: 'sequenceNo',
-      label: 'Sequence',
-      minWidth: 100,
-      render: (clause) => (
-        <span className="sequence-cell">{clause.sequenceNo}</span>
-      ),
-    },
-    {
-      key: 'pointNum',
-      label: 'Point Number',
-      minWidth: 120,
-    },
-    {
-      key: 'pointTitle',
-      label: 'Point Title',
-      minWidth: 150,
-    },
-    {
-      key: 'pointText',
-      label: 'Point Text',
-      minWidth: 300,
-      allowWrap: true,
-      render: (clause) => <TruncatedText text={clause.pointText} maxLength={80} />,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 100,
-      render: (clause) => <StatusBadge status={clause.status} />,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      minWidth: 150,
-      render: (clause) => <ActionsCell clause={clause} />,
-    },
-  ];
+  const handleAdd = () => {
+    setEditingClause(null);
+    setShowCreateModal(true);
+  };
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
@@ -490,76 +458,130 @@ const AgreementClausePage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Commercial Agreements / Agreement Clause Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Agreement Clause Management"
+          subtitle="Manage agreement clauses and points"
+        />
 
-        <div className="agreement-clause-page">
-          <div className="agreement-clause-header">
-            <h1 className="agreement-clause-title">Agreement Clause Management</h1>
-          </div>
-
-          {error && (
-            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
-              {error}
-            </div>
-          )}
-
-          <div className="agreement-clause-filters">
-            <select
-              className="filter-select"
-              value={agreementFilter}
-              onChange={(e) => setAgreementFilter(e.target.value)}
-              aria-label="Filter by agreement"
-            >
-              <option value="All">All Agreements</option>
-              {agreements.map((agreement) => (
-                <option key={agreement.id} value={agreement.agreementID}>
-                  {agreement.agreementID} - {agreement.agreementNum}
-                </option>
-              ))}
-            </select>
-            <select
-              className="filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter by status"
-            >
-              <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-            <button className="add-clause-btn" onClick={() => setShowCreateModal(true)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+        <div className="route-assignment-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              Add Clause
-            </button>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Agreement Clause Management</h1>
+              <p className="ra-page-subtitle">Manage and organize agreement clauses and points</p>
+            </div>
           </div>
 
-          {loading && (
-            <div style={{ padding: '20px', textAlign: 'center' }}>Loading clauses...</div>
-          )}
-
-          {!loading && (
-            <div className="clause-table-container">
-              <DataTable
-                data={filteredClauses}
-                columns={columns}
-                getId={(clause) => clause.id}
-                emptyMessage="No clause records found"
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                className="ra-search-input"
+                placeholder="Search by agreement, point number, title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Clause
+              </button>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="ra-alert ra-alert--error">
+              <span>{error}</span>
+              <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
+            </div>
           )}
-          <div className="clause-pagination-info">
+
+          {/* Table Container */}
+          <div className="route-assignment-table-container">
             {loading ? (
-              'Loading...'
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                Loading clauses...
+              </div>
+            ) : filteredClauses.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style={{ fontSize: '14px', margin: 0 }}>No clauses found for the selected filters</p>
+              </div>
             ) : (
-              `Showing ${filteredClauses.length} of ${clauses.length} Items`
+              <table className="route-assignment-table">
+                <thead>
+                  <tr>
+                    <th>Agreement ID</th>
+                    <th>Sequence</th>
+                    <th>Point Number</th>
+                    <th>Point Title</th>
+                    <th>Point Text</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredClauses.map((clause) => {
+                    const agreement = agreements.find(a => a.agreementID === clause.agreementID);
+                    return (
+                      <tr key={clause.id}>
+                        <td className="clause-agreement-cell">
+                          {agreement 
+                            ? `${clause.agreementID} - ${agreement.agreementNum}`
+                            : clause.agreementID}
+                        </td>
+                        <td className="ra-cell-center">
+                          <span className="sequence-cell">{clause.sequenceNo}</span>
+                        </td>
+                        <td>{clause.pointNum}</td>
+                        <td>{clause.pointTitle || '-'}</td>
+                        <td>
+                          <TruncatedText text={clause.pointText} maxLength={80} />
+                        </td>
+                        <td>
+                          <StatusBadge status={clause.status} />
+                        </td>
+                        <td>
+                          <ActionsCell clause={clause} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
+          </div>
+          <div className="route-assignment-pagination-info">
+            Showing {filteredClauses.length} of {clauses.length} items
           </div>
         </div>
       </main>
@@ -576,6 +598,31 @@ const AgreementClausePage = () => {
             setEditingClause(null);
           }}
           onSave={handleSave}
+        />
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          agreements={agreements}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setStatusFilter('All');
+            setAdvancedFilters({
+              agreementID: '',
+              pointNum: '',
+              pointTitle: '',
+              status: '',
+            });
+            setShowAdvancedFilters(false);
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
         />
       )}
     </div>
@@ -735,6 +782,132 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  agreements: Agreement[];
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  agreements,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter clauses by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Agreement ID</label>
+              <select
+                value={draft.agreementID}
+                onChange={(e) => setDraft({ ...draft, agreementID: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Agreements</option>
+                {agreements.map((agreement) => (
+                  <option key={agreement.id} value={agreement.agreementID}>
+                    {agreement.agreementID} - {agreement.agreementNum}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Point Number</label>
+              <input
+                type="text"
+                value={draft.pointNum}
+                onChange={(e) => setDraft({ ...draft, pointNum: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter point number"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Point Title</label>
+              <input
+                type="text"
+                value={draft.pointTitle}
+                onChange={(e) => setDraft({ ...draft, pointTitle: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter point title"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="ra-filter-select"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraftStatus('All');
+              setDraft({ agreementID: '', pointNum: '', pointTitle: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
     </div>
   );

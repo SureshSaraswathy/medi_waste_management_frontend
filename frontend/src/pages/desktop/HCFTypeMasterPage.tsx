@@ -5,6 +5,7 @@ import { hasPermission } from '../../services/permissionService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './hcfTypeMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -288,11 +289,10 @@ const HCFTypeMasterPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; HCF Type Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="HCF Type Master"
+          subtitle="Manage HCF type master data"
+        />
 
         {/* Error Message */}
         {error && (

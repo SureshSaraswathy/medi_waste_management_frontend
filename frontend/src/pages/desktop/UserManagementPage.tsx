@@ -5,6 +5,7 @@ import { userService, UserResponse } from '../../services/userService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { roleService, RoleResponse } from '../../services/roleService';
 import { activateUserWithPassword, resetPassword } from '../../services/passwordService';
+import PageHeader from '../../components/layout/PageHeader';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -1342,11 +1343,10 @@ const UserManagementPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Masters / User Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="User Management"
+          subtitle="Manage users, roles and permissions"
+        />
 
         {/* User Management Content */}
         <div className="user-management-page">

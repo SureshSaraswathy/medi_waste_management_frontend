@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hasPermission } from '../../services/permissionService';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -144,11 +145,10 @@ const ComplianceTrainingPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Compliance & Training</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Compliance & Training"
+          subtitle="Manage compliance and training programs"
+        />
 
         {/* Compliance & Training Page Content */}
         <div className="master-page">

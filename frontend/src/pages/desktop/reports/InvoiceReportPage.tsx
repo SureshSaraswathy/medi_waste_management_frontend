@@ -11,6 +11,7 @@ import {
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
 import './invoiceReportPage.css';
 
 const InvoiceReportPage = () => {
@@ -779,26 +780,12 @@ const InvoiceReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader 
+        title="Invoice Generation & Printing Report"
+        subtitle={getContextSubtitle()}
+      />
       <div className="invoice-report-page">
-        {/* Breadcrumb Navigation */}
-        <div className="report-breadcrumb">
-          <Link to="/dashboard" className="breadcrumb-home">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-          </Link>
-          <span className="breadcrumb-separator">&gt;</span>
-          <Link to="/report" className="breadcrumb-item">Reports</Link>
-          <span className="breadcrumb-separator">&gt;</span>
-          <span className="breadcrumb-item breadcrumb-item--active">Invoice Generation & Printing</span>
-        </div>
           <div className="report-content-wrapper">
-            {/* Page Header - Compact */}
-            <div className="page-header">
-              <h1 className="page-title">Invoice Generation & Printing Report</h1>
-              <div className="page-context-subtitle">{getContextSubtitle()}</div>
-            </div>
 
             {/* Global Search & Actions Row - Directly below title */}
             <div className="search-actions-row">

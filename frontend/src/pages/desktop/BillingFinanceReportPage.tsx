@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 import './masterPage.css';
 
@@ -173,11 +174,10 @@ const BillingFinanceReportPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Reports / Billing & Finance Reports</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Billing & Finance Reports"
+          subtitle="Manage your billing and finance reports"
+        />
 
         <div className="master-page">
           <div className="master-header">

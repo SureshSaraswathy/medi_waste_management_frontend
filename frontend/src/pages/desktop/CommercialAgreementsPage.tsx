@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hasPermission } from '../../services/permissionService';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -170,11 +171,10 @@ const CommercialAgreementsPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Commercial / Agreements</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Commercial Agreements"
+          subtitle="Manage contracts and agreements"
+        />
 
         {/* Commercial Agreements Page Content */}
         <div className="master-page">

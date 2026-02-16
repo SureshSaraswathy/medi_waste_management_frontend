@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { changePassword } from '../../services/passwordService';
 import { userService, UserResponse } from '../../services/userService';
+import PageHeader from '../../components/layout/PageHeader';
 import './profilePage.css';
 import './dashboardPage.css';
 
@@ -385,11 +386,10 @@ const ProfilePage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Profile</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Profile"
+          subtitle="Manage your profile and account settings"
+        />
 
         <div className="dashboard-content">
           <div className="profile-page">

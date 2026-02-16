@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { stateService, StateResponse } from '../../services/stateService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './stateMasterPage.css';
 
@@ -234,12 +235,10 @@ const StateMasterPage = () => {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; State Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="State Master"
+          subtitle="Manage state master data"
+        />
 
         {/* Error Message */}
         {error && (

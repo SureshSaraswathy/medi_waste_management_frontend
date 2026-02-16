@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { emissionRegisterService, EmissionRegisterResponse } from '../../services/emissionRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './emissionRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -337,11 +338,10 @@ const EmissionRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Emission Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Emission Register"
+          subtitle="Manage emission monitoring records"
+        />
 
         {/* Success Message */}
         {successMessage && (

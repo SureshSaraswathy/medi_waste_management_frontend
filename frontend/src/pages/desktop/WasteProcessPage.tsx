@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { wasteProcessService, WasteProcessResponse, CreateWasteProcessRequest, UpdateWasteProcessRequest } from '../../services/wasteProcessService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './wasteProcessPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -336,11 +337,10 @@ const WasteProcessPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Waste Processing</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Waste Processing"
+          subtitle="Manage waste processing records"
+        />
 
         {/* Success Message */}
         {successMessage && (

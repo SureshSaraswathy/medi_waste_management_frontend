@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './companyMasterPage.css';
 
@@ -444,12 +445,10 @@ const CompanyMasterPage = () => {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Company Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Company Master"
+          subtitle="Manage company master data"
+        />
 
         {/* Error Banner */}
         {error && (

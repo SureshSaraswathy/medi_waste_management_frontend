@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { routeService, RouteResponse } from '../../services/routeService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './routeMasterPage.css';
 
@@ -319,11 +320,10 @@ const RouteMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Route Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Route Master"
+          subtitle="Manage route master data"
+        />
 
         {/* Error Message */}
         {error && (

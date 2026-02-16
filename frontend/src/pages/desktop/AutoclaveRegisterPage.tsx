@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { autoclaveRegisterService, AutoclaveRegisterResponse } from '../../services/autoclaveRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
+import PageHeader from '../../components/layout/PageHeader';
 import './autoclaveRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -387,11 +388,10 @@ const AutoclaveRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Autoclave Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Autoclave Register"
+          subtitle="Manage autoclave operation records"
+        />
 
         {/* Success Message */}
         {successMessage && (

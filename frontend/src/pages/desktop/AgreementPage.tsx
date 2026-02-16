@@ -1,18 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
-import { useAgreementFilters, Agreement } from '../../hooks/useAgreementFilters';
+import { Agreement } from '../../hooks/useAgreementFilters';
 import { agreementService } from '../../services/agreementService';
 import { contractService } from '../../services/contractService';
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
-import DataTable, { Column } from '../../components/common/DataTable';
 // @ts-ignore - html2pdf.js doesn't have TypeScript definitions
 import html2pdf from 'html2pdf.js';
+import PageHeader from '../../components/layout/PageHeader';
 import './agreementPage.css';
 import '../desktop/dashboardPage.css';
+
+interface AdvancedFilters {
+  agreementNum: string;
+  agreementID: string;
+  contractNum: string;
+  status: string;
+}
 
 interface Contract {
   id: string;
@@ -29,6 +36,7 @@ const AgreementPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
   const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null);
   const [agreements, setAgreements] = useState<Agreement[]>([]);
@@ -37,6 +45,12 @@ const AgreementPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    agreementNum: '',
+    agreementID: '',
+    contractNum: '',
+    status: '',
+  });
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -96,12 +110,42 @@ const AgreementPage = () => {
     }
   }, [contracts.length, loadAgreements]);
 
-  // Use custom hook for filtering logic
-  const { filteredAgreements } = useAgreementFilters({
-    agreements,
-    searchQuery,
-    statusFilter,
-  });
+  // Filter agreements with search query, status filter, and advanced filters
+  const filteredAgreements = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const agreementNumQuery = advancedFilters.agreementNum.trim().toLowerCase();
+    const agreementIDQuery = advancedFilters.agreementID.trim().toLowerCase();
+    const contractNumQuery = advancedFilters.contractNum.trim().toLowerCase();
+    const advancedStatusQuery = advancedFilters.status.trim();
+
+    return agreements.filter((agreement) => {
+      // Top search box: broad match across key fields
+      const matchesSearch =
+        !query ||
+        agreement.agreementNum.toLowerCase().includes(query) ||
+        agreement.agreementID.toLowerCase().includes(query) ||
+        (agreement.contractNum && agreement.contractNum.toLowerCase().includes(query));
+
+      // Status filter (from dropdown)
+      const matchesStatus = statusFilter === 'All' || agreement.status === statusFilter;
+
+      // Advanced filters
+      const matchesAgreementNum = !agreementNumQuery || agreement.agreementNum.toLowerCase().includes(agreementNumQuery);
+      const matchesAgreementID = !agreementIDQuery || agreement.agreementID.toLowerCase().includes(agreementIDQuery);
+      const matchesContractNum = !contractNumQuery || 
+        (agreement.contractNum && agreement.contractNum.toLowerCase().includes(contractNumQuery));
+      const matchesAdvancedStatus = !advancedStatusQuery || agreement.status === advancedStatusQuery;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesAgreementNum &&
+        matchesAgreementID &&
+        matchesContractNum &&
+        matchesAdvancedStatus
+      );
+    });
+  }, [agreements, searchQuery, statusFilter, advancedFilters]);
 
   // Handle Add
   const handleAdd = () => {
@@ -161,7 +205,7 @@ const AgreementPage = () => {
 
   // Status badge component
   const StatusBadge = ({ status }: { status: Agreement['status'] }) => {
-    const statusClass = `agreement-status-badge agreement-status-badge--${status.toLowerCase()}`;
+    const statusClass = `status-badge status-badge--${status.toLowerCase()}`;
     return (
       <span className={statusClass} role="status" aria-label={`Status: ${status}`}>
         {status}
@@ -171,7 +215,7 @@ const AgreementPage = () => {
 
   // Actions component
   const ActionsCell = ({ agreement }: { agreement: Agreement }) => (
-    <div className="agreement-action-buttons" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+    <>
       <button
         className="action-btn action-btn--edit"
         onClick={(e) => handleEdit(agreement, e)}
@@ -194,80 +238,44 @@ const AgreementPage = () => {
           <circle cx="12" cy="12" r="3"></circle>
         </svg>
       </button>
-    </div>
+    </>
   );
-
-  // Define table columns
-  const columns: Column<Agreement>[] = [
-    {
-      key: 'agreementNum',
-      label: 'Agreement Number',
-      minWidth: 180,
-      render: (agreement) => (
-        <span className="agreement-num-cell">{agreement.agreementNum}</span>
-      ),
-    },
-    {
-      key: 'agreementID',
-      label: 'Agreement ID',
-      minWidth: 120,
-    },
-    {
-      key: 'contractNum',
-      label: 'Contract Reference',
-      minWidth: 180,
-      render: (agreement) => 
-        agreement.contractNum 
-          ? `${agreement.contractID} - ${agreement.contractNum}`
-          : agreement.contractID,
-    },
-    {
-      key: 'agreementDate',
-      label: 'Agreement Date',
-      minWidth: 140,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 120,
-      render: (agreement) => <StatusBadge status={agreement.status} />,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      minWidth: 120,
-      render: (agreement) => <ActionsCell agreement={agreement} />,
-    },
-  ];
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -316,73 +324,138 @@ const AgreementPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Commercial Agreements / Agreement Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Agreement Management"
+          subtitle="Create, manage and track agreements"
+        />
 
-        <div className="agreement-page">
-          <div className="agreement-header">
-            <h1 className="agreement-title">Agreement Management</h1>
+        <div className="route-assignment-page">
+          {/* Page Header (Route Assignment template) */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Agreement Management</h1>
+              <p className="ra-page-subtitle">Manage and track agreements, contracts and status</p>
+            </div>
           </div>
 
           {error && (
-            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
-              {error}
+            <div className="ra-alert ra-alert--error" role="alert">
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="ra-alert-close" aria-label="Close error message">
+                ×
+              </button>
             </div>
           )}
 
-          <div className="agreement-actions">
-            <div className="agreement-search-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          {/* Search and Actions (Route Assignment template) */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="agreement-search-input"
-                placeholder="Search by agreement number..."
+                className="ra-search-input"
+                placeholder="Search by agreement number, contract, agreement ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search agreements by agreement number"
               />
             </div>
-            <select
-              className="status-filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter by status"
-            >
-              <option value="All">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Generated">Generated</option>
-              <option value="Signed">Signed</option>
-            </select>
-            <button className="add-agreement-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Agreement
-            </button>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Agreement
+              </button>
+            </div>
           </div>
 
-          {loading && (
-            <div style={{ padding: '20px', textAlign: 'center' }}>Loading agreements...</div>
+          {loading && !agreements.length && (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              Loading agreements...
+            </div>
           )}
 
-          <div className="agreement-table-container">
-            <DataTable
-              data={filteredAgreements}
-              columns={columns}
-              getId={(agreement) => agreement.id}
-              emptyMessage="No agreement records found"
-            />
-          </div>
+          {/* Agreements Table */}
+          <div className="route-assignment-table-container">
+            <table className="route-assignment-table">
+              <thead>
+                <tr>
+                  <th>AGREEMENT NUMBER</th>
+                  <th>AGREEMENT ID</th>
+                  <th>CONTRACT REFERENCE</th>
+                  <th>AGREEMENT DATE</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAgreements.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="empty-message">
+                      {loading ? 'Loading...' : 'No agreement records found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAgreements.map((agreement) => {
+                    // Format date to DD/MM/YYYY
+                    const formatDate = (dateString: string) => {
+                      if (!dateString) return '-';
+                      const date = new Date(dateString);
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    };
 
-          <div className="agreement-pagination-info">
-            Showing {filteredAgreements.length} of {agreements.length} Items
+                    return (
+                      <tr key={agreement.id}>
+                        <td>
+                          <span className="agreement-num-cell">{agreement.agreementNum}</span>
+                        </td>
+                        <td>{agreement.agreementID}</td>
+                        <td>
+                          {agreement.contractNum 
+                            ? `${agreement.contractID} - ${agreement.contractNum}`
+                            : agreement.contractID}
+                        </td>
+                        <td>{formatDate(agreement.agreementDate)}</td>
+                        <td>
+                          <div className="ra-cell-center">
+                            <StatusBadge status={agreement.status} />
+                          </div>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="action-buttons ra-actions">
+                            <ActionsCell agreement={agreement} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="route-assignment-pagination-info">
+            Showing {filteredAgreements.length} of {agreements.length} items
           </div>
         </div>
       </main>
@@ -410,6 +483,30 @@ const AgreementPage = () => {
           onClose={() => {
             setShowPreviewModal(false);
             setSelectedAgreement(null);
+          }}
+        />
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setStatusFilter('All');
+            setAdvancedFilters({
+              agreementNum: '',
+              agreementID: '',
+              contractNum: '',
+              status: '',
+            });
+            setShowAdvancedFilters(false);
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
           }}
         />
       )}
@@ -959,6 +1056,126 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
         <div className="modal-footer">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
             Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter agreements by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Agreement Number</label>
+              <input
+                type="text"
+                value={draft.agreementNum}
+                onChange={(e) => setDraft({ ...draft, agreementNum: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter agreement number"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Agreement ID</label>
+              <input
+                type="text"
+                value={draft.agreementID}
+                onChange={(e) => setDraft({ ...draft, agreementID: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter agreement ID"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Contract Number</label>
+              <input
+                type="text"
+                value={draft.contractNum}
+                onChange={(e) => setDraft({ ...draft, contractNum: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter contract number"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="ra-filter-select"
+              >
+                <option value="All">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Generated">Generated</option>
+                <option value="Signed">Signed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraftStatus('All');
+              setDraft({ agreementNum: '', agreementID: '', contractNum: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
           </button>
         </div>
       </div>

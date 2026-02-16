@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { vehicleWasteCollectionService, VehicleWasteCollectionResponse, CreateVehicleWasteCollectionRequest, UpdateVehicleWasteCollectionRequest } from '../../services/vehicleWasteCollectionService';
 import { fleetService, FleetResponse } from '../../services/fleetService';
+import PageHeader from '../../components/layout/PageHeader';
 import './vehicleWasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -369,11 +370,10 @@ const VehicleWasteCollectionPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Vehicle Waste Collection</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Vehicle Waste Collection"
+          subtitle="Manage vehicle waste collection records"
+        />
 
         {/* Success Message */}
         {successMessage && (

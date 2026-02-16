@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './pcbZoneMasterPage.css';
 
@@ -249,11 +250,10 @@ const PCBZoneMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; PCB Zone Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="PCB Zone Master"
+          subtitle="Manage PCB zone master data"
+        />
 
         {/* Error Message */}
         {error && (

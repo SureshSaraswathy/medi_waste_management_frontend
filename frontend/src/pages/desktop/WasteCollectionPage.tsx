@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { wasteCollectionService, WasteCollectionResponse, BarcodeLookupResponse } from '../../services/wasteCollectionService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './wasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -419,11 +420,10 @@ const WasteCollectionPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Waste Collection</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Waste Collection"
+          subtitle="Manage waste collection records"
+        />
 
         {/* Success Message */}
         {successMessage && (

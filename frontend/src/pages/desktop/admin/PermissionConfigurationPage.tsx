@@ -6,6 +6,7 @@ import { roleService, RoleResponse } from '../../../services/roleService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { permissionAdminService, AdminPermissionItem } from '../../../services/permissionAdminService';
 import { hasPermission } from '../../../services/permissionService';
+import PageHeader from '../../../components/layout/PageHeader';
 import './permissionConfigurationPage.css';
 import '../dashboardPage.css';
 
@@ -596,11 +597,10 @@ const PermissionConfigurationPage: React.FC = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">MEDI-WASTE / Admin / Permission configuration</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Permission Configuration"
+          subtitle="Manage user roles and permissions"
+        />
 
         <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div className="perm-config-page">

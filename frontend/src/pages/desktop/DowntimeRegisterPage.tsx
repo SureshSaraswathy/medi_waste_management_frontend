@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { downtimeRegisterService, DowntimeRegisterResponse } from '../../services/downtimeRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import NotificationBell from '../../components/NotificationBell';
+import PageHeader from '../../components/layout/PageHeader';
 import './downtimeRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -343,15 +343,10 @@ const DowntimeRegisterPage = () => {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Downtime Register</span>
-          </div>
-          <div className="header-right">
-            <NotificationBell />
-          </div>
-        </header>
+        <PageHeader 
+          title="Downtime Register"
+          subtitle="Manage equipment downtime and breakdown records"
+        />
 
         {/* Success Message */}
         {successMessage && (

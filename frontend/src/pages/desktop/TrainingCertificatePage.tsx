@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { trainingCertificateService, TrainingCertificateResponse } from '../../services/trainingCertificateService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './trainingCertificatePage.css';
 import '../desktop/dashboardPage.css';
 
@@ -27,6 +28,16 @@ interface TrainingCertificate {
   modifiedOn: string;
 }
 
+interface AdvancedFilters {
+  companyId: string;
+  hcfCode: string;
+  staffName: string;
+  staffCode: string;
+  trainingDateFrom: string;
+  trainingDateTo: string;
+  status: string;
+}
+
 const TrainingCertificatePage = () => {
   const { logout, user, permissions } = useAuth();
   const location = useLocation();
@@ -36,6 +47,16 @@ const TrainingCertificatePage = () => {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    companyId: '',
+    hcfCode: '',
+    staffName: '',
+    staffCode: '',
+    trainingDateFrom: '',
+    trainingDateTo: '',
+    status: '',
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingCertificate, setEditingCertificate] = useState<TrainingCertificate | null>(null);
@@ -165,8 +186,27 @@ const TrainingCertificatePage = () => {
     }
   }, [companyFilter, companies, loadHcfs]);
 
-  // Certificates are already filtered by API, so we use them directly
-  const filteredCertificates = certificates;
+  // Client-side filtering with advanced filters
+  const filteredCertificates = certificates.filter((certificate) => {
+    // Search query filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery ||
+      certificate.certificateNo.toLowerCase().includes(searchLower) ||
+      certificate.staffName.toLowerCase().includes(searchLower) ||
+      certificate.staffCode.toLowerCase().includes(searchLower) ||
+      certificate.hcfCode.toLowerCase().includes(searchLower);
+
+    // Advanced filters
+    const matchesCompany = !advancedFilters.companyId || certificate.companyId === advancedFilters.companyId;
+    const matchesHcfCode = !advancedFilters.hcfCode || certificate.hcfCode.toLowerCase().includes(advancedFilters.hcfCode.toLowerCase());
+    const matchesStaffName = !advancedFilters.staffName || certificate.staffName.toLowerCase().includes(advancedFilters.staffName.toLowerCase());
+    const matchesStaffCode = !advancedFilters.staffCode || certificate.staffCode.toLowerCase().includes(advancedFilters.staffCode.toLowerCase());
+    const matchesDateFrom = !advancedFilters.trainingDateFrom || certificate.trainingDate >= advancedFilters.trainingDateFrom;
+    const matchesDateTo = !advancedFilters.trainingDateTo || certificate.trainingDate <= advancedFilters.trainingDateTo;
+    const matchesStatus = !advancedFilters.status || certificate.status === advancedFilters.status;
+
+    return matchesSearch && matchesCompany && matchesHcfCode && matchesStaffName && matchesStaffCode && matchesDateFrom && matchesDateTo && matchesStatus;
+  });
 
   const handleCreate = () => {
     setEditingCertificate(null);
@@ -359,162 +399,107 @@ const TrainingCertificatePage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Compliance & Training / Training Certificate Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Training Certificate Management"
+          subtitle="Manage training certificates and certifications"
+        />
 
-        <div className="training-certificate-page">
-          {error && (
-            <div className="error-message" style={{ padding: '10px', marginBottom: '20px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
-              {error}
+        <div className="route-assignment-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M9 15l2 2 4-4"></path>
+              </svg>
             </div>
-          )}
-          {loading && (
-            <div className="loading-message" style={{ padding: '10px', marginBottom: '20px', textAlign: 'center' }}>
-              Loading...
-            </div>
-          )}
-          <div className="training-certificate-header">
-            <h1 className="training-certificate-title">Training Certificate Management</h1>
-          </div>
-
-          <div className="training-certificate-filters">
-            <div className="filter-row">
-              <div className="filter-group">
-                <label>Company</label>
-                <select
-                  className="filter-select"
-                  value={companyFilter}
-                  onChange={(e) => {
-                    setCompanyFilter(e.target.value);
-                    if (e.target.value === 'All') {
-                      setHcfFilter('All');
-                    }
-                  }}
-                >
-                  <option value="All">All Companies</option>
-                  {companies.filter(c => c.status === 'Active').map((company) => (
-                    <option key={company.id} value={company.companyName}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-group">
-                <label>HCF</label>
-                <select
-                  className="filter-select"
-                  value={hcfFilter}
-                  onChange={(e) => setHcfFilter(e.target.value)}
-                >
-                  <option value="All">All HCFs</option>
-                  {filteredHCFsForCompany.map((hcf) => (
-                    <option key={hcf.id} value={hcf.hcfCode}>
-                      {hcf.hcfCode} - {hcf.hcfName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-group">
-                <label>Date From</label>
-                <input
-                  type="date"
-                  className="filter-input"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
-              </div>
-              <div className="filter-group">
-                <label>Date To</label>
-                <input
-                  type="date"
-                  className="filter-input"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
-              </div>
-              <div className="filter-group">
-                <label>Status</label>
-                <select
-                  className="filter-select"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="filter-group">
-                <button className="clear-filters-btn" onClick={() => {
-                  setCompanyFilter('All');
-                  setHcfFilter('All');
-                  setStatusFilter('All');
-                  setDateFrom('');
-                  setDateTo('');
-                }}>
-                  Clear Filters
-                </button>
-              </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Training Certificate Management</h1>
+              <p className="ra-page-subtitle">Manage training certificates and certifications</p>
             </div>
           </div>
 
-          <div className="training-certificate-actions">
-            <div className="certificate-search-box">
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="certificate-search-input"
-                placeholder="Search Certificate..."
+                className="ra-search-input"
+                placeholder="Search by certificate number, staff name, staff code, HCF..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="export-btn" onClick={handleExport}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Export
-            </button>
-            <button className="add-certificate-btn" onClick={handleCreate}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Certificate
-            </button>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleCreate} disabled={loading} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Certificate
+              </button>
+            </div>
           </div>
 
-          <div className="certificate-table-container">
-            <table className="certificate-table">
-              <thead>
-                <tr>
-                  <th>Certificate No</th>
-                  <th>Staff Name</th>
-                  <th>Staff Code</th>
-                  <th>Designation</th>
-                  <th>HCF Code</th>
-                  <th>Training Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCertificates.length === 0 ? (
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="ra-alert ra-alert--error">
+              <span>{error}</span>
+              <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+          {loading && (
+            <div className="ra-alert" style={{ background: '#f8fafc', borderColor: '#e2e8f0', color: '#64748b' }}>
+              <span>Loading certificates...</span>
+            </div>
+          )}
+
+          {/* Table Container */}
+          <div className="route-assignment-table-container">
+            {loading && certificates.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                Loading certificates...
+              </div>
+            ) : filteredCertificates.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  {certificates.length === 0
+                    ? 'No certificate records found'
+                    : 'No certificates match your search criteria'}
+                </p>
+              </div>
+            ) : (
+              <table className="route-assignment-table">
+                <thead>
                   <tr>
-                    <td colSpan={8} className="empty-message">
-                      No certificate records found
-                    </td>
+                    <th>Certificate No</th>
+                    <th>Staff Name</th>
+                    <th>Staff Code</th>
+                    <th>Designation</th>
+                    <th>HCF Code</th>
+                    <th>Training Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  filteredCertificates.map((certificate) => {
+                </thead>
+                <tbody>
+                  {filteredCertificates.map((certificate) => {
                     const hcf = hcfs.find(h => h.hcfCode === certificate.hcfCode);
                     return (
                       <tr key={certificate.id}>
@@ -530,11 +515,12 @@ const TrainingCertificatePage = () => {
                           </span>
                         </td>
                         <td>
-                          <div className="certificate-action-buttons">
+                          <div className="action-buttons">
                             <button
                               className="action-btn action-btn--view"
                               onClick={() => handleView(certificate)}
                               title="View"
+                              type="button"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -546,6 +532,7 @@ const TrainingCertificatePage = () => {
                                 className="action-btn action-btn--edit"
                                 onClick={() => handleEdit(certificate)}
                                 title="Edit"
+                                type="button"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -557,6 +544,7 @@ const TrainingCertificatePage = () => {
                               className="action-btn action-btn--print"
                               onClick={() => handlePrint(certificate)}
                               title="Print"
+                              type="button"
                             >
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -568,16 +556,42 @@ const TrainingCertificatePage = () => {
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
-          <div className="certificate-pagination-info">
-            Showing {filteredCertificates.length} of {certificates.length} Items
+          <div className="route-assignment-pagination-info">
+            Showing {filteredCertificates.length} of {certificates.length} items
           </div>
         </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          advancedFilters={advancedFilters}
+          companies={companies.filter(c => c.status === 'Active')}
+          hcfs={hcfs.filter(h => h.status === 'Active')}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({
+              companyId: '',
+              hcfCode: '',
+              staffName: '',
+              staffCode: '',
+              trainingDateFrom: '',
+              trainingDateTo: '',
+              status: '',
+            });
+            setShowAdvancedFilters(false);
+          }}
+          onApply={(payload) => {
+            setAdvancedFilters(payload);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Create/Edit Certificate Modal */}
       {showCreateModal && (
@@ -1029,6 +1043,156 @@ const CertificateViewModal = ({ certificate, hcfs, companies, onClose, onPrint }
           </button>
           <button type="button" className="btn btn--primary" onClick={() => onPrint(certificate)}>
             Print Certificate
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  advancedFilters: AdvancedFilters;
+  companies: CompanyResponse[];
+  hcfs: HcfResponse[];
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: AdvancedFilters) => void;
+}
+
+const AdvancedFiltersModal = ({
+  advancedFilters,
+  companies,
+  hcfs,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter certificates by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Company</label>
+              <select
+                value={draft.companyId}
+                onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Companies</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>HCF Code</label>
+              <input
+                type="text"
+                value={draft.hcfCode}
+                onChange={(e) => setDraft({ ...draft, hcfCode: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter HCF code"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Staff Name</label>
+              <input
+                type="text"
+                value={draft.staffName}
+                onChange={(e) => setDraft({ ...draft, staffName: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter staff name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Staff Code</label>
+              <input
+                type="text"
+                value={draft.staffCode}
+                onChange={(e) => setDraft({ ...draft, staffCode: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter staff code"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Training Date From</label>
+              <input
+                type="date"
+                value={draft.trainingDateFrom}
+                onChange={(e) => setDraft({ ...draft, trainingDateFrom: e.target.value })}
+                className="ra-filter-input"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Training Date To</label>
+              <input
+                type="date"
+                value={draft.trainingDateTo}
+                onChange={(e) => setDraft({ ...draft, trainingDateTo: e.target.value })}
+                className="ra-filter-input"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draft.status}
+                onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraft({ companyId: '', hcfCode: '', staffName: '', staffCode: '', trainingDateFrom: '', trainingDateTo: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() => onApply(draft)}
+          >
+            Apply Filters
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout';
 import ReportCard, { ReportCardProps } from '../../components/reports/ReportCard';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import './reportPage.css';
 import '../../components/reports/reportCard.css';
@@ -653,15 +654,11 @@ const ReportPage = () => {
   return (
     <AppLayout navItems={navItems}>
       <div className="reports-page">
-        {/* Page Header - Not sticky, matches Masters page */}
-        <div className="reports-header">
-          <div className="reports-header-content">
-            {/* Breadcrumb - Matches Masters page format */}
-            <div className="header-left">
-              <span className="breadcrumb">/ Dashboard / Reports</span>
-            </div>
-          </div>
-        </div>
+        {/* Page Header */}
+        <PageHeader 
+          title="Reports"
+          subtitle="Generate and view system reports"
+        />
 
         {/* Compact Filters Drawer */}
         {isFiltersOpen && (

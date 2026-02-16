@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../services/permissionService';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -443,11 +444,10 @@ const TransactionPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Transaction</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Transaction"
+          subtitle="Manage transactions and operations"
+        />
 
         {/* Transaction Page Content */}
         <div className="master-page">

@@ -11,6 +11,7 @@ import { categoryService, CategoryResponse } from '../../services/categoryServic
 import { routeService, RouteResponse } from '../../services/routeService';
 import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
+import PageHeader from '../../components/layout/PageHeader';
 import './hcfMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -651,11 +652,10 @@ const HCFMasterPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; HCF Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="HCF Master"
+          subtitle="Manage healthcare facility master data"
+        />
 
         <div className="hcf-master-page">
           {error && (

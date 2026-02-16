@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './categoryMasterPage.css';
 
@@ -292,11 +293,10 @@ const CategoryMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Category Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Category Master"
+          subtitle="Manage category master data"
+        />
 
         {/* Error Message */}
         {error && (

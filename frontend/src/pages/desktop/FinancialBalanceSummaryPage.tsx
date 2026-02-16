@@ -16,6 +16,7 @@ import {
 } from '../../services/finBalanceService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './financialBalanceSummaryPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -32,6 +33,13 @@ interface HCF {
   hcfName: string;
   companyId: string;
   companyName: string;
+}
+
+interface AdvancedFilters {
+  companyId: string;
+  hcfCode: string;
+  hcfName: string;
+  isManual: string;
 }
 
 interface PreviewRecord {
@@ -53,6 +61,13 @@ const FinancialBalanceSummaryPage = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    companyId: '',
+    hcfCode: '',
+    hcfName: '',
+    isManual: '',
+  });
   const [balances, setBalances] = useState<FinBalanceResponse[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [hcfs, setHcfs] = useState<HCF[]>([]);
@@ -283,15 +298,26 @@ const FinancialBalanceSummaryPage = () => {
   };
 
   const filteredBalances = balances.filter((balance) => {
-    const matchesSearch =
-      balance.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      balance.companyCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      balance.hcfCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      balance.hcfName?.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search query filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery ||
+      balance.companyName?.toLowerCase().includes(searchLower) ||
+      balance.companyCode?.toLowerCase().includes(searchLower) ||
+      balance.hcfCode?.toLowerCase().includes(searchLower) ||
+      balance.hcfName?.toLowerCase().includes(searchLower);
 
+    // Company filter
     const matchesCompany = !companyFilter || balance.companyId === companyFilter;
 
-    return matchesSearch && matchesCompany;
+    // Advanced filters
+    const matchesAdvancedCompany = !advancedFilters.companyId || balance.companyId === advancedFilters.companyId;
+    const matchesHcfCode = !advancedFilters.hcfCode || balance.hcfCode?.toLowerCase().includes(advancedFilters.hcfCode.toLowerCase());
+    const matchesHcfName = !advancedFilters.hcfName || balance.hcfName?.toLowerCase().includes(advancedFilters.hcfName.toLowerCase());
+    const matchesIsManual = !advancedFilters.isManual || 
+      (advancedFilters.isManual === 'true' && balance.isManual) ||
+      (advancedFilters.isManual === 'false' && !balance.isManual);
+
+    return matchesSearch && matchesCompany && matchesAdvancedCompany && matchesHcfCode && matchesHcfName && matchesIsManual;
   });
 
   // Get available HCFs for selected company
@@ -375,99 +401,111 @@ const FinancialBalanceSummaryPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Finance / Financial Balance Summary</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Financial Balance Summary"
+          subtitle="View and manage financial balance records"
+        />
 
-        <div className="invoice-management-page">
-          <div className="invoice-management-header">
-            <h1 className="invoice-management-title">Financial Balance Summary</h1>
-          </div>
-
-          {/* Error and Success Messages */}
-          {error && (
-            <div className="alert alert-error" style={{ margin: '16px', padding: '12px', background: '#fee', color: '#c33', borderRadius: '4px' }}>
-              {error}
-              <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+        <div className="route-assignment-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
             </div>
-          )}
-          {successMessage && (
-            <div className="alert alert-success" style={{ margin: '16px', padding: '12px', background: '#efe', color: '#3c3', borderRadius: '4px' }}>
-              {successMessage}
-              <button onClick={() => setSuccessMessage(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Financial Balance Summary</h1>
+              <p className="ra-page-subtitle">View and manage financial balance records</p>
             </div>
-          )}
+          </div>
 
-          {/* Action Bar */}
-          <div className="invoice-management-actions">
-            <div className="invoice-search-box">
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="invoice-search-input"
+                className="ra-search-input"
                 placeholder="Search by company, HCF code, or name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select
-              className="status-filter-select"
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-            >
-              <option value="">All Companies</option>
-              {companies
-                .filter((c) => c.status === 'Active')
-                .map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.companyName}
-                  </option>
-                ))}
-            </select>
-            <label
-              className="export-btn"
-              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              Upload Excel
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-            </label>
-            <button className="add-invoice-btn" onClick={handleCreate} disabled={loading}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Balance
-            </button>
+            <div className="ra-actions">
+              <label
+                className="ra-filter-btn"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Upload Excel
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleCreate} disabled={loading} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Balance
+              </button>
+            </div>
           </div>
 
-          {/* Balances Table */}
-          <div className="invoice-table-container">
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="ra-alert ra-alert--error">
+              <span>{error}</span>
+              <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+          {successMessage && (
+            <div className="ra-alert ra-alert--success">
+              <span>{successMessage}</span>
+              <button className="ra-alert-close" onClick={() => setSuccessMessage(null)}>×</button>
+            </div>
+          )}
+
+          {/* Table Container */}
+          <div className="route-assignment-table-container">
             {loading && balances.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading balances...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                Loading balances...
+              </div>
             ) : filteredBalances.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                {balances.length === 0
-                  ? 'No financial balance records found'
-                  : 'No records match your search criteria'}
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  {balances.length === 0
+                    ? 'No financial balance records found'
+                    : 'No records match your search criteria'}
+                </p>
               </div>
             ) : (
-              <table className="invoice-table">
+              <table className="route-assignment-table">
                 <thead>
                   <tr>
                     <th>Company</th>
@@ -483,55 +521,30 @@ const FinancialBalanceSummaryPage = () => {
                   {filteredBalances.map((balance) => (
                     <tr key={balance.finBalanceId}>
                       <td>{balance.companyName || '-'}</td>
-                      <td>{balance.hcfCode || '-'}</td>
+                      <td className="hcf-code-cell">{balance.hcfCode || '-'}</td>
                       <td>{balance.hcfName || '-'}</td>
                       <td style={{ fontWeight: 600 }}>₹{Number(balance.openingBalance).toFixed(2)}</td>
                       <td style={{ fontWeight: 600, color: balance.currentBalance < 0 ? '#dc2626' : '#059669' }}>
                         ₹{Number(balance.currentBalance).toFixed(2)}
                       </td>
                       <td>
-                        <span
-                          style={{
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            background: balance.isManual ? '#dbeafe' : '#f3f4f6',
-                            color: balance.isManual ? '#1e40af' : '#6b7280',
-                          }}
-                        >
+                        <span className={`balance-type-badge balance-type-badge--${balance.isManual ? 'manual' : 'auto'}`}>
                           {balance.isManual ? 'Manual' : 'Auto'}
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="action-buttons">
                           <button
+                            className="action-btn action-btn--edit"
                             onClick={() => handleEdit(balance)}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#3b82f6',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: 500,
-                            }}
+                            type="button"
                           >
                             Edit
                           </button>
                           <button
+                            className="action-btn action-btn--delete"
                             onClick={() => handleDelete(balance.finBalanceId)}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#ef4444',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: 500,
-                            }}
+                            type="button"
                           >
                             Delete
                           </button>
@@ -543,6 +556,31 @@ const FinancialBalanceSummaryPage = () => {
               </table>
             )}
           </div>
+          <div className="route-assignment-pagination-info">
+            Showing {filteredBalances.length} of {balances.length} items
+          </div>
+
+          {/* Advanced Filters Modal */}
+          {showAdvancedFilters && (
+            <AdvancedFiltersModal
+              advancedFilters={advancedFilters}
+              companies={companies.filter(c => c.status === 'Active')}
+              onClose={() => setShowAdvancedFilters(false)}
+              onClear={() => {
+                setAdvancedFilters({
+                  companyId: '',
+                  hcfCode: '',
+                  hcfName: '',
+                  isManual: '',
+                });
+                setShowAdvancedFilters(false);
+              }}
+              onApply={(payload) => {
+                setAdvancedFilters(payload);
+                setShowAdvancedFilters(false);
+              }}
+            />
+          )}
 
           {/* Create Modal */}
           {showCreateModal && (
@@ -1025,6 +1063,123 @@ const FinancialBalanceSummaryPage = () => {
       )}
         </div>
       </main>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  advancedFilters: AdvancedFilters;
+  companies: Company[];
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: AdvancedFilters) => void;
+}
+
+const AdvancedFiltersModal = ({
+  advancedFilters,
+  companies,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter financial balances by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Company</label>
+              <select
+                value={draft.companyId}
+                onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Companies</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>HCF Code</label>
+              <input
+                type="text"
+                value={draft.hcfCode}
+                onChange={(e) => setDraft({ ...draft, hcfCode: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter HCF code"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>HCF Name</label>
+              <input
+                type="text"
+                value={draft.hcfName}
+                onChange={(e) => setDraft({ ...draft, hcfName: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter HCF name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Type</label>
+              <select
+                value={draft.isManual}
+                onChange={(e) => setDraft({ ...draft, isManual: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Types</option>
+                <option value="true">Manual</option>
+                <option value="false">Auto</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraft({ companyId: '', hcfCode: '', hcfName: '', isManual: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() => onApply(draft)}
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

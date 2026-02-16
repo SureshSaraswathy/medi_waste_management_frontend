@@ -5,6 +5,7 @@ import { hasPermission } from '../../services/permissionService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './frequencyMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -288,11 +289,10 @@ const FrequencyMasterPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Frequency Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Frequency Master"
+          subtitle="Manage frequency master data"
+        />
 
         {/* Error Message */}
         {error && (

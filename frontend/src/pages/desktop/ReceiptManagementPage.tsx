@@ -9,6 +9,7 @@ import {
   CreateManualReceiptRequest,
 } from '../../services/paymentService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './receiptManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -19,12 +20,28 @@ interface Company {
   status: 'Active' | 'Inactive';
 }
 
+interface AdvancedFilters {
+  paymentId: string;
+  companyId: string;
+  paymentDate: string;
+  paymentMode: string;
+  status: string;
+}
+
 const ReceiptManagementPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    paymentId: '',
+    companyId: '',
+    paymentDate: '',
+    paymentMode: '',
+    status: '',
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null);
   const [payments, setPayments] = useState<PaymentResponse[]>([]);
@@ -161,14 +178,24 @@ const ReceiptManagementPage = () => {
   };
 
   const filteredPayments = payments.filter((payment) => {
-    const matchesSearch =
-      payment.paymentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.receiptNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      companies.find((c) => c.id === payment.companyId)?.companyName.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search query filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery ||
+      payment.paymentId.toLowerCase().includes(searchLower) ||
+      payment.receiptNumber?.toLowerCase().includes(searchLower) ||
+      companies.find((c) => c.id === payment.companyId)?.companyName.toLowerCase().includes(searchLower);
 
+    // Company filter
     const matchesCompany = !companyFilter || payment.companyId === companyFilter;
 
-    return matchesSearch && matchesCompany;
+    // Advanced filters
+    const matchesPaymentId = !advancedFilters.paymentId || payment.paymentId.toLowerCase().includes(advancedFilters.paymentId.toLowerCase());
+    const matchesAdvancedCompany = !advancedFilters.companyId || payment.companyId === advancedFilters.companyId;
+    const matchesPaymentDate = !advancedFilters.paymentDate || payment.paymentDate === advancedFilters.paymentDate;
+    const matchesPaymentMode = !advancedFilters.paymentMode || payment.paymentMode === advancedFilters.paymentMode;
+    const matchesStatus = !advancedFilters.status || payment.status === advancedFilters.status;
+
+    return matchesSearch && matchesCompany && matchesPaymentId && matchesAdvancedCompany && matchesPaymentDate && matchesPaymentMode && matchesStatus;
   });
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
@@ -247,74 +274,88 @@ const ReceiptManagementPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Finance / Receipt Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Receipt Management"
+          subtitle="Generate and manage payment receipts"
+        />
 
-        <div className="invoice-management-page">
-          <div className="invoice-management-header">
-            <h1 className="invoice-management-title">Receipt Management</h1>
-          </div>
-
-          {/* Error and Success Messages */}
-          {error && (
-            <div className="alert alert-error" style={{ margin: '16px', padding: '12px', background: '#fee', color: '#c33', borderRadius: '4px' }}>
-              {error}
-              <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+        <div className="route-assignment-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
             </div>
-          )}
-          {successMessage && (
-            <div className="alert alert-success" style={{ margin: '16px', padding: '12px', background: '#efe', color: '#3c3', borderRadius: '4px' }}>
-              {successMessage}
-              <button onClick={() => setSuccessMessage(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Receipt Management</h1>
+              <p className="ra-page-subtitle">Generate and manage payment receipts</p>
             </div>
-          )}
+          </div>
 
-          {/* Filters */}
-          <div className="invoice-management-actions">
-            <div className="invoice-search-box">
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="invoice-search-input"
-                placeholder="Search by payment ID, receipt number, or company..."
+                className="ra-search-input"
+                placeholder="Search by payment ID, receipt number, company..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select
-              className="status-filter-select"
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-            >
-              <option value="">All Companies</option>
-              {companies
-                .filter((c) => c.status === 'Active')
-                .map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.companyName}
-                  </option>
-                ))}
-            </select>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+            </div>
           </div>
 
-          {/* Payments Table */}
-          <div className="invoice-table-container">
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="ra-alert ra-alert--error">
+              <span>{error}</span>
+              <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+          {successMessage && (
+            <div className="ra-alert ra-alert--success">
+              <span>{successMessage}</span>
+              <button className="ra-alert-close" onClick={() => setSuccessMessage(null)}>×</button>
+            </div>
+          )}
+
+          {/* Table Container */}
+          <div className="route-assignment-table-container">
             {loading && payments.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading payments...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                Loading payments...
+              </div>
             ) : filteredPayments.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                {payments.length === 0
-                  ? 'No payments found without receipts'
-                  : 'No payments match your search criteria'}
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  {payments.length === 0
+                    ? 'No payments found without receipts'
+                    : 'No payments match your search criteria'}
+                </p>
               </div>
             ) : (
-              <table className="invoice-table">
+              <table className="route-assignment-table">
                 <thead>
                   <tr>
                     <th>Payment ID</th>
@@ -331,38 +372,21 @@ const ReceiptManagementPage = () => {
                     const company = companies.find((c) => c.id === payment.companyId);
                     return (
                       <tr key={payment.paymentId}>
-                        <td>{payment.paymentId.substring(0, 8)}...</td>
+                        <td className="payment-id-cell">{payment.paymentId.substring(0, 8)}...</td>
                         <td>{company?.companyName || payment.companyId || '-'}</td>
                         <td>{payment.paymentDate}</td>
                         <td style={{ fontWeight: 600 }}>₹{Number(payment.paymentAmount).toFixed(2)}</td>
                         <td>{payment.paymentMode}</td>
                         <td>
-                          <span
-                            style={{
-                              padding: '4px 12px',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: 500,
-                              background: payment.status === 'Completed' ? '#d1fae5' : '#fef3c7',
-                              color: payment.status === 'Completed' ? '#065f46' : '#92400e',
-                            }}
-                          >
+                          <span className={`receipt-status-badge receipt-status-badge--${payment.status.toLowerCase()}`}>
                             {payment.status}
                           </span>
                         </td>
                         <td>
                           <button
+                            className="action-btn action-btn--create"
                             onClick={() => handleCreateReceipt(payment)}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#3b82f6',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: 500,
-                            }}
+                            type="button"
                           >
                             Create Receipt
                           </button>
@@ -374,6 +398,32 @@ const ReceiptManagementPage = () => {
               </table>
             )}
           </div>
+          <div className="route-assignment-pagination-info">
+            Showing {filteredPayments.length} of {payments.length} items
+          </div>
+
+          {/* Advanced Filters Modal */}
+          {showAdvancedFilters && (
+            <AdvancedFiltersModal
+              advancedFilters={advancedFilters}
+              companies={companies.filter(c => c.status === 'Active')}
+              onClose={() => setShowAdvancedFilters(false)}
+              onClear={() => {
+                setAdvancedFilters({
+                  paymentId: '',
+                  companyId: '',
+                  paymentDate: '',
+                  paymentMode: '',
+                  status: '',
+                });
+                setShowAdvancedFilters(false);
+              }}
+              onApply={(payload) => {
+                setAdvancedFilters(payload);
+                setShowAdvancedFilters(false);
+              }}
+            />
+          )}
 
           {/* Create Receipt Modal */}
           {showCreateModal && selectedPayment && (
@@ -497,6 +547,141 @@ const ReceiptManagementPage = () => {
           )}
         </div>
       </main>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  advancedFilters: AdvancedFilters;
+  companies: Company[];
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: AdvancedFilters) => void;
+}
+
+const AdvancedFiltersModal = ({
+  advancedFilters,
+  companies,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter payments by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Payment ID</label>
+              <input
+                type="text"
+                value={draft.paymentId}
+                onChange={(e) => setDraft({ ...draft, paymentId: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter payment ID"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Company</label>
+              <select
+                value={draft.companyId}
+                onChange={(e) => setDraft({ ...draft, companyId: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Companies</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Payment Date</label>
+              <input
+                type="date"
+                value={draft.paymentDate}
+                onChange={(e) => setDraft({ ...draft, paymentDate: e.target.value })}
+                className="ra-filter-input"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Payment Mode</label>
+              <select
+                value={draft.paymentMode}
+                onChange={(e) => setDraft({ ...draft, paymentMode: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Modes</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="UPI">UPI</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Debit Card">Debit Card</option>
+                <option value="Online Payment">Online Payment</option>
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draft.status}
+                onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Status</option>
+                <option value="Completed">Completed</option>
+                <option value="Pending">Pending</option>
+                <option value="Failed">Failed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraft({ paymentId: '', companyId: '', paymentDate: '', paymentMode: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() => onApply(draft)}
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -29,7 +29,7 @@ import { ActivityTimelineWidget } from '../../components/dashboard/widgets/Activ
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import { DraggableWidget } from '../../components/dashboard/DraggableWidget';
 import { RowSection } from '../../components/dashboard/RowSection';
-import NotificationBell from '../../components/NotificationBell';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 
 // Lazy load widget components for better performance
@@ -306,30 +306,6 @@ const DashboardPage: React.FC = () => {
   const isPreviewMode = previewMode.enabled;
   // SUPER_ADMIN is inferred from permissions wildcard only.
   const isSuperAdminUser = userPermissions.includes('*');
-
-  const displayName = useMemo(() => {
-    const userMeta = (user || {}) as {
-      firstName?: string;
-      lastName?: string;
-      username?: string;
-      name?: string;
-      email?: string;
-    };
-    const fullName = [userMeta.firstName, userMeta.lastName].filter(Boolean).join(' ').trim();
-    if (fullName) return fullName;
-    if (userMeta.name && String(userMeta.name).trim()) return String(userMeta.name).trim();
-    if (userMeta.username && String(userMeta.username).trim()) return String(userMeta.username).trim();
-    if (userMeta.email && String(userMeta.email).trim()) return String(userMeta.email).trim().split('@')[0];
-    return 'Admin';
-  }, [user]);
-
-  const avatarInitials = useMemo(() => {
-    const parts = displayName.split(' ').filter(Boolean);
-    if (parts.length >= 2) {
-      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
-    }
-    return (parts[0]?.slice(0, 2) || 'AD').toUpperCase();
-  }, [displayName]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -1017,28 +993,10 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <main className="dashboard-main main-container">
         {/* Top Header */}
-        <header className="dashboard-header page-header top-header app-header">
-          <div className="app-header-left">
-            <div className="app-title-group">
-              <h1 className="app-page-title">Analytics Dashboard</h1>
-              <span className="app-page-subtitle">Real-time insights and performance metrics</span>
-            </div>
-          </div>
-
-          <div className="app-header-actions">
-            <div className="app-notification-btn">
-              <NotificationBell />
-            </div>
-
-            <div className="app-user-profile">
-              <div className="app-avatar" aria-hidden="true">{avatarInitials}</div>
-              <div className="app-user-text">
-                <div className="app-name">{displayName}</div>
-                <div className="app-status">Online</div>
-              </div>
-            </div>
-          </div>
-        </header>
+        <PageHeader 
+          title="Analytics Dashboard"
+          subtitle="Real-time insights and performance metrics"
+        />
 
         {/* Dashboard Content */}
         <div className="dashboard-page-content page-body">

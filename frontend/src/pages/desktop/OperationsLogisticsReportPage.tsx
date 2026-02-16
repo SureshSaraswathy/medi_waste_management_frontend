@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 import './masterPage.css';
 
@@ -158,11 +159,10 @@ const OperationsLogisticsReportPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Reports / Operations & Logistics</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Operations & Logistics"
+          subtitle="Manage your operations and logistics reports"
+        />
 
         <div className="master-page">
           <div className="master-header">

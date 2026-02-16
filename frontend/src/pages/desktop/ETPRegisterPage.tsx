@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { etpRegisterService, ETPRegisterResponse } from '../../services/etpRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './etpRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -336,11 +337,10 @@ const ETPRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; ETP Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="ETP Register"
+          subtitle="Manage ETP (Effluent Treatment Plant) records"
+        />
 
         {/* Success Message */}
         {successMessage && (

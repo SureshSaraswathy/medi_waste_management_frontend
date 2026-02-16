@@ -5,6 +5,7 @@ import { hasPermission } from '../../services/permissionService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { fleetService, FleetResponse } from '../../services/fleetService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import './fleetManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -363,11 +364,10 @@ const FleetManagementPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Fleet Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Fleet Management"
+          subtitle="Manage fleet and vehicle master data"
+        />
 
         {/* Error Message */}
         {error && (

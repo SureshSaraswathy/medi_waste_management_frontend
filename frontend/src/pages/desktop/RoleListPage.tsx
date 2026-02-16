@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './userManagementPage.css';
 
@@ -271,11 +272,10 @@ const RoleListPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Masters / User Management / Role List</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Role List"
+          subtitle="View and manage system roles"
+        />
 
         {/* Role List Content */}
         <div className="user-management-page">

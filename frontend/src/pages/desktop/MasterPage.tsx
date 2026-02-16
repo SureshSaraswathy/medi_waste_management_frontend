@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../services/permissionService';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -440,11 +441,10 @@ const MasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Masters</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Master Data"
+          subtitle="Manage master data and configurations"
+        />
 
         {/* Master Page Content */}
         <div className="master-page">

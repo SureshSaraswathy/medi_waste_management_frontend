@@ -11,26 +11,46 @@ export interface AgreementClause {
   status: 'Active' | 'Inactive';
 }
 
+interface AdvancedFilters {
+  agreementID: string;
+  pointNum: string;
+  pointTitle: string;
+  status: string;
+}
+
 interface UseAgreementClauseFiltersProps {
   clauses: AgreementClause[];
-  agreementFilter: string;
+  searchQuery: string;
   statusFilter: string;
+  advancedFilters: AdvancedFilters;
 }
 
 export const useAgreementClauseFilters = ({ 
   clauses, 
-  agreementFilter, 
-  statusFilter 
+  searchQuery,
+  statusFilter,
+  advancedFilters
 }: UseAgreementClauseFiltersProps) => {
   const filteredClauses = useMemo(() => {
     return clauses.filter((clause) => {
-      // Filter by agreement
-      const matchesAgreement = agreementFilter === 'All' || clause.agreementID === agreementFilter;
+      // Search query filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery || 
+        clause.agreementID.toLowerCase().includes(searchLower) ||
+        clause.pointNum.toLowerCase().includes(searchLower) ||
+        clause.pointTitle.toLowerCase().includes(searchLower) ||
+        clause.pointText.toLowerCase().includes(searchLower);
       
       // Filter by status
       const matchesStatus = statusFilter === 'All' || clause.status === statusFilter;
 
-      return matchesAgreement && matchesStatus;
+      // Advanced filters
+      const matchesAgreementID = !advancedFilters.agreementID || clause.agreementID === advancedFilters.agreementID;
+      const matchesPointNum = !advancedFilters.pointNum || clause.pointNum.toLowerCase().includes(advancedFilters.pointNum.toLowerCase());
+      const matchesPointTitle = !advancedFilters.pointTitle || clause.pointTitle.toLowerCase().includes(advancedFilters.pointTitle.toLowerCase());
+      const matchesAdvancedStatus = !advancedFilters.status || advancedFilters.status === 'All' || clause.status === advancedFilters.status;
+
+      return matchesSearch && matchesStatus && matchesAgreementID && matchesPointNum && matchesPointTitle && matchesAdvancedStatus;
     }).sort((a, b) => {
       // Sort by agreement ID first, then by sequence number
       if (a.agreementID !== b.agreementID) {
@@ -38,7 +58,7 @@ export const useAgreementClauseFilters = ({
       }
       return a.sequenceNo - b.sequenceNo;
     });
-  }, [clauses, agreementFilter, statusFilter]);
+  }, [clauses, searchQuery, statusFilter, advancedFilters]);
 
   return { filteredClauses };
 };

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import PageHeader from '../../components/layout/PageHeader';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -374,11 +375,10 @@ const RolesPermissionsPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Masters / User Management / Roles & Permissions</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Roles & Permissions"
+          subtitle="Manage roles and their permissions"
+        />
 
         {/* Roles & Permissions Content */}
         <div className="user-management-page">

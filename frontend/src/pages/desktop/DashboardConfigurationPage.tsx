@@ -15,6 +15,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import DashboardConfigurationContent from './admin/dashboard-configuration/DashboardConfigurationContent';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardConfigurationPage.css';
 import './dashboardPage.css';
 
@@ -234,11 +235,10 @@ const DashboardConfigurationPage: React.FC = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">MEDI-WASTE / Admin / Dashboard configuration</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Dashboard Configuration"
+          subtitle="Configure dashboard settings for different roles"
+        />
 
         <div className="dashboard-page-content" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
           <DashboardConfigurationContent />

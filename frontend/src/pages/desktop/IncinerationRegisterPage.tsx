@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { incinerationRegisterService, IncinerationRegisterResponse } from '../../services/incinerationRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
+import PageHeader from '../../components/layout/PageHeader';
 import './incinerationRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -376,11 +377,10 @@ const IncinerationRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Incineration Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Incineration Register"
+          subtitle="Manage incineration operation records"
+        />
 
         {/* Success Message */}
         {successMessage && (

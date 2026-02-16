@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { disposalRegisterService, DisposalRegisterResponse } from '../../services/disposalRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
+import PageHeader from '../../components/layout/PageHeader';
 import './disposalRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -373,11 +374,10 @@ const DisposalRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Disposal Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Disposal Register"
+          subtitle="Manage waste disposal records"
+        />
 
         {/* Success Message */}
         {successMessage && (

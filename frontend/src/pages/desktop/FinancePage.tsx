@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hasPermission } from '../../services/permissionService';
+import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -171,11 +172,10 @@ const FinancePage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Finance</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Finance"
+          subtitle="Manage financial operations and reports"
+        />
 
         {/* Finance Page Content */}
         <div className="master-page">

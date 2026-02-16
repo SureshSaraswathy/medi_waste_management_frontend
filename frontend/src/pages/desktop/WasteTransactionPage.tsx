@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { wasteTransactionService, WasteTransactionResponse, CreateWasteTransactionRequest, UpdateWasteTransactionRequest } from '../../services/wasteTransactionService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './wasteTransactionPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -498,11 +499,10 @@ const WasteTransactionPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Transaction / Waste Transaction Data</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Waste Transaction Data"
+          subtitle="Manage waste transaction records"
+        />
 
         {/* Success Message */}
         {successMessage && (

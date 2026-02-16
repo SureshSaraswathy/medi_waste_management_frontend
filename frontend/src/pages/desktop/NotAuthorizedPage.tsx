@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { useAuth } from '../../hooks/useAuth';
+import PageHeader from '../../components/layout/PageHeader';
 import './notAuthorizedPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -90,11 +91,10 @@ export default function NotAuthorizedPage() {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Not Authorized</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Not Authorized"
+          subtitle="You don't have permission to access this page"
+        />
 
         <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div className="not-auth-page">

@@ -11,6 +11,8 @@ import {
   generateInvoices,
   generateInvoicesWeight,
   generateInvoicesMonth,
+  downloadInvoicePdf,
+  startBulkInvoicePdfJob,
   InvoiceResponse,
   CreateInvoiceRequest,
   UpdateInvoiceRequest,
@@ -27,6 +29,7 @@ import {
 } from '../../services/paymentService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './invoiceManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -72,12 +75,31 @@ interface HCF {
   status: 'Active' | 'Inactive';
 }
 
+interface AdvancedFilters {
+  invoiceNum: string;
+  companyName: string;
+  hcfCode: string;
+  invoiceDate: string;
+  dueDate: string;
+  status: string;
+}
+
 const InvoiceManagementPage = () => {
-  const { logout, permissions } = useAuth();
+  const { logout, permissions, user } = useAuth();
+  const MAX_BULK_PDF = 100;
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    invoiceNum: '',
+    companyName: '',
+    hcfCode: '',
+    invoiceDate: '',
+    dueDate: '',
+    status: '',
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -237,15 +259,26 @@ const InvoiceManagementPage = () => {
   };
 
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = 
-      invoice.invoiceNum.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      hcfs.find(h => h.hcfCode === invoice.hcfCode)?.hcfName.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search query filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery || 
+      invoice.invoiceNum.toLowerCase().includes(searchLower) ||
+      invoice.companyName.toLowerCase().includes(searchLower) ||
+      invoice.hcfCode.toLowerCase().includes(searchLower) ||
+      hcfs.find(h => h.hcfCode === invoice.hcfCode)?.hcfName.toLowerCase().includes(searchLower);
     
+    // Status filter
     const matchesStatus = statusFilter === 'All' || invoice.invoiceStatus === statusFilter;
+
+    // Advanced filters
+    const matchesInvoiceNum = !advancedFilters.invoiceNum || invoice.invoiceNum.toLowerCase().includes(advancedFilters.invoiceNum.toLowerCase());
+    const matchesCompanyName = !advancedFilters.companyName || invoice.companyName.toLowerCase().includes(advancedFilters.companyName.toLowerCase());
+    const matchesHcfCode = !advancedFilters.hcfCode || invoice.hcfCode.toLowerCase().includes(advancedFilters.hcfCode.toLowerCase());
+    const matchesInvoiceDate = !advancedFilters.invoiceDate || invoice.invoiceDate === advancedFilters.invoiceDate;
+    const matchesDueDate = !advancedFilters.dueDate || invoice.dueDate === advancedFilters.dueDate;
+    const matchesAdvancedStatus = !advancedFilters.status || advancedFilters.status === 'All' || invoice.invoiceStatus === advancedFilters.status;
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesInvoiceNum && matchesCompanyName && matchesHcfCode && matchesInvoiceDate && matchesDueDate && matchesAdvancedStatus;
   });
 
   const handleCreate = () => {
@@ -440,8 +473,55 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const handlePrint = (invoice: Invoice) => {
-    window.print();
+  const triggerBrowserDownload = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const enqueueBulkPdfJobs = async (invoiceIds: string[]) => {
+    const targetEmail = user?.email || '';
+    if (!targetEmail) {
+      throw new Error('EMAIL_MISSING');
+    }
+
+    const chunks: string[][] = [];
+    for (let i = 0; i < invoiceIds.length; i += MAX_BULK_PDF) {
+      chunks.push(invoiceIds.slice(i, i + MAX_BULK_PDF));
+    }
+
+    for (const chunk of chunks) {
+      await startBulkInvoicePdfJob(chunk, targetEmail);
+    }
+
+    return { jobs: chunks.length, email: targetEmail };
+  };
+
+  const handlePrint = async (invoice: Invoice) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { blob, filename } = await downloadInvoicePdf(invoice.id);
+
+      // Open in new tab for view/print.
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+
+      // If you prefer direct download instead of opening, use:
+      // triggerBrowserDownload(blob, filename);
+      void filename;
+    } catch (err: any) {
+      setError(err?.message || 'Failed to generate/download PDF');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleExport = () => {
@@ -564,15 +644,64 @@ const InvoiceManagementPage = () => {
 
     try {
       const result = await generateInvoices(generateData);
+      
+      console.log('Invoice generation result:', result);
+      
+      // Clear previous messages first
+      setError(null);
+      setSuccessMessage(null);
+
+      try {
+        const generatedIds = (result.generated || [])
+          .map((inv: any) => inv.invoiceId)
+          .filter(Boolean);
+
+        if (generatedIds.length > 0) {
+          const { jobs, email } = await enqueueBulkPdfJobs(generatedIds);
+          setSuccessMessage(`PDF ZIP processing started (${jobs} job${jobs === 1 ? '' : 's'}). Download link will be emailed to ${email}.`);
+        }
+      } catch (jobErr) {
+        console.error('Failed to enqueue bulk PDF job:', jobErr);
+        if (jobErr instanceof Error && jobErr.message === 'EMAIL_MISSING') {
+          setError('Invoices generated, but email is missing. Please re-login and try again.');
+        } else {
+          setError('Invoices generated, but failed to start bulk PDF processing. Please try again.');
+        }
+      }
+      
+      // Show detailed error messages for failed invoices FIRST (so they're visible)
+      if (result.failed && result.failed.length > 0) {
+        console.log('Failed invoices details:', JSON.stringify(result.failed, null, 2));
+        const failedMessages = result.failed.map(f => {
+          const hcfLabel = f.hcfCode || f.hcfId || 'Unknown HCF';
+          const reason = f.reason || 'Unknown error';
+          return `${hcfLabel}: ${reason}`;
+        }).join('; ');
+        
+        const errorMsg = result.summary.success > 0 
+          ? `Some invoices failed: ${failedMessages}`
+          : `Invoice generation failed: ${failedMessages}`;
+        
+        console.log('Setting error message:', errorMsg);
+        setError(errorMsg);
+      }
+      
+      // Show success message if any invoices were generated
       if (result.summary.success > 0) {
-        setSuccessMessage(
-          `Generated ${result.summary.success} invoice(s) successfully. ${result.summary.failed} failed.`
-        );
+        const successMsg = `Generated ${result.summary.success} invoice(s) successfully.`;
+        if (result.summary.failed > 0) {
+          setSuccessMessage(`${successMsg} ${result.summary.failed} failed.`);
+        } else {
+          setSuccessMessage(successMsg);
+        }
       }
-      if (result.failed.length > 0) {
-        const failedMessages = result.failed.map(f => `${f.hcfCode}: ${f.reason}`).join(', ');
-        setError(`Some invoices failed: ${failedMessages}`);
+      
+      // If all failed and none succeeded, ensure error is shown and success is cleared
+      if (result.summary.success === 0 && result.summary.failed > 0) {
+        setSuccessMessage(null); // Clear success message
+        // Error message should already be set above
       }
+      
       // Reload invoices after generation
       await loadInvoices();
       setShowGenerateModal(false);
@@ -597,6 +726,23 @@ const InvoiceManagementPage = () => {
 
     try {
       const result = await generateInvoicesWeight(generateData);
+
+      try {
+        const generatedIds = (result.generated || [])
+          .map((inv: any) => inv.invoiceId)
+          .filter(Boolean);
+        if (generatedIds.length > 0) {
+          const { jobs, email } = await enqueueBulkPdfJobs(generatedIds);
+          setSuccessMessage(`PDF ZIP processing started (${jobs} job${jobs === 1 ? '' : 's'}). Download link will be emailed to ${email}.`);
+        }
+      } catch (jobErr) {
+        console.error('Failed to enqueue bulk PDF job:', jobErr);
+        if (jobErr instanceof Error && jobErr.message === 'EMAIL_MISSING') {
+          setError('Invoices generated, but email is missing. Please re-login and try again.');
+        } else {
+          setError('Invoices generated, but failed to start bulk PDF processing. Please try again.');
+        }
+      }
       if (result.summary.success > 0) {
         setSuccessMessage(
           `Generated ${result.summary.success} invoice(s) successfully (Weight-based). ${result.summary.failed} failed.`
@@ -629,6 +775,23 @@ const InvoiceManagementPage = () => {
 
     try {
       const result = await generateInvoicesMonth(generateData);
+
+      try {
+        const generatedIds = (result.generated || [])
+          .map((inv: any) => inv.invoiceId)
+          .filter(Boolean);
+        if (generatedIds.length > 0) {
+          const { jobs, email } = await enqueueBulkPdfJobs(generatedIds);
+          setSuccessMessage(`PDF ZIP processing started (${jobs} job${jobs === 1 ? '' : 's'}). Download link will be emailed to ${email}.`);
+        }
+      } catch (jobErr) {
+        console.error('Failed to enqueue bulk PDF job:', jobErr);
+        if (jobErr instanceof Error && jobErr.message === 'EMAIL_MISSING') {
+          setError('Invoices generated, but email is missing. Please re-login and try again.');
+        } else {
+          setError('Invoices generated, but failed to start bulk PDF processing. Please try again.');
+        }
+      }
       setSuccessMessage(
         `Generated ${result.summary.success} invoice(s) successfully. ${result.summary.failed} failed. ${result.summary.skipped || 0} skipped.`
       );
@@ -843,124 +1006,140 @@ const InvoiceManagementPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Finance / Invoice Management</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Invoice Management"
+          subtitle="Create, manage and track invoices"
+        />
 
-        <div className="invoice-management-page">
-          <div className="invoice-management-header">
-            <h1 className="invoice-management-title">Invoice Management</h1>
-          </div>
-
-          {/* Error and Success Messages */}
-          {error && (
-            <div className="alert alert-error" style={{ margin: '16px', padding: '12px', background: '#fee', color: '#c33', borderRadius: '4px' }}>
-              {error}
-              <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+        <div className="route-assignment-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
             </div>
-          )}
-          {successMessage && (
-            <div className="alert alert-success" style={{ margin: '16px', padding: '12px', background: '#efe', color: '#3c3', borderRadius: '4px' }}>
-              {successMessage}
-              <button onClick={() => setSuccessMessage(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Invoice Management</h1>
+              <p className="ra-page-subtitle">Manage invoices, payments, and billing records</p>
             </div>
-          )}
+          </div>
 
-          <div className="invoice-management-actions">
-            <div className="invoice-search-box">
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="invoice-search-input"
-                placeholder="Search Invoice..."
+                className="ra-search-input"
+                placeholder="Search by invoice number, company, HCF..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select
-              className="status-filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Generated">DUE</option>
-              <option value="Partially Paid">Partially Paid</option>
-              <option value="Paid">Paid</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-            <button className="export-btn" onClick={handleExport} disabled={loading}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Export
-            </button>
-            <button 
-              className="add-invoice-btn" 
-              onClick={() => setShowGenerateMonthBedModal(true)}
-              disabled={loading}
-              style={{ marginRight: '8px', backgroundColor: '#3b82f6' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-              </svg>
-              Auto Generate – Bed / Lumpsum
-            </button>
-            <button 
-              className="add-invoice-btn" 
-              onClick={() => setShowGenerateMonthWeightModal(true)}
-              disabled={loading}
-              style={{ marginRight: '8px', backgroundColor: '#10b981' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-              </svg>
-              Auto Generate – Weight Based
-            </button>
-            <button className="add-invoice-btn" onClick={handleCreate} disabled={loading}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Create Invoice
-            </button>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="export-btn" onClick={handleExport} disabled={loading} style={{ marginRight: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export
+              </button>
+              <button 
+                className="add-invoice-btn" 
+                onClick={() => setShowGenerateMonthBedModal(true)}
+                disabled={loading}
+                style={{ marginRight: '8px', backgroundColor: '#3b82f6' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                Auto Generate – Bed / Lumpsum
+              </button>
+              <button 
+                className="add-invoice-btn" 
+                onClick={() => setShowGenerateMonthWeightModal(true)}
+                disabled={loading}
+                style={{ marginRight: '8px', backgroundColor: '#10b981' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                </svg>
+                Auto Generate – Weight Based
+              </button>
+              <button className="ra-add-btn" onClick={handleCreate} disabled={loading} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Create Invoice
+              </button>
+            </div>
           </div>
+
+          {/* Error and Success Messages */}
+          {error && (
+            <div className="ra-alert ra-alert--error">
+              <span>{error}</span>
+              <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+          {successMessage && (
+            <div className="ra-alert ra-alert--success">
+              <span>{successMessage}</span>
+              <button className="ra-alert-close" onClick={() => setSuccessMessage(null)}>×</button>
+            </div>
+          )}
 
           {loading && !invoices.length && (
             <div style={{ textAlign: 'center', padding: '40px' }}>Loading invoices...</div>
           )}
 
-          <div className="invoice-table-container">
-            <table className="invoice-table">
-              <thead>
-                <tr>
-                  <th>Invoice Number</th>
-                  <th>Company Name</th>
-                  <th>HCF Code</th>
-                  <th>Invoice Date</th>
-                  <th>Due Date</th>
-                  <th>Invoice Value</th>
-                  <th>Paid Amount</th>
-                  <th>Balance</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvoices.length === 0 ? (
+          {/* Table Container */}
+          <div className="route-assignment-table-container">
+            {loading && !invoices.length ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                Loading invoices...
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 16px', opacity: 0.5 }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style={{ fontSize: '14px', margin: 0 }}>No invoices found for the selected filters</p>
+              </div>
+            ) : (
+              <table className="route-assignment-table">
+                <thead>
                   <tr>
-                    <td colSpan={11} className="empty-message">
-                      No invoice records found
-                    </td>
+                    <th style={{ width: '40px' }}></th>
+                    <th>Invoice Number</th>
+                    <th>Company Name</th>
+                    <th>HCF Code</th>
+                    <th>Invoice Date</th>
+                    <th>Due Date</th>
+                    <th>Invoice Value</th>
+                    <th>Paid Amount</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
+                </thead>
+                <tbody>
+                  {
                   filteredInvoices.map((invoice) => {
                     const hcf = hcfs.find(h => h.hcfCode === invoice.hcfCode);
                     const isSelectable = isInvoiceSelectable(invoice);
@@ -1053,9 +1232,10 @@ const InvoiceManagementPage = () => {
                       </tr>
                     );
                   })
-                )}
-              </tbody>
-            </table>
+                  }
+                </tbody>
+              </table>
+            )}
           </div>
           
           {/* Payment Summary Bar - Financial Action Bar */}
@@ -1168,8 +1348,8 @@ const InvoiceManagementPage = () => {
             </div>
           )}
           
-          <div className="invoice-pagination-info" style={{ marginBottom: selectedInvoiceIds.size > 0 ? '80px' : '0' }}>
-            Showing {filteredInvoices.length} of {invoices.length} Items
+          <div className="route-assignment-pagination-info" style={{ marginBottom: selectedInvoiceIds.size > 0 ? '80px' : '0' }}>
+            Showing {filteredInvoices.length} of {invoices.length} items
           </div>
         </div>
       </main>
@@ -1199,6 +1379,34 @@ const InvoiceManagementPage = () => {
             setViewingInvoice(null);
           }}
           onPrint={handlePrint}
+        />
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          companies={companies}
+          hcfs={hcfs}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setStatusFilter('All');
+            setAdvancedFilters({
+              invoiceNum: '',
+              companyName: '',
+              hcfCode: '',
+              invoiceDate: '',
+              dueDate: '',
+              status: '',
+            });
+            setShowAdvancedFilters(false);
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
         />
       )}
 
@@ -1327,113 +1535,171 @@ const GenerateInvoiceModal = ({ companies, hcfs, onClose, onGenerate, loading }:
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Auto Generate Invoices</h2>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+    <div className="wp-modal-overlay" onClick={onClose}>
+      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="wp-modal-header">
+          <div className="wp-modal-header-left">
+            <div className="wp-modal-icon wp-modal-icon--add">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </div>
+            <h2 className="wp-modal-title">Auto Generate – Bed / Lumpsum</h2>
+          </div>
+          <button className="wp-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Company *</label>
-            <select
-              required
-              value={formData.companyId}
-              onChange={(e) => {
-                setFormData({ ...formData, companyId: e.target.value });
-                setSelectedHcfIds([]);
-              }}
-            >
-              <option value="">Select Company</option>
-              {companies.map(c => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
-          </div>
+          <div className="wp-modal-body">
+            <div className="wp-form-group">
+              <label htmlFor="companyId">Company <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <select
+                  id="companyId"
+                  required
+                  value={formData.companyId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, companyId: e.target.value });
+                    setSelectedHcfIds([]);
+                  }}
+                  className="wp-form-select"
+                >
+                  <option value="">Select Company</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.companyName}</option>
+                  ))}
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>HCFs (Optional - Leave empty for all)</label>
-            <select
-              multiple
-              value={selectedHcfIds}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, option => option.value);
-                setSelectedHcfIds(values);
-              }}
-              style={{ minHeight: '100px' }}
-            >
-              {filteredHcfs.map(h => (
-                <option key={h.id} value={h.id}>{h.hcfCode} - {h.hcfName}</option>
-              ))}
-            </select>
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Hold Ctrl (Windows) or Cmd (Mac) to select multiple HCFs
-            </small>
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="billingPeriodStart">Billing Period Start <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <input
+                  id="billingPeriodStart"
+                  type="date"
+                  required
+                  value={formData.billingPeriodStart}
+                  onChange={(e) => setFormData({ ...formData, billingPeriodStart: e.target.value })}
+                  className="wp-form-input"
+                />
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Billing Period Start *</label>
-            <input
-              type="date"
-              required
-              value={formData.billingPeriodStart}
-              onChange={(e) => setFormData({ ...formData, billingPeriodStart: e.target.value })}
-            />
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="billingPeriodEnd">Billing Period End <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <input
+                  id="billingPeriodEnd"
+                  type="date"
+                  required
+                  value={formData.billingPeriodEnd}
+                  onChange={(e) => setFormData({ ...formData, billingPeriodEnd: e.target.value })}
+                  className="wp-form-input"
+                />
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Billing Period End *</label>
-            <input
-              type="date"
-              required
-              value={formData.billingPeriodEnd}
-              onChange={(e) => setFormData({ ...formData, billingPeriodEnd: e.target.value })}
-            />
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="billingOption">Billing Option Filter</label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <select
+                  id="billingOption"
+                  value={formData.billingOption || ''}
+                  onChange={(e) => setFormData({ ...formData, billingOption: e.target.value as any })}
+                  className="wp-form-select"
+                >
+                  <option value="">All Options</option>
+                  <option value="Bed-wise">Bed-wise</option>
+                  <option value="Weight-wise">Weight-wise</option>
+                  <option value="Lumpsum">Lumpsum</option>
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                Filter HCFs by billing option (optional)
+              </small>
+            </div>
 
-          <div className="form-group">
-            <label>Billing Option Filter</label>
-            <select
-              value={formData.billingOption || ''}
-              onChange={(e) => setFormData({ ...formData, billingOption: e.target.value as any })}
-            >
-              <option value="">All Options</option>
-              <option value="Bed-wise">Bed-wise</option>
-              <option value="Weight-wise">Weight-wise</option>
-              <option value="Lumpsum">Lumpsum</option>
-            </select>
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Filter HCFs by billing option (optional)
-            </small>
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="billingType">Billing Type <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <select
+                  id="billingType"
+                  required
+                  value={formData.billingType}
+                  onChange={(e) => setFormData({ ...formData, billingType: e.target.value as any })}
+                  className="wp-form-select"
+                >
+                  <option value="Monthly">Monthly</option>
+                  <option value="Quarterly">Quarterly</option>
+                  <option value="Yearly">Yearly</option>
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Billing Type *</label>
-            <select
-              required
-              value={formData.billingType}
-              onChange={(e) => setFormData({ ...formData, billingType: e.target.value as any })}
-            >
-              <option value="Monthly">Monthly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Yearly">Yearly</option>
-            </select>
+            <div className="wp-form-group">
+              <label htmlFor="dueDays">Due Days (from invoice date)</label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <input
+                  id="dueDays"
+                  type="number"
+                  min="1"
+                  value={formData.dueDays || 30}
+                  onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
+                  className="wp-form-input"
+                />
+              </div>
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Due Days (from invoice date)</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.dueDays || 30}
-              onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
-            />
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button type="submit" className="btn btn--primary" disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Invoices'}
+          <div className="wp-modal-footer">
+            <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="wp-btn wp-btn--save" disabled={loading}>
+              {loading ? 'Generating...' : 'Save'}
             </button>
           </div>
         </form>
@@ -1477,103 +1743,151 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Generate Invoice (Weight-Based)</h2>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+    <div className="wp-modal-overlay" onClick={onClose}>
+      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="wp-modal-header">
+          <div className="wp-modal-header-left">
+            <div className="wp-modal-icon wp-modal-icon--add">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </div>
+            <h2 className="wp-modal-title">Auto Generate – Weight</h2>
+          </div>
+          <button className="wp-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Company *</label>
-            <select
-              required
-              value={formData.companyId}
-              onChange={(e) => {
-                setFormData({ ...formData, companyId: e.target.value });
-                setSelectedHcfIds([]);
-              }}
-            >
-              <option value="">Select Company</option>
-              {companies.map(c => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
-          </div>
+          <div className="wp-modal-body">
+            <div className="wp-form-group">
+              <label htmlFor="companyId">Company <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <select
+                  id="companyId"
+                  required
+                  value={formData.companyId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, companyId: e.target.value });
+                    setSelectedHcfIds([]);
+                  }}
+                  className="wp-form-select"
+                >
+                  <option value="">Select Company</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.companyName}</option>
+                  ))}
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>HCFs (Optional - Leave empty for all)</label>
-            <select
-              multiple
-              value={selectedHcfIds}
-              onChange={(e) => {
-                const values = Array.from(e.target.selectedOptions, option => option.value);
-                setSelectedHcfIds(values);
-              }}
-              style={{ minHeight: '100px' }}
-            >
-              {filteredHcfs.map(h => (
-                <option key={h.id} value={h.id}>{h.hcfCode} - {h.hcfName}</option>
-              ))}
-            </select>
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Hold Ctrl (Windows) or Cmd (Mac) to select multiple HCFs
-            </small>
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="pickupDateFrom">Pickup Date From <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <input
+                  id="pickupDateFrom"
+                  type="date"
+                  required
+                  value={formData.pickupDateFrom}
+                  onChange={(e) => setFormData({ ...formData, pickupDateFrom: e.target.value })}
+                  className="wp-form-input"
+                />
+              </div>
+              <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                Start date for waste transaction pickup
+              </small>
+            </div>
 
-          <div className="form-group">
-            <label>Pickup Date From *</label>
-            <input
-              type="date"
-              required
-              value={formData.pickupDateFrom}
-              onChange={(e) => setFormData({ ...formData, pickupDateFrom: e.target.value })}
-            />
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Start date for waste transaction pickup
-            </small>
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="pickupDateTo">Pickup Date To <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <input
+                  id="pickupDateTo"
+                  type="date"
+                  required
+                  value={formData.pickupDateTo}
+                  onChange={(e) => setFormData({ ...formData, pickupDateTo: e.target.value })}
+                  className="wp-form-input"
+                />
+              </div>
+              <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                End date for waste transaction pickup
+              </small>
+            </div>
 
-          <div className="form-group">
-            <label>Pickup Date To *</label>
-            <input
-              type="date"
-              required
-              value={formData.pickupDateTo}
-              onChange={(e) => setFormData({ ...formData, pickupDateTo: e.target.value })}
-            />
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              End date for waste transaction pickup
-            </small>
-          </div>
+            <div className="wp-form-group">
+              <label htmlFor="billingType">Billing Type <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <select
+                  id="billingType"
+                  required
+                  value={formData.billingType}
+                  onChange={(e) => setFormData({ ...formData, billingType: e.target.value as any })}
+                  className="wp-form-select"
+                >
+                  <option value="Monthly">Monthly</option>
+                  <option value="Quarterly">Quarterly</option>
+                  <option value="Yearly">Yearly</option>
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Billing Type *</label>
-            <select
-              required
-              value={formData.billingType}
-              onChange={(e) => setFormData({ ...formData, billingType: e.target.value as any })}
-            >
-              <option value="Monthly">Monthly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Yearly">Yearly</option>
-            </select>
+            <div className="wp-form-group">
+              <label htmlFor="dueDays">Due Days (from invoice date)</label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <input
+                  id="dueDays"
+                  type="number"
+                  min="1"
+                  value={formData.dueDays || 30}
+                  onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
+                  className="wp-form-input"
+                />
+              </div>
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Due Days (from invoice date)</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.dueDays || 30}
-              onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
-            />
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button type="submit" className="btn btn--primary" disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Invoices (Weight-Based)'}
+          <div className="wp-modal-footer">
+            <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="wp-btn wp-btn--save" disabled={loading}>
+              {loading ? 'Generating...' : 'Save'}
             </button>
           </div>
         </form>
@@ -1689,11 +2003,26 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{invoice ? 'Edit Invoice' : 'Create Invoice'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="wp-modal-overlay" onClick={onClose}>
+      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px' }}>
+        <div className="wp-modal-header">
+          <div className="wp-modal-header-left">
+            <div className={`wp-modal-icon ${invoice ? 'wp-modal-icon--edit' : 'wp-modal-icon--add'}`}>
+              {invoice ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              )}
+            </div>
+            <h2 className="wp-modal-title">{invoice ? 'Edit Invoice' : 'Create Invoice'}</h2>
+          </div>
+          <button className="wp-modal-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1701,244 +2030,433 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
           </button>
         </div>
 
-        <form className="invoice-form" onSubmit={handleSaveDraft}>
-          {/* Basic Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company Name *</label>
-                <select
-                  value={formData.companyName || ''}
-                  onChange={(e) => {
-                    handleFieldChange('companyName', e.target.value);
-                    handleFieldChange('hcfCode', '');
-                  }}
-                  required
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.companyName}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
+        <form onSubmit={handleSaveDraft}>
+          <div className="wp-modal-body">
+            <div className="wp-form-row">
+              <div className="wp-form-group">
+                <label htmlFor="companyName">Company Name <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                  <select
+                    id="companyName"
+                    value={formData.companyName || ''}
+                    onChange={(e) => {
+                      handleFieldChange('companyName', e.target.value);
+                      handleFieldChange('hcfCode', '');
+                    }}
+                    required
+                    className="wp-form-select"
+                  >
+                    <option value="">Select Company</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.companyName}>
+                        {company.companyName}
+                      </option>
+                    ))}
+                  </select>
+                  <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
               </div>
-              <div className="form-group">
-                <label>HCF Code *</label>
-                <select
-                  value={formData.hcfCode || ''}
-                  onChange={(e) => handleFieldChange('hcfCode', e.target.value)}
-                  required
-                  disabled={!formData.companyName}
-                >
-                  <option value="">Select HCF</option>
-                  {filteredHCFs.map((hcf) => (
-                    <option key={hcf.id} value={hcf.hcfCode}>
-                      {hcf.hcfCode} - {hcf.hcfName}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="wp-form-group">
+                <label htmlFor="hcfCode">HCF Code <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <select
+                    id="hcfCode"
+                    value={formData.hcfCode || ''}
+                    onChange={(e) => handleFieldChange('hcfCode', e.target.value)}
+                    required
+                    disabled={!formData.companyName}
+                    className="wp-form-select"
+                  >
+                    <option value="">Select HCF</option>
+                    {filteredHCFs.map((hcf) => (
+                      <option key={hcf.id} value={hcf.hcfCode}>
+                        {hcf.hcfCode} - {hcf.hcfName}
+                      </option>
+                    ))}
+                  </select>
+                  <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Invoice Number *</label>
+            </div>
+
+            <div className="wp-form-group">
+              <label htmlFor="invoiceNum">Invoice Number <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
                 <input
+                  id="invoiceNum"
                   type="text"
                   value={formData.invoiceNum || ''}
                   onChange={(e) => handleFieldChange('invoiceNum', e.target.value)}
                   required
                   placeholder="e.g., INV-2024-001"
+                  className="wp-form-input"
                 />
               </div>
-              <div className="form-group">
-                <label>Invoice Date *</label>
-                <input
-                  type="date"
-                  value={formData.invoiceDate || ''}
-                  onChange={(e) => handleFieldChange('invoiceDate', e.target.value)}
-                  required
-                />
+            </div>
+
+            <div className="wp-form-row">
+              <div className="wp-form-group">
+                <label htmlFor="invoiceDate">Invoice Date <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <input
+                    id="invoiceDate"
+                    type="date"
+                    value={formData.invoiceDate || ''}
+                    onChange={(e) => handleFieldChange('invoiceDate', e.target.value)}
+                    required
+                    className="wp-form-input"
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Due Date *</label>
-                <input
-                  type="date"
-                  value={formData.dueDate || ''}
-                  onChange={(e) => handleFieldChange('dueDate', e.target.value)}
-                  required
-                />
+              <div className="wp-form-group">
+                <label htmlFor="dueDate">Due Date <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <input
+                    id="dueDate"
+                    type="date"
+                    value={formData.dueDate || ''}
+                    onChange={(e) => handleFieldChange('dueDate', e.target.value)}
+                    required
+                    className="wp-form-input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Billing Information Section */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                BILLING INFORMATION
+              </h3>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="billingType">Billing Type <span className="wp-required">*</span></label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <select
+                      id="billingType"
+                      value={formData.billingType || ''}
+                      onChange={(e) => handleFieldChange('billingType', e.target.value)}
+                      required
+                      className="wp-form-select"
+                    >
+                      <option value="">Select Billing Type</option>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
+                      <option value="Yearly">Yearly</option>
+                    </select>
+                    <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="billingDays">Billing Days</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <input
+                      id="billingDays"
+                      type="text"
+                      value={formData.billingDays || ''}
+                      onChange={(e) => handleFieldChange('billingDays', e.target.value)}
+                      placeholder="Enter billing days"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="bedCount">Bed Count</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="12" y1="8" x2="12" y2="16"></line>
+                      <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <input
+                      id="bedCount"
+                      type="text"
+                      value={formData.bedCount || ''}
+                      onChange={(e) => handleFieldChange('bedCount', e.target.value)}
+                      placeholder="Enter bed count"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="bedRate">Bed Rate</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="bedRate"
+                      type="text"
+                      value={formData.bedRate || ''}
+                      onChange={(e) => handleFieldChange('bedRate', e.target.value)}
+                      placeholder="Enter bed rate"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="weightInKg">Weight in Kg</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.6 1.5-3.5 3.5-5.5z"></path>
+                    </svg>
+                    <input
+                      id="weightInKg"
+                      type="text"
+                      value={formData.weightInKg || ''}
+                      onChange={(e) => handleFieldChange('weightInKg', e.target.value)}
+                      placeholder="Enter weight in kg"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="kgRate">Kg Rate</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="kgRate"
+                      type="text"
+                      value={formData.kgRate || ''}
+                      onChange={(e) => handleFieldChange('kgRate', e.target.value)}
+                      placeholder="Enter kg rate"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-group">
+                <label htmlFor="lumpsumAmount">Lumpsum Amount</label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                  <input
+                    id="lumpsumAmount"
+                    type="text"
+                    value={formData.lumpsumAmount || ''}
+                    onChange={(e) => handleFieldChange('lumpsumAmount', e.target.value)}
+                    placeholder="Enter lumpsum amount"
+                    className="wp-form-input"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Tax & Amount Information Section */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                TAX & AMOUNT INFORMATION
+              </h3>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="taxableValue">Taxable Value <span className="wp-required">*</span></label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="taxableValue"
+                      type="text"
+                      value={formData.taxableValue || ''}
+                      onChange={(e) => handleFieldChange('taxableValue', e.target.value)}
+                      required
+                      placeholder="Enter taxable value"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="igst">IGST</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="igst"
+                      type="text"
+                      value={formData.igst || ''}
+                      onChange={(e) => handleFieldChange('igst', e.target.value)}
+                      placeholder="Enter IGST"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="cgst">CGST</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="cgst"
+                      type="text"
+                      value={formData.cgst || ''}
+                      onChange={(e) => handleFieldChange('cgst', e.target.value)}
+                      placeholder="Enter CGST"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="sgst">SGST</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="sgst"
+                      type="text"
+                      value={formData.sgst || ''}
+                      onChange={(e) => handleFieldChange('sgst', e.target.value)}
+                      placeholder="Enter SGST"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="roundOff">Round Off</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <input
+                      id="roundOff"
+                      type="text"
+                      value={formData.roundOff || '0'}
+                      onChange={(e) => handleFieldChange('roundOff', e.target.value)}
+                      placeholder="Enter round off"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="invoiceValue">Invoice Value</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="invoiceValue"
+                      type="text"
+                      value={formData.invoiceValue || ''}
+                      readOnly
+                      placeholder="Auto-calculated"
+                      className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="wp-form-row">
+                <div className="wp-form-group">
+                  <label htmlFor="totalPaidAmount">Total Paid Amount</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="totalPaidAmount"
+                      type="text"
+                      value={formData.totalPaidAmount || '0'}
+                      onChange={(e) => handleFieldChange('totalPaidAmount', e.target.value)}
+                      placeholder="Enter paid amount"
+                      className="wp-form-input"
+                    />
+                  </div>
+                </div>
+                <div className="wp-form-group">
+                  <label htmlFor="balanceAmount">Balance Amount</label>
+                  <div className="wp-input-wrapper">
+                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <input
+                      id="balanceAmount"
+                      type="text"
+                      value={formData.balanceAmount || ''}
+                      readOnly
+                      placeholder="Auto-calculated"
+                      className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', fontWeight: '600' }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Billing Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Billing Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Billing Type *</label>
-                <select
-                  value={formData.billingType || ''}
-                  onChange={(e) => handleFieldChange('billingType', e.target.value)}
-                  required
-                >
-                  <option value="">Select Billing Type</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                  <option value="Yearly">Yearly</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Billing Days</label>
-                <input
-                  type="text"
-                  value={formData.billingDays || ''}
-                  onChange={(e) => handleFieldChange('billingDays', e.target.value)}
-                  placeholder="Enter billing days"
-                />
-              </div>
-              <div className="form-group">
-                <label>Bed Count</label>
-                <input
-                  type="text"
-                  value={formData.bedCount || ''}
-                  onChange={(e) => handleFieldChange('bedCount', e.target.value)}
-                  placeholder="Enter bed count"
-                />
-              </div>
-              <div className="form-group">
-                <label>Bed Rate</label>
-                <input
-                  type="text"
-                  value={formData.bedRate || ''}
-                  onChange={(e) => handleFieldChange('bedRate', e.target.value)}
-                  placeholder="Enter bed rate"
-                />
-              </div>
-              <div className="form-group">
-                <label>Weight in Kg</label>
-                <input
-                  type="text"
-                  value={formData.weightInKg || ''}
-                  onChange={(e) => handleFieldChange('weightInKg', e.target.value)}
-                  placeholder="Enter weight in kg"
-                />
-              </div>
-              <div className="form-group">
-                <label>Kg Rate</label>
-                <input
-                  type="text"
-                  value={formData.kgRate || ''}
-                  onChange={(e) => handleFieldChange('kgRate', e.target.value)}
-                  placeholder="Enter kg rate"
-                />
-              </div>
-              <div className="form-group">
-                <label>Lumpsum Amount</label>
-                <input
-                  type="text"
-                  value={formData.lumpsumAmount || ''}
-                  onChange={(e) => handleFieldChange('lumpsumAmount', e.target.value)}
-                  placeholder="Enter lumpsum amount"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Tax & Amount Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Tax & Amount Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Taxable Value *</label>
-                <input
-                  type="text"
-                  value={formData.taxableValue || ''}
-                  onChange={(e) => handleFieldChange('taxableValue', e.target.value)}
-                  required
-                  placeholder="Enter taxable value"
-                />
-              </div>
-              <div className="form-group">
-                <label>IGST</label>
-                <input
-                  type="text"
-                  value={formData.igst || ''}
-                  onChange={(e) => handleFieldChange('igst', e.target.value)}
-                  placeholder="Enter IGST"
-                />
-              </div>
-              <div className="form-group">
-                <label>CGST</label>
-                <input
-                  type="text"
-                  value={formData.cgst || ''}
-                  onChange={(e) => handleFieldChange('cgst', e.target.value)}
-                  placeholder="Enter CGST"
-                />
-              </div>
-              <div className="form-group">
-                <label>SGST</label>
-                <input
-                  type="text"
-                  value={formData.sgst || ''}
-                  onChange={(e) => handleFieldChange('sgst', e.target.value)}
-                  placeholder="Enter SGST"
-                />
-              </div>
-              <div className="form-group">
-                <label>Round Off</label>
-                <input
-                  type="text"
-                  value={formData.roundOff || '0'}
-                  onChange={(e) => handleFieldChange('roundOff', e.target.value)}
-                  placeholder="Enter round off"
-                />
-              </div>
-              <div className="form-group">
-                <label>Invoice Value</label>
-                <input
-                  type="text"
-                  value={formData.invoiceValue || ''}
-                  readOnly
-                  style={{ backgroundColor: '#f1f5f9', fontWeight: '600' }}
-                  placeholder="Auto-calculated"
-                />
-              </div>
-              <div className="form-group">
-                <label>Total Paid Amount</label>
-                <input
-                  type="text"
-                  value={formData.totalPaidAmount || '0'}
-                  onChange={(e) => handleFieldChange('totalPaidAmount', e.target.value)}
-                  placeholder="Enter paid amount"
-                />
-              </div>
-              <div className="form-group">
-                <label>Balance Amount</label>
-                <input
-                  type="text"
-                  value={formData.balanceAmount || ''}
-                  readOnly
-                  style={{ backgroundColor: '#f1f5f9', fontWeight: '600' }}
-                  placeholder="Auto-calculated"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={handleReset}>
-              Reset
-            </button>
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="wp-modal-footer">
+            <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              Save Draft
-            </button>
-            <button type="button" className="btn btn--success" onClick={handleGenerate}>
-              Generate Invoice
+            <button type="submit" className="wp-btn wp-btn--save">
+              Save
             </button>
           </div>
         </form>
@@ -2149,90 +2667,160 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Auto Generate Invoices ({generationMode})</h2>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+    <div className="wp-modal-overlay" onClick={onClose}>
+      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="wp-modal-header">
+          <div className="wp-modal-header-left">
+            <div className="wp-modal-icon wp-modal-icon--add">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </div>
+            <h2 className="wp-modal-title">Auto Generate Invoices ({generationMode})</h2>
+          </div>
+          <button className="wp-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Company *</label>
-            <select
-              required
-              value={formData.companyId}
-              onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-            >
-              <option value="">Select Company</option>
-              {companies.map(c => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Note: Only HCFs with AutoGeneration enabled will be included
-            </small>
-          </div>
+          <div className="wp-modal-body">
+            <div className="wp-form-group">
+              <label htmlFor="companyId">Company <span className="wp-required">*</span></label>
+              <div className="wp-input-wrapper">
+                <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <select
+                  id="companyId"
+                  required
+                  value={formData.companyId}
+                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                  className="wp-form-select"
+                >
+                  <option value="">Select Company</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.companyName}</option>
+                  ))}
+                </select>
+                <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                Note: Only HCFs with AutoGeneration enabled will be included
+              </small>
+            </div>
 
-          <div className="form-group">
-            <label>Month *</label>
-            <select
-              required
-              value={formData.month}
-              onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })}
-            >
-              {monthNames.map((name, index) => (
-                <option key={index + 1} value={index + 1} disabled={index + 1 !== previousMonth}>
-                  {name} {index + 1 === previousMonth ? '(Previous Month)' : ''}
-                </option>
-              ))}
-            </select>
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Only previous month ({monthNames[previousMonth - 1]} {previousYear}) can be selected
-            </small>
-          </div>
+            <div className="wp-form-row">
+              <div className="wp-form-group">
+                <label htmlFor="month">Month <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <select
+                    id="month"
+                    required
+                    value={formData.month}
+                    onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })}
+                    className="wp-form-select"
+                  >
+                    {monthNames.map((name, index) => (
+                      <option key={index + 1} value={index + 1} disabled={index + 1 !== previousMonth}>
+                        {name} {index + 1 === previousMonth ? '(Previous Month)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+                <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                  Only previous month ({monthNames[previousMonth - 1]} {previousYear}) can be selected
+                </small>
+              </div>
 
-          <div className="form-group">
-            <label>Year *</label>
-            <input
-              type="number"
-              required
-              min="2000"
-              max="2100"
-              value={formData.year}
-              onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
-              disabled
-            />
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Year is automatically set to previous month's year
-            </small>
-          </div>
+              <div className="wp-form-group">
+                <label htmlFor="year">Year <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <input
+                    id="year"
+                    type="number"
+                    required
+                    min="2000"
+                    max="2100"
+                    value={formData.year}
+                    onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                    disabled
+                    className="wp-form-input"
+                  />
+                </div>
+                <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                  Year is automatically set to previous month's year
+                </small>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Invoice Date *</label>
-            <input
-              type="date"
-              required
-              value={formData.invoiceDate}
-              onChange={(e) => setFormData({ ...formData, invoiceDate: e.target.value })}
-            />
-            <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-              Enter the invoice date
-            </small>
-          </div>
+            <div className="wp-form-row">
+              <div className="wp-form-group">
+                <label htmlFor="invoiceDate">Invoice Date <span className="wp-required">*</span></label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  <input
+                    id="invoiceDate"
+                    type="date"
+                    required
+                    value={formData.invoiceDate}
+                    onChange={(e) => setFormData({ ...formData, invoiceDate: e.target.value })}
+                    className="wp-form-input"
+                  />
+                </div>
+                <small style={{ display: 'block', marginTop: '3px', color: '#64748b', fontSize: '11px' }}>
+                  Enter the invoice date
+                </small>
+              </div>
 
-          <div className="form-group">
-            <label>Due Days (from invoice date)</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.dueDays || 30}
-              onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
-            />
+              <div className="wp-form-group">
+                <label htmlFor="dueDays">Due Days (from invoice date)</label>
+                <div className="wp-input-wrapper">
+                  <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <input
+                    id="dueDays"
+                    type="number"
+                    min="1"
+                    value={formData.dueDays || 30}
+                    onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
+                    className="wp-form-input"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button type="submit" className="btn btn--primary" disabled={loading}>
+          <div className="wp-modal-footer">
+            <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="wp-btn wp-btn--save" disabled={loading}>
               {loading ? 'Generating...' : `Generate Invoices (${generationMode})`}
             </button>
           </div>
@@ -2988,6 +3576,162 @@ const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
             style={{ marginLeft: '10px' }}
           >
             Print Receipt
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  companies: Company[];
+  hcfs: HCF[];
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  companies,
+  hcfs,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter invoices by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Invoice Number</label>
+              <input
+                type="text"
+                value={draft.invoiceNum}
+                onChange={(e) => setDraft({ ...draft, invoiceNum: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter invoice number"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Company Name</label>
+              <select
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Companies</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.companyName}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>HCF Code</label>
+              <select
+                value={draft.hcfCode}
+                onChange={(e) => setDraft({ ...draft, hcfCode: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All HCFs</option>
+                {hcfs.map((hcf) => (
+                  <option key={hcf.id} value={hcf.hcfCode}>
+                    {hcf.hcfCode} - {hcf.hcfName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Invoice Date</label>
+              <input
+                type="date"
+                value={draft.invoiceDate}
+                onChange={(e) => setDraft({ ...draft, invoiceDate: e.target.value })}
+                className="ra-filter-input"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Due Date</label>
+              <input
+                type="date"
+                value={draft.dueDate}
+                onChange={(e) => setDraft({ ...draft, dueDate: e.target.value })}
+                className="ra-filter-input"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="ra-filter-select"
+              >
+                <option value="All">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Generated">DUE</option>
+                <option value="Partially Paid">Partially Paid</option>
+                <option value="Paid">Paid</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraftStatus('All');
+              setDraft({ invoiceNum: '', companyName: '', hcfCode: '', invoiceDate: '', dueDate: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
           </button>
         </div>
       </div>

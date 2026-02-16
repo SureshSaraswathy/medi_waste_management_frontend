@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getAdminNavItems } from '../../utils/adminNavItems';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import PageHeader from '../layout/PageHeader';
 import './appLayout.css';
 
 interface NavItem {
@@ -14,9 +15,11 @@ interface NavItem {
 
 interface AppLayoutProps extends PropsWithChildren {
   navItems?: NavItem[];
+  pageTitle?: string;
+  pageSubtitle?: string;
 }
 
-const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
+const AppLayout = ({ children, navItems = [], pageTitle, pageSubtitle }: AppLayoutProps) => {
   const { user, logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -243,6 +246,12 @@ const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
       </aside>
 
       <main className="app-layout__content">
+        {pageTitle && (
+          <PageHeader 
+            title={pageTitle}
+            subtitle={pageSubtitle}
+          />
+        )}
         {children}
       </main>
     </div>

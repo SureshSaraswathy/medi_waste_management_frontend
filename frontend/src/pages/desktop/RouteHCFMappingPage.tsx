@@ -7,6 +7,7 @@ import { routeHcfService, RouteHcfMappingResponse } from '../../services/routeHc
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { routeService, RouteResponse } from '../../services/routeService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './routeHCFMappingPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -455,11 +456,10 @@ const RouteHCFMappingPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Route-HCF Mapping</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Route-HCF Mapping"
+          subtitle="Map routes to healthcare facilities"
+        />
 
         {/* Success Message */}
         {successMessage && (

@@ -5,6 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { shredderRegisterService, ShredderRegisterResponse } from '../../services/shredderRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
+import PageHeader from '../../components/layout/PageHeader';
 import './shredderRegisterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -387,11 +388,10 @@ const ShredderRegisterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Shredder Register</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Shredder Register"
+          subtitle="Manage shredder operation records"
+        />
 
         {/* Success Message */}
         {successMessage && (

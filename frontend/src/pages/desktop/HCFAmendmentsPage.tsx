@@ -6,6 +6,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hcfAmendmentService, HcfAmendmentResponse } from '../../services/hcfAmendmentService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import PageHeader from '../../components/layout/PageHeader';
 import './hcfAmendmentsPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -363,11 +364,10 @@ const HCFAmendmentsPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; HCF Amendments</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="HCF Amendments"
+          subtitle="Manage HCF amendments and changes"
+        />
 
         {/* Error Message */}
         {error && (

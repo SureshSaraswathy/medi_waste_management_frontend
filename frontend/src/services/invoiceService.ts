@@ -209,6 +209,71 @@ const apiRequest = async <T>(
   return data.data;
 };
 
+type DownloadResult = { blob: Blob; filename: string };
+
+const getFilenameFromDisposition = (
+  contentDisposition: string | null,
+  fallback: string,
+): string => {
+  if (!contentDisposition) return fallback;
+  const match =
+    /filename="([^"]+)"/i.exec(contentDisposition) ||
+    /filename=([^;]+)/i.exec(contentDisposition);
+  return match?.[1]?.trim() || fallback;
+};
+
+const apiDownload = async (
+  endpoint: string,
+  options: RequestInit = {},
+  fallbackFilename: string = 'download.bin',
+): Promise<DownloadResult> => {
+  const token = getAuthToken();
+
+  const headers: HeadersInit = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      if (Array.isArray(errorData.message)) {
+        errorMessage = errorData.message.join(', ');
+      } else if (typeof errorData.message === 'string') {
+        errorMessage = errorData.message;
+      } else if (errorData.error) {
+        errorMessage =
+          typeof errorData.error === 'string'
+            ? errorData.error
+            : JSON.stringify(errorData.error);
+      }
+    } catch {
+      // ignore
+    }
+
+    if (response.status === 401) {
+      localStorage.removeItem('mw-auth-user');
+      window.location.href = '/login';
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  const blob = await response.blob();
+  const filename = getFilenameFromDisposition(
+    response.headers.get('content-disposition'),
+    fallbackFilename,
+  );
+
+  return { blob, filename };
+};
+
 // Get all invoices (legacy endpoint - use getInvoiceReport for reports)
 export const getInvoices = async (filters?: {
   companyId?: string;
@@ -398,5 +463,31 @@ export const generateInvoicesMonth = async (
   return apiRequest<GenerateInvoiceResponse & { skipped?: Array<{ hcfId: string; hcfCode: string; reason: string }> }>('/invoices/generate-month', {
     method: 'POST',
     body: JSON.stringify(request),
+  });
+};
+
+export const downloadInvoicePdf = async (invoiceId: string) => {
+  return apiDownload(`/invoices/${invoiceId}/pdf`, { method: 'GET' }, `invoice-${invoiceId}.pdf`);
+};
+
+export const downloadBulkInvoicePdfZip = async (
+  invoiceIds: string[],
+  includeManifest: boolean = true,
+) => {
+  return apiDownload(
+    `/invoices/pdf/bulk`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceIds, includeManifest }),
+    },
+    `invoices.zip`,
+  );
+};
+
+export const startBulkInvoicePdfJob = async (invoiceIds: string[], email: string) => {
+  return apiRequest<{ jobId: string }>(`/invoices/pdf/bulk`, {
+    method: 'POST',
+    body: JSON.stringify({ invoiceIds, email }),
   });
 };

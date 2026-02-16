@@ -7,6 +7,7 @@ import { routeAssignmentService, RouteAssignmentResponse } from '../../services/
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { routeService, RouteResponse } from '../../services/routeService';
 import { fleetService, FleetResponse } from '../../services/fleetService';
+import PageHeader from '../../components/layout/PageHeader';
 import './routeAssignmentPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -484,12 +485,10 @@ const RouteAssignmentPage = () => {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Route Assignment</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Route Assignment"
+          subtitle="Manage and assign routes to vehicles and drivers"
+        />
 
         {/* Success Message */}
         {successMessage && (

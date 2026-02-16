@@ -5,6 +5,7 @@ import { userService, UserResponse } from '../../../services/userService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { roleService, RoleResponse } from '../../../services/roleService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
 import './userReportPage.css';
 
 interface UserReportFilters {
@@ -456,32 +457,12 @@ const UserReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader 
+        title="User Report"
+        subtitle={!hasFiltersApplied() ? getContextSubtitle() : undefined}
+      />
       <div className="invoice-report-page">
-        {/* Breadcrumb Navigation */}
-        <div className="report-breadcrumb">
-          <button
-            className="back-button"
-            onClick={() => navigate('/report')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5"></path>
-              <path d="M12 19l-7-7 7-7"></path>
-            </svg>
-            Back to Reports
-          </button>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-item">Reports</span>
-          <span className="breadcrumb-separator">/</span>
-          <span className="breadcrumb-item">User Report</span>
-        </div>
         <div className="report-content-wrapper">
-          {/* Page Header */}
-          <div className="page-header">
-            <h1 className="page-title">User Report</h1>
-            {!hasFiltersApplied() && (
-              <div className="page-context-subtitle">{getContextSubtitle()}</div>
-            )}
-          </div>
 
           {/* Search & Actions Row */}
           <div className="search-actions-row">

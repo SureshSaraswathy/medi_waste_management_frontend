@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 import './masterPage.css';
 
@@ -158,11 +159,10 @@ const HCFComplianceReportPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard / Reports / HCF & Compliance</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="HCF & Compliance"
+          subtitle="Manage your HCF and compliance reports"
+        />
 
         <div className="master-page">
           <div className="master-header">

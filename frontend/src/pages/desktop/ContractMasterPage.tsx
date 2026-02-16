@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
-import { useContractFilters, Contract } from '../../hooks/useContractFilters';
+import { Contract } from '../../hooks/useContractFilters';
 import { contractService, ContractResponse } from '../../services/contractService';
 import { companyService } from '../../services/companyService';
 import { hcfService } from '../../services/hcfService';
-import DataTable, { Column } from '../../components/common/DataTable';
+import PageHeader from '../../components/layout/PageHeader';
 import './contractMasterPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -23,6 +23,14 @@ interface HCF {
   companyId: string;
 }
 
+interface AdvancedFilters {
+  contractNum: string;
+  companyName: string;
+  hcfName: string;
+  billingType: string;
+  status: string;
+}
+
 const ContractMasterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
@@ -30,6 +38,7 @@ const ContractMasterPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -39,6 +48,13 @@ const ContractMasterPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    contractNum: '',
+    companyName: '',
+    hcfName: '',
+    billingType: '',
+    status: '',
+  });
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -136,12 +152,44 @@ const ContractMasterPage = () => {
     }
   }, [editingContract?.companyID, hcfs]);
 
-  // Use custom hook for filtering logic
-  const { filteredContracts } = useContractFilters({
-    contracts,
-    searchQuery,
-    statusFilter,
-  });
+  // Filter contracts with search query, status filter, and advanced filters
+  const filteredContracts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const contractNumQuery = advancedFilters.contractNum.trim().toLowerCase();
+    const companyQuery = advancedFilters.companyName.trim().toLowerCase();
+    const hcfQuery = advancedFilters.hcfName.trim().toLowerCase();
+    const billingTypeQuery = advancedFilters.billingType.trim().toLowerCase();
+    const advancedStatusQuery = advancedFilters.status.trim();
+
+    return contracts.filter((contract) => {
+      // Top search box: broad match across key fields
+      const matchesSearch =
+        !query ||
+        contract.contractNum.toLowerCase().includes(query) ||
+        contract.companyName.toLowerCase().includes(query) ||
+        contract.hcfName.toLowerCase().includes(query);
+
+      // Status filter (from dropdown)
+      const matchesStatus = statusFilter === 'All' || contract.status === statusFilter;
+
+      // Advanced filters
+      const matchesContractNum = !contractNumQuery || contract.contractNum.toLowerCase().includes(contractNumQuery);
+      const matchesCompany = !companyQuery || contract.companyName.toLowerCase().includes(companyQuery);
+      const matchesHcf = !hcfQuery || contract.hcfName.toLowerCase().includes(hcfQuery);
+      const matchesBillingType = !billingTypeQuery || contract.billingType.toLowerCase().includes(billingTypeQuery);
+      const matchesAdvancedStatus = !advancedStatusQuery || contract.status === advancedStatusQuery;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesContractNum &&
+        matchesCompany &&
+        matchesHcf &&
+        matchesBillingType &&
+        matchesAdvancedStatus
+      );
+    });
+  }, [contracts, searchQuery, statusFilter, advancedFilters]);
 
   // Handle Add
   const handleAdd = () => {
@@ -201,13 +249,13 @@ const ContractMasterPage = () => {
 
   // Status badge component
   const StatusBadge = ({ status }: { status: Contract['status'] }) => {
-    const statusClass = `contract-status-badge contract-status-badge--${status.toLowerCase()}`;
+    const statusClass = `status-badge status-badge--${status.toLowerCase()}`;
     return <span className={statusClass}>{status}</span>;
   };
 
   // Actions component
   const ActionsCell = ({ contract }: { contract: Contract }) => (
-    <div className="contract-action-buttons" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+    <>
       <button
         className="action-btn action-btn--edit"
         onClick={(e) => handleEdit(contract, e)}
@@ -219,93 +267,45 @@ const ContractMasterPage = () => {
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
         </svg>
       </button>
-    </div>
+    </>
   );
 
-  // Define table columns
-  const columns: Column<Contract>[] = [
-    {
-      key: 'contractNum',
-      label: 'Contract Number',
-      minWidth: 180,
-      render: (contract) => (
-        <span className="contract-num-cell">{contract.contractNum}</span>
-      ),
-    },
-    {
-      key: 'contractID',
-      label: 'Contract ID',
-      minWidth: 120,
-    },
-    {
-      key: 'companyName',
-      label: 'Company',
-      minWidth: 150,
-      render: (contract) => contract.companyName,
-    },
-    {
-      key: 'hcfName',
-      label: 'HCF',
-      minWidth: 150,
-      render: (contract) => contract.hcfName,
-    },
-    {
-      key: 'startDate',
-      label: 'Start Date',
-      minWidth: 120,
-    },
-    {
-      key: 'endDate',
-      label: 'End Date',
-      minWidth: 120,
-    },
-    {
-      key: 'billingType',
-      label: 'Billing Type',
-      minWidth: 120,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 100,
-      render: (contract) => <StatusBadge status={contract.status} />,
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      minWidth: 100,
-      render: (contract) => <ActionsCell contract={contract} />,
-    },
-  ];
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -354,15 +354,26 @@ const ContractMasterPage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Commercial Agreements / Contract Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Contract Master"
+          subtitle="Manage contracts and agreements"
+        />
 
-        <div className="contract-master-page">
-          <div className="contract-master-header">
-            <h1 className="contract-master-title">Contract Master</h1>
+        <div className="route-assignment-page">
+          {/* Page Header (Route Assignment template) */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Contract Master</h1>
+              <p className="ra-page-subtitle">Manage and track contracts, billing type and status</p>
+            </div>
           </div>
 
           {error && (
@@ -371,54 +382,107 @@ const ContractMasterPage = () => {
             </div>
           )}
 
-          <div className="contract-master-actions">
-            <div className="contract-search-box">
+          {/* Search and Actions (Route Assignment template) */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
               <input
                 type="text"
-                className="contract-search-input"
+                className="ra-search-input"
                 placeholder="Search by contract number or company..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select
-              className="status-filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              <option value="Draft">Draft</option>
-              <option value="Active">Active</option>
-              <option value="Expired">Expired</option>
-            </select>
-            <button className="add-contract-btn" onClick={handleAdd}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Contract
-            </button>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Contract
+              </button>
+            </div>
           </div>
 
           {loading && (
             <div style={{ padding: '20px', textAlign: 'center' }}>Loading contracts...</div>
           )}
 
-          <div className="contract-table-container">
-            <DataTable
-              data={filteredContracts}
-              columns={columns}
-              getId={(contract) => contract.id}
-              onRowClick={handleRowClick}
-              emptyMessage="No contract records found"
-            />
+          {/* Contracts Table */}
+          <div className="route-assignment-table-container">
+            <table className="route-assignment-table">
+              <thead>
+                <tr>
+                  <th>CONTRACT NUMBER</th>
+                  <th>CONTRACT ID</th>
+                  <th>COMPANY</th>
+                  <th>HCF</th>
+                  <th>START DATE</th>
+                  <th>END DATE</th>
+                  <th>BILLING TYPE</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredContracts.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="empty-message">
+                      {loading ? 'Loading...' : 'No contract records found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredContracts.map((contract) => {
+                    // Format date to DD/MM/YYYY
+                    const formatDate = (dateString: string) => {
+                      if (!dateString) return '-';
+                      const date = new Date(dateString);
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const year = date.getFullYear();
+                      return `${day}/${month}/${year}`;
+                    };
+
+                    return (
+                      <tr key={contract.id} onClick={() => handleRowClick(contract)} style={{ cursor: 'pointer' }}>
+                        <td>
+                          <span className="contract-num-cell">{contract.contractNum}</span>
+                        </td>
+                        <td>{contract.contractID}</td>
+                        <td>{contract.companyName}</td>
+                        <td>{contract.hcfName}</td>
+                        <td>{formatDate(contract.startDate)}</td>
+                        <td>{formatDate(contract.endDate)}</td>
+                        <td>{contract.billingType}</td>
+                        <td>
+                          <div className="ra-cell-center">
+                            <StatusBadge status={contract.status} />
+                          </div>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="action-buttons ra-actions">
+                            <ActionsCell contract={contract} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          <div className="contract-pagination-info">
-            Showing {filteredContracts.length} of {contracts.length} Items
+          <div className="route-assignment-pagination-info">
+            Showing {filteredContracts.length} of {contracts.length} items
           </div>
         </div>
       </main>
@@ -435,6 +499,31 @@ const ContractMasterPage = () => {
             setEditingContract(null);
           }}
           onSave={handleSave}
+        />
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setStatusFilter('All');
+            setAdvancedFilters({
+              contractNum: '',
+              companyName: '',
+              hcfName: '',
+              billingType: '',
+              status: '',
+            });
+            setShowAdvancedFilters(false);
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
         />
       )}
     </div>
@@ -605,6 +694,140 @@ const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay ra-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-filter-modal-header">
+          <div className="ra-filter-modal-titlewrap">
+            <div className="ra-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="ra-filter-title">Advanced Filters</div>
+              <div className="ra-filter-subtitle">Filter contracts by multiple criteria</div>
+            </div>
+          </div>
+          <button className="ra-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="ra-filter-modal-body">
+          <div className="ra-filter-grid">
+            <div className="ra-filter-field">
+              <label>Contract Number</label>
+              <input
+                type="text"
+                value={draft.contractNum}
+                onChange={(e) => setDraft({ ...draft, contractNum: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter contract number"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Company Name</label>
+              <input
+                type="text"
+                value={draft.companyName}
+                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>HCF Name</label>
+              <input
+                type="text"
+                value={draft.hcfName}
+                onChange={(e) => setDraft({ ...draft, hcfName: e.target.value })}
+                className="ra-filter-input"
+                placeholder="Enter HCF name"
+              />
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Billing Type</label>
+              <select
+                value={draft.billingType}
+                onChange={(e) => setDraft({ ...draft, billingType: e.target.value })}
+                className="ra-filter-select"
+              >
+                <option value="">All Types</option>
+                <option value="Bed">Bed</option>
+                <option value="Kg">Kg</option>
+                <option value="Lumpsum">Lumpsum</option>
+              </select>
+            </div>
+
+            <div className="ra-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="ra-filter-select"
+              >
+                <option value="All">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Active">Active</option>
+                <option value="Expired">Expired</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="ra-filter-modal-footer">
+          <button
+            type="button"
+            className="ra-link-btn"
+            onClick={() => {
+              setDraftStatus('All');
+              setDraft({ contractNum: '', companyName: '', hcfName: '', billingType: '', status: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="ra-btn ra-btn--primary ra-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
     </div>
   );

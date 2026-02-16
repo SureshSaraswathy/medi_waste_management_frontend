@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { areaService, AreaResponse } from '../../services/areaService';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './areaMasterPage.css';
 
@@ -244,11 +245,10 @@ const AreaMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Area Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Area Master"
+          subtitle="Manage area master data"
+        />
 
         {/* Error Message */}
         {error && (

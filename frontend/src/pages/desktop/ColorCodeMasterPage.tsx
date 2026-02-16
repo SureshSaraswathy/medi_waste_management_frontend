@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { colorService, ColorResponse } from '../../services/colorService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './colorCodeMasterPage.css';
 
@@ -297,11 +298,10 @@ const ColorCodeMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">Home &nbsp;&gt;&nbsp; Color Code Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Color Code Master"
+          subtitle="Manage color code master data"
+        />
 
         {/* Error Message */}
         {error && (
