@@ -18,6 +18,9 @@ export type User = {
   email: string;
   roles: Role[];
   token: string;
+  userType?: 'USER' | 'HCF'; // NEW: Distinguish user type
+  hcfId?: string; // NEW: If HCF user
+  companyId?: string; // NEW: Company ID
 };
 
 type AuthContextValue = {
@@ -26,7 +29,7 @@ type AuthContextValue = {
   permissions: string[];
   permissionsLoading: boolean;
   permissionsReady: boolean;
-  login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string }>;
+  login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string; requiresPasswordChange?: boolean; passwordExpired?: boolean }>;
   sendOTP: (email: string) => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
   logout: () => void;
@@ -217,11 +220,20 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         // Clear any persisted user before starting the OTP flow.
         persist(null);
         // Use the normalized email from result, not the input email
-        return { requiresOTP: true, email: result.email };
+        return { 
+          requiresOTP: true, 
+          email: result.email,
+          requiresPasswordChange: result.requiresPasswordChange,
+          passwordExpired: result.passwordExpired,
+        };
       }
       if (result.user) {
         persist(result.user);
-        return { requiresOTP: false };
+        return { 
+          requiresOTP: false,
+          requiresPasswordChange: result.requiresPasswordChange,
+          passwordExpired: result.passwordExpired,
+        };
       }
       throw new Error('Login failed');
     } finally {

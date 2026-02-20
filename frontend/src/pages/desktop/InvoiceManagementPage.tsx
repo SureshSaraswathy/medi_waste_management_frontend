@@ -30,6 +30,7 @@ import {
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
+// InvoiceCreationMethodModal moved to GenerateInvoicesPage
 import './invoiceManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -100,14 +101,7 @@ const InvoiceManagementPage = () => {
     dueDate: '',
     status: '',
   });
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [showGenerateWeightModal, setShowGenerateWeightModal] = useState(false);
-  const [showGenerateMonthBedModal, setShowGenerateMonthBedModal] = useState(false);
-  const [showGenerateMonthWeightModal, setShowGenerateMonthWeightModal] = useState(false);
-  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [duplicateInfo, setDuplicateInfo] = useState<{ skipped: Array<{ hcfId: string; hcfCode: string; reason: string }> } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -115,7 +109,6 @@ const InvoiceManagementPage = () => {
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
-  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -281,24 +274,12 @@ const InvoiceManagementPage = () => {
     return matchesSearch && matchesStatus && matchesInvoiceNum && matchesCompanyName && matchesHcfCode && matchesInvoiceDate && matchesDueDate && matchesAdvancedStatus;
   });
 
-  const handleCreate = () => {
-    setEditingInvoice(null);
-    setShowCreateModal(true);
-  };
 
   const handleView = (invoice: Invoice) => {
     setViewingInvoice(invoice);
     setShowViewModal(true);
   };
 
-  const handleEdit = (invoice: Invoice) => {
-    if (invoice.invoiceStatus === 'Draft') {
-      setEditingInvoice(invoice);
-      setShowCreateModal(true);
-    } else {
-      alert('Only Draft invoices can be edited.');
-    }
-  };
 
   const handleGenerateSingle = (invoice: Invoice) => {
     if (invoice.invoiceStatus !== 'Draft') {
@@ -553,7 +534,8 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const handleSave = async (data: Partial<Invoice>, isGenerate: boolean = false) => {
+  // Removed handleSave - moved to GenerateInvoicesPage
+  const _handleSave = async (data: Partial<Invoice>, isGenerate: boolean = false) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -637,7 +619,8 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const handleAutoGenerate = async (generateData: GenerateInvoiceRequest) => {
+  // Removed handleAutoGenerate - moved to GenerateInvoicesPage
+  const _handleAutoGenerate = async (generateData: GenerateInvoiceRequest) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -719,7 +702,8 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const handleWeightGenerate = async (generateData: GenerateInvoiceWeightRequest) => {
+  // Removed handleWeightGenerate - moved to GenerateInvoicesPage
+  const _handleWeightGenerate = async (generateData: GenerateInvoiceWeightRequest) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -768,7 +752,8 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const handleMonthGenerate = async (generateData: GenerateInvoiceMonthRequest) => {
+  // Removed handleMonthGenerate - moved to GenerateInvoicesPage
+  const _handleMonthGenerate = async (generateData: GenerateInvoiceMonthRequest) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -807,7 +792,13 @@ const InvoiceManagementPage = () => {
         setError(`Some invoices failed: ${failedMessages}`);
       }
       
-      await loadInvoices();
+      // After successful batch post, redirect to invoice management
+      if (result.summary.success > 0) {
+        setTimeout(() => {
+          navigate('/finance/invoice-management');
+        }, 2000); // Give time for success message to display
+      }
+      
       setShowGenerateMonthBedModal(false);
       setShowGenerateMonthWeightModal(false);
     } catch (err: any) {
@@ -823,7 +814,8 @@ const InvoiceManagementPage = () => {
     }
   };
 
-  const calculateInvoiceValue = (formData: Partial<Invoice>) => {
+  // Removed calculateInvoiceValue - moved to GenerateInvoicesPage
+  const _calculateInvoiceValue = (formData: Partial<Invoice>) => {
     const taxable = parseFloat(formData.taxableValue || '0');
     const igst = parseFloat(formData.igst || '0');
     const cgst = parseFloat(formData.cgst || '0');
@@ -1055,35 +1047,6 @@ const InvoiceManagementPage = () => {
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
                 Export
-              </button>
-              <button 
-                className="add-invoice-btn" 
-                onClick={() => setShowGenerateMonthBedModal(true)}
-                disabled={loading}
-                style={{ marginRight: '8px', backgroundColor: '#3b82f6' }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                </svg>
-                Auto Generate – Bed / Lumpsum
-              </button>
-              <button 
-                className="add-invoice-btn" 
-                onClick={() => setShowGenerateMonthWeightModal(true)}
-                disabled={loading}
-                style={{ marginRight: '8px', backgroundColor: '#10b981' }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                </svg>
-                Auto Generate – Weight Based
-              </button>
-              <button className="ra-add-btn" onClick={handleCreate} disabled={loading} type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Create Invoice
               </button>
             </div>
           </div>
@@ -1354,20 +1317,6 @@ const InvoiceManagementPage = () => {
         </div>
       </main>
 
-      {/* Invoice Create/Edit Modal */}
-      {showCreateModal && (
-        <InvoiceFormModal
-          invoice={editingInvoice}
-          companies={companies.filter(c => c.status === 'Active')}
-          hcfs={hcfs.filter(h => h.status === 'Active')}
-          onClose={() => {
-            setShowCreateModal(false);
-            setEditingInvoice(null);
-          }}
-          onSave={handleSave}
-          calculateInvoiceValue={calculateInvoiceValue}
-        />
-      )}
 
       {/* Invoice View Modal */}
       {showViewModal && viewingInvoice && (
@@ -1446,56 +1395,7 @@ const InvoiceManagementPage = () => {
         />
       )}
 
-      {/* Generate Invoice Modal */}
-      {showGenerateModal && (
-        <GenerateInvoiceModal
-          companies={companies.filter(c => c.status === 'Active')}
-          hcfs={hcfs.filter(h => h.status === 'Active')}
-          onClose={() => setShowGenerateModal(false)}
-          onGenerate={handleAutoGenerate}
-          loading={loading}
-        />
-      )}
 
-      {showGenerateWeightModal && (
-        <GenerateInvoiceWeightModal
-          companies={companies.filter(c => c.status === 'Active')}
-          hcfs={hcfs.filter(h => h.status === 'Active')}
-          onClose={() => setShowGenerateWeightModal(false)}
-          onGenerate={handleWeightGenerate}
-          loading={loading}
-        />
-      )}
-
-      {showGenerateMonthBedModal && (
-        <GenerateInvoiceMonthModal
-          companies={companies.filter(c => c.status === 'Active')}
-          onClose={() => setShowGenerateMonthBedModal(false)}
-          onGenerate={handleMonthGenerate}
-          loading={loading}
-          generationMode="Bed/Lumpsum"
-        />
-      )}
-
-      {showGenerateMonthWeightModal && (
-        <GenerateInvoiceMonthModal
-          companies={companies.filter(c => c.status === 'Active')}
-          onClose={() => setShowGenerateMonthWeightModal(false)}
-          onGenerate={handleMonthGenerate}
-          loading={loading}
-          generationMode="Weight Based"
-        />
-      )}
-
-      {showDuplicateModal && duplicateInfo && (
-        <DuplicateInvoiceModal
-          skipped={duplicateInfo.skipped}
-          onClose={() => {
-            setShowDuplicateModal(false);
-            setDuplicateInfo(null);
-          }}
-        />
-      )}
     </div>
   );
 };

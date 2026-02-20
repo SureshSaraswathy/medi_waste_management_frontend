@@ -279,6 +279,15 @@ const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [previewMode, setPreviewMode] = useState<{ enabled: boolean; role: Role | null }>({ enabled: false, role: null });
 
+  // Debug: Log widgets state changes
+  useEffect(() => {
+    console.log('[DashboardPage] Widgets state changed:', {
+      count: widgets.length,
+      widgets: widgets,
+      willRender: widgets.length > 0,
+    });
+  }, [widgets]);
+
   // Check for preview mode from URL or sessionStorage
   useEffect(() => {
     const isPreview = searchParams.get('preview') === 'true';
@@ -298,14 +307,40 @@ const DashboardPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Get current role (from preview mode or user)
-  const currentRole: Role = previewMode.enabled && previewMode.role
-    ? previewMode.role
-    : ((user?.roles?.[0] as Role) || 'viewer');
-
   const isPreviewMode = previewMode.enabled;
   // SUPER_ADMIN is inferred from permissions wildcard only.
   const isSuperAdminUser = userPermissions.includes('*');
+
+  // Get current role (from preview mode or user)
+  // IMPORTANT: Map user roles to dashboard roles
+  // SuperAdmin users (with '*' permission) should use 'superadmin' role for dashboard
+  const getUserRoleForDashboard = (): Role => {
+    if (previewMode.enabled && previewMode.role) {
+      return previewMode.role;
+    }
+    
+    // Check if user is SuperAdmin (has '*' permission)
+    if (isSuperAdminUser) {
+      console.log('[DashboardPage] User is SuperAdmin, using "superadmin" role for dashboard');
+      return 'superadmin';
+    }
+    
+    // Try to get role from user object
+    if (user?.roles && user.roles.length > 0) {
+      const userRole = user.roles[0];
+      // If it's already a valid Role type, use it
+      if (['admin', 'manager', 'viewer', 'user', 'staff', 'superadmin'].includes(userRole)) {
+        return userRole as Role;
+      }
+      // Otherwise, try to map common role IDs to dashboard roles
+      // This is a fallback - ideally roles should match
+    }
+    
+    // Default fallback
+    return 'user';
+  };
+  
+  const currentRole: Role = getUserRoleForDashboard();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -455,9 +490,23 @@ const DashboardPage: React.FC = () => {
       setLoading(true);
       try {
         console.log('[DashboardPage] Loading dashboard for role:', currentRole);
+        console.log('[DashboardPage] User info:', {
+          userId: user?.id,
+          userName: user?.name,
+          userRoles: user?.roles,
+          currentRole,
+        });
         
         // Load role configuration from backend
         const roleConfig = await dashboardService.getDashboardConfig(currentRole);
+        
+        console.log('[DashboardPage] Backend API response:', {
+          role: roleConfig.role,
+          widgetsCount: Array.isArray(roleConfig.widgets) ? roleConfig.widgets.length : 0,
+          widgets: roleConfig.widgets,
+          menuItemsCount: Array.isArray(roleConfig.menuItems) ? roleConfig.menuItems.length : 0,
+          permissions: roleConfig.permissions,
+        });
         
         console.log('[DashboardPage] Loaded role config:', {
           role: roleConfig.role,
@@ -813,8 +862,19 @@ const DashboardPage: React.FC = () => {
           
           // Check if widget has dataSource with endpoint
           if (!widget.dataSource || !widget.dataSource.endpoint) {
-            console.warn('[DashboardPage] Filtering out invalid widget (missing dataSource.endpoint):', widget);
-            return false;
+            console.warn('[DashboardPage] Widget missing dataSource.endpoint, using fallback:', {
+              widget,
+              hasDataSource: !!widget.dataSource,
+              endpoint: widget.dataSource?.endpoint,
+            });
+            // Don't filter out - use emergency fallback instead
+            if (!widget.dataSource) {
+              widget.dataSource = {};
+            }
+            if (!widget.dataSource.endpoint) {
+              widget.dataSource.endpoint = '/dashboard/kpi/total-invoices'; // Emergency fallback
+              console.warn('[DashboardPage] Using emergency fallback endpoint for widget:', widget.id);
+            }
           }
           
           return true;
@@ -823,6 +883,60 @@ const DashboardPage: React.FC = () => {
         console.log('[DashboardPage] Final validated widgets:', {
           count: validatedWidgets.length,
           widgets: validatedWidgets,
+        });
+        
+        // Debug: Log detailed information about widgets
+        console.log('[DashboardPage] Widget Processing Summary:', {
+          roleConfigWidgetsCount: Array.isArray(roleConfig.widgets) ? roleConfig.widgets.length : 0,
+          computedWidgetsCount: Array.isArray(computed.widgets) ? computed.widgets.length : 0,
+          widgetsToProcessCount: widgetsToProcess.length,
+          validatedWidgetsCount: validatedWidgets.length,
+          roleConfigWidgets: roleConfig.widgets,
+          computedWidgets: computed.widgets,
+          widgetsToProcess: widgetsToProcess,
+          validatedWidgets: validatedWidgets,
+        });
+        
+        // Debug: Log if widgets were filtered out
+        if (validatedWidgets.length === 0 && widgetsToProcess.length > 0) {
+          console.error('[DashboardPage] ERROR: All widgets were filtered out during validation!', {
+            originalCount: widgetsToProcess.length,
+            validatedCount: validatedWidgets.length,
+            originalWidgets: widgetsToProcess,
+            filteredWidgets: widgetsToProcess.map((w, idx) => ({
+              index: idx,
+              widget: w,
+              hasId: !!w?.id,
+              hasType: !!w?.type,
+              hasDataSource: !!w?.dataSource,
+              hasEndpoint: !!w?.dataSource?.endpoint,
+              keys: w ? Object.keys(w) : [],
+            })),
+          });
+        }
+        
+        // Debug: Log if no widgets were loaded at all
+        if (widgetsToProcess.length === 0) {
+          console.error('[DashboardPage] ERROR: No widgets found in configuration!', {
+            role: currentRole,
+            roleConfig: {
+              role: roleConfig.role,
+              widgets: roleConfig.widgets,
+              widgetsType: typeof roleConfig.widgets,
+              widgetsIsArray: Array.isArray(roleConfig.widgets),
+            },
+            userOverrides,
+            computed: {
+              widgets: computed.widgets,
+              widgetsType: typeof computed.widgets,
+              widgetsIsArray: Array.isArray(computed.widgets),
+            },
+          });
+        }
+        
+        console.log('[DashboardPage] Setting widgets state:', {
+          count: validatedWidgets.length,
+          willRender: validatedWidgets.length > 0,
         });
         
         setWidgets(validatedWidgets);

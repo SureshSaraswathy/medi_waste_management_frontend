@@ -33,7 +33,9 @@ const LoginPage = () => {
   useEffect(() => {
     if (user && !loading) {
       const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
-      navigate(redirect || '/dashboard', { replace: true });
+      // If user is HCF, redirect to HCF dashboard, otherwise regular dashboard
+      const defaultPath = user.userType === 'HCF' ? '/hcf/dashboard' : '/dashboard';
+      navigate(redirect || defaultPath, { replace: true });
     }
   }, [user, loading, navigate, location]);
 
@@ -109,8 +111,17 @@ const LoginPage = () => {
         setShowOTP(true);
         setResendTimer(60);
       } else {
-        const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
-        navigate(redirect || '/dashboard', { replace: true });
+        // Check if password change is required (for HCF users)
+        if (result.requiresPasswordChange) {
+          // Redirect to HCF change password page
+          navigate('/hcf/change-password', { replace: true });
+        } else {
+          // Check user type and redirect accordingly
+          const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
+          // If user is HCF, redirect to HCF dashboard, otherwise regular dashboard
+          const defaultPath = user?.userType === 'HCF' ? '/hcf/dashboard' : '/dashboard';
+          navigate(redirect || defaultPath, { replace: true });
+        }
       }
     } catch (err) {
       setError((err as Error).message || 'Invalid credentials. Please check your username and password.');
@@ -338,7 +349,7 @@ const LoginPage = () => {
                     />
                     <span>Remember Me</span>
                   </label>
-                  <Link to="/forgot-password" className="forgot-password-link">Forgot Password?</Link>
+                  <Link to="/hcf/forgot-password" className="forgot-password-link">Forgot Password?</Link>
                 </div>
 
                 {error && <div className="error-message">{error}</div>}

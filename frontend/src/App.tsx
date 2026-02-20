@@ -44,6 +44,8 @@ import WasteTransactionPage from './pages/desktop/WasteTransactionPage';
 import VehicleWasteCollectionPage from './pages/desktop/VehicleWasteCollectionPage';
 import WasteProcessPage from './pages/desktop/WasteProcessPage';
 import InvoiceManagementPage from './pages/desktop/InvoiceManagementPage';
+import GenerateInvoicesPage from './pages/desktop/GenerateInvoicesPage';
+import DraftInvoiceBatchEditPage from './pages/desktop/DraftInvoiceBatchEditPage';
 import PaymentPage from './pages/desktop/PaymentPage';
 import PaymentSuccessPage from './pages/desktop/PaymentSuccessPage';
 import ReceiptManagementPage from './pages/desktop/ReceiptManagementPage';
@@ -90,6 +92,10 @@ import MobileWasteCollectionsPage from './pages/mobile/MobileWasteCollectionsPag
 import MobileAssignedHcfListPage from './pages/mobile/MobileAssignedHcfListPage';
 import MobileAnalyticsPage from './pages/mobile/MobileAnalyticsPage';
 import RequireAnyPermission from './components/layout/RequireAnyPermission';
+import HCFForgotPasswordPage from './pages/desktop/HCFForgotPasswordPage';
+import HCFResetPasswordPage from './pages/desktop/HCFResetPasswordPage';
+import HCFChangePasswordPage from './pages/desktop/HCFChangePasswordPage';
+import HCFDashboardPage from './pages/desktop/HCFDashboardPage';
 
 // Wrapper component to provide Dashboard context
 const AppWithDashboard = () => {
@@ -676,6 +682,26 @@ const AppWithDashboard = () => {
           }
         />
         <Route
+          path="/finance/generate-invoices"
+          element={
+            <ProtectedRoute>
+              <RequireAnyPermission anyOf={['INVOICE_CREATE']}>
+                <GenerateInvoicesPage />
+              </RequireAnyPermission>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/finance/draft-invoices/:batchId"
+          element={
+            <ProtectedRoute>
+              <RequireAnyPermission anyOf={['INVOICE_CREATE', 'INVOICE_UPDATE']}>
+                <DraftInvoiceBatchEditPage />
+              </RequireAnyPermission>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/finance/payment"
           element={
             <ProtectedRoute>
@@ -952,6 +978,26 @@ const AppWithDashboard = () => {
           </AppShell>
         }
       />
+      {/* HCF Routes */}
+      <Route path="/hcf/forgot-password" element={<HCFForgotPasswordPage />} />
+      <Route path="/hcf/reset-password" element={<HCFResetPasswordPage />} />
+      <Route
+        path="/hcf/change-password"
+        element={
+          <ProtectedRoute>
+            <HCFChangePasswordPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hcf/dashboard"
+        element={
+          <ProtectedRoute>
+            <HCFDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* TODO: Add more HCF routes: /hcf/profile, /hcf/invoices, /hcf/payments, /hcf/waste-entries */}
       </Routes>
     </DashboardProvider>
   );

@@ -55,6 +55,7 @@ export interface CreateHcfRequest {
   isGovt?: boolean;
   isGSTExempt?: boolean;
   autoGen?: boolean;
+  loginEnabled?: boolean;
 }
 
 export interface UpdateHcfRequest {
@@ -102,6 +103,7 @@ export interface UpdateHcfRequest {
   isGovt?: boolean;
   isGSTExempt?: boolean;
   autoGen?: boolean;
+  loginEnabled?: boolean;
   status?: 'Active' | 'Inactive';
 }
 
@@ -155,6 +157,7 @@ export interface HcfResponse {
   isGovt?: boolean;
   isGSTExempt?: boolean;
   autoGen?: boolean;
+  loginEnabled?: boolean;
   status: 'Active' | 'Inactive';
   createdBy: string | null;
   createdOn: string;

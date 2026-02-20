@@ -161,6 +161,11 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     const pathParts = location.pathname.split('/').filter(Boolean);
     if (pathParts.length === 0) return '/ Dashboard';
     
+    // Custom breadcrumb for draft invoice batch edit page
+    if (location.pathname.startsWith('/finance/draft-invoices/')) {
+      return '/ Finance / Billing Runs / Batch Edit';
+    }
+    
     const breadcrumbParts = pathParts.map((part, index) => {
       const label = part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ');
       return label;

@@ -1207,3 +1207,16 @@
     font-size: 12px;
   }
 }
+
+/* Responsive: Hide toolbar labels on smaller screens */
+@media (max-width: 1200px) {
+  .toolbar-label {
+    display: none;
+  }
+  
+  /* Adjust button padding when labels are hidden */
+  button .toolbar-label + svg,
+  button svg + .toolbar-label {
+    margin-left: 0;
+  }
+}

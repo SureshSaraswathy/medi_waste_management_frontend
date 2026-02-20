@@ -29,6 +29,7 @@ export interface CreateInvoiceRequest {
   notes?: string;
   billingPeriodStart?: string;
   billingPeriodEnd?: string;
+  status?: 'DRAFT' | 'POSTED' | 'DUE' | 'PARTIAL_PAID' | 'PAID' | 'CANCELLED';
 }
 
 export interface UpdateInvoiceRequest {
@@ -489,5 +490,117 @@ export const startBulkInvoicePdfJob = async (invoiceIds: string[], email: string
   return apiRequest<{ jobId: string }>(`/invoices/pdf/bulk`, {
     method: 'POST',
     body: JSON.stringify({ invoiceIds, email }),
+  });
+};
+
+// Batch Operations
+export interface CreateBatchRequest {
+  type: 'manual' | 'weight' | 'bed';
+  companyId: string;
+  siteId?: string;
+  periodFrom?: string;
+  periodTo?: string;
+  billingMonth?: string;
+}
+
+export interface BatchResponse {
+  id: string;
+  type: 'manual' | 'weight' | 'bed';
+  companyId: string;
+  siteId: string | null;
+  periodFrom: Date | null;
+  periodTo: Date | null;
+  billingMonth: string | null;
+  status: 'STAGED' | 'PROCESSING' | 'POSTED' | 'FAILED';
+  totalRecords: number;
+  createdBy: string | null;
+  createdAt: Date;
+  postedAt: Date | null;
+}
+
+export interface BatchItemResponse {
+  id: string;
+  batchId: string;
+  customerId: string;
+  description: string | null;
+  quantity: number;
+  rate: number;
+  taxPercent: number;
+  amount: number;
+  dueDate: Date;
+  errorFlag: boolean;
+  errorMessage: string | null;
+  isSelected: boolean;
+  createdAt: Date;
+}
+
+export interface BatchPreviewResponse extends BatchResponse {
+  items: BatchItemResponse[];
+}
+
+export interface UpdateBatchItemRequest {
+  quantity?: number;
+  rate?: number;
+  taxPercent?: number;
+  isSelected?: boolean;
+  description?: string;
+}
+
+export const createBatch = async (data: CreateBatchRequest): Promise<BatchResponse> => {
+  return apiRequest<BatchResponse>(`/billing/batches`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getBatchPreview = async (batchId: string): Promise<BatchPreviewResponse> => {
+  return apiRequest<BatchPreviewResponse>(`/billing/batches/${batchId}`);
+};
+
+export const postBatch = async (batchId: string, invoiceDate: string): Promise<{ success: number; failed: number }> => {
+  return apiRequest<{ success: number; failed: number }>(`/billing/batches/${batchId}/post`, {
+    method: 'POST',
+    body: JSON.stringify({ invoiceDate }),
+  });
+};
+
+export const getAllBatches = async (companyId?: string, status?: string): Promise<BatchResponse[]> => {
+  const params = new URLSearchParams();
+  if (companyId) params.append('companyId', companyId);
+  if (status) params.append('status', status);
+  const query = params.toString();
+  return apiRequest<BatchResponse[]>(`/billing/batches${query ? `?${query}` : ''}`);
+};
+
+export const postInvoice = async (invoiceId: string, invoiceDate?: string): Promise<InvoiceResponse> => {
+  return apiRequest<InvoiceResponse>(`/invoices/${invoiceId}/post`, {
+    method: 'POST',
+    body: JSON.stringify({ invoiceDate: invoiceDate || new Date().toISOString().split('T')[0] }),
+  });
+};
+
+// Draft Invoice Batch Operations
+export const generateDraftInvoices = async (data: CreateBatchRequest): Promise<{ batchId: string; invoiceCount: number }> => {
+  return apiRequest<{ batchId: string; invoiceCount: number }>(`/billing/batches/draft`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getDraftInvoicesByBatch = async (batchId: string): Promise<InvoiceResponse[]> => {
+  return apiRequest<InvoiceResponse[]>(`/billing/batches/${batchId}/draft-invoices`);
+};
+
+export const updateDraftInvoice = async (invoiceId: string, updates: { quantity?: number; rate?: number; dueDate?: string }): Promise<InvoiceResponse> => {
+  return apiRequest<InvoiceResponse>(`/billing/batches/draft-invoices/${invoiceId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+};
+
+export const postDraftInvoices = async (invoiceIds: string[], invoiceDate: string): Promise<{ success: number; failed: number }> => {
+  return apiRequest<{ success: number; failed: number }>(`/billing/batches/draft-invoices/post`, {
+    method: 'POST',
+    body: JSON.stringify({ invoiceIds, invoiceDate }),
   });
 };
