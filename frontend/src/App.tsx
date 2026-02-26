@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -52,6 +53,7 @@ import ReceiptManagementPage from './pages/desktop/ReceiptManagementPage';
 import FinancialBalanceSummaryPage from './pages/desktop/FinancialBalanceSummaryPage';
 import BarcodeGenerationPage from './pages/desktop/BarcodeGenerationPage';
 import TrainingCertificatePage from './pages/desktop/TrainingCertificatePage';
+import ComplianceRegisterPage from './pages/desktop/ComplianceRegisterPage';
 import ContractMasterPage from './pages/desktop/ContractMasterPage';
 import AgreementPage from './pages/desktop/AgreementPage';
 import AgreementClausePage from './pages/desktop/AgreementClausePage';
@@ -342,6 +344,23 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['DOWNTIME_REGISTER_VIEW', 'DOWNTIME_REGISTER_CREATE', 'DOWNTIME_REGISTER_EDIT']}>
               <DowntimeRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/compliance-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission
+              anyOf={[
+                'COMPLIANCE_REGISTER_VIEW',
+                'COMPLIANCE_REGISTER_CREATE',
+                'COMPLIANCE_REGISTER_EDIT',
+                'COMPLIANCE_REGISTER_DELETE',
+              ]}
+            >
+              <ComplianceRegisterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }
@@ -1006,6 +1025,50 @@ const AppWithDashboard = () => {
 const App = () => (
   <AuthProvider>
     <AppWithDashboard />
+    <Toaster
+      position="top-right"
+      reverseOrder={false}
+      gutter={12}
+      containerStyle={{
+        top: 20,
+        right: 20,
+      }}
+      toastOptions={{
+        duration: 4000,
+        style: {
+          borderRadius: '8px',
+          background: '#ffffff',
+          color: '#1e293b',
+          padding: '12px 16px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          fontSize: '14px',
+          fontWeight: '500',
+          maxWidth: '400px',
+        },
+        success: {
+          duration: 4000,
+          iconTheme: {
+            primary: '#10b981',
+            secondary: '#ffffff',
+          },
+          style: {
+            border: '1px solid #d1fae5',
+            borderLeft: '4px solid #10b981',
+          },
+        },
+        error: {
+          duration: 4000,
+          iconTheme: {
+            primary: '#ef4444',
+            secondary: '#ffffff',
+          },
+          style: {
+            border: '1px solid #fee2e2',
+            borderLeft: '4px solid #ef4444',
+          },
+        },
+      }}
+    />
   </AuthProvider>
 );
 

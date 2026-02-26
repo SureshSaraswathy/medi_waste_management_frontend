@@ -18,6 +18,7 @@ import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import PageHeader from '../../components/layout/PageHeader';
 import './dashboardConfigurationPage.css';
 import './dashboardPage.css';
+import './masterPage.css';
 
 const DashboardConfigurationPage: React.FC = () => {
   const { permissions, logout } = useAuth();
@@ -241,6 +242,20 @@ const DashboardConfigurationPage: React.FC = () => {
         />
 
         <div className="dashboard-page-content" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+          <div className="master-page">
+            <div className="master-header">
+              <div className="master-header-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
+              <div className="master-title-section">
+                <h1 className="master-title">Dashboard Configuration</h1>
+                <p className="master-subtitle">Configure dashboard settings for different roles</p>
+              </div>
+            </div>
+          </div>
           <DashboardConfigurationContent />
         </div>
       </main>

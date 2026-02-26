@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../services/permissionService';
@@ -12,6 +12,15 @@ const MasterPage = () => {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<{ sort: 'az' | 'za'; favorites: boolean }>({
+    sort: 'az',
+    favorites: false,
+  });
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -206,6 +215,26 @@ const MasterPage = () => {
     item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('fav:master');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setFavoriteIds(new Set(parsed.filter((x) => typeof x === 'string')));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const persistFavorites = (next: Set<string>) => {
+    setFavoriteIds(next);
+    try {
+      localStorage.setItem('fav:master', JSON.stringify(Array.from(next)));
+    } catch {
+      // ignore
+    }
+  };
+
   const navItemsAll = [
     { 
       path: '/dashboard', 
@@ -346,6 +375,16 @@ const MasterPage = () => {
     return hasPermission(perms, required);
   };
 
+  const visibleItems = useMemo(() => {
+    const byPerm = filteredItems.filter((item) => canSeeMasterCard(item.id));
+    const byFav = filters.favorites ? byPerm.filter((i) => favoriteIds.has(i.id)) : byPerm;
+    const sorted = [...byFav].sort((a, b) => {
+      const cmp = a.title.localeCompare(b.title);
+      return filters.sort === 'za' ? -cmp : cmp;
+    });
+    return sorted;
+  }, [filteredItems, permissions, filters.sort, filters.favorites, favoriteIds]);
+
   const navItems = navItemsAll.filter((item) => {
     if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
     if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
@@ -356,6 +395,43 @@ const MasterPage = () => {
     if (item.path === '/report') return canAccessDesktopModule(permissions, 'report');
     return true;
   });
+
+  useEffect(() => {
+    if (!isFiltersOpen) return;
+
+    const updatePos = () => {
+      const btn = filterBtnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const width = 320;
+      const margin = 12;
+      const leftRaw = rect.right - width;
+      const left = Math.max(margin, Math.min(leftRaw, window.innerWidth - width - margin));
+      const top = Math.min(rect.bottom + 8, window.innerHeight - 140);
+      setPanelPos({ top, left, width });
+    };
+
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = panelRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setIsFiltersOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [isFiltersOpen]);
 
   return (
     <div className="dashboard-page">
@@ -446,9 +522,78 @@ const MasterPage = () => {
           subtitle="Manage master data and configurations"
         />
 
+        {isFiltersOpen ? <div className="cf-backdrop" onClick={() => setIsFiltersOpen(false)} /> : null}
+        {isFiltersOpen ? (
+          <div
+            className="cf-panel"
+            ref={panelRef}
+            style={panelPos ? { top: panelPos.top, left: panelPos.left, width: panelPos.width } : undefined}
+          >
+            <div className="cf-header">
+              <h3>Filters</h3>
+              <button className="cf-close" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Close filters">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="cf-content">
+              <div>
+                <div className="cf-section-label">Sort</div>
+                <div className="cf-seg">
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.sort === 'az' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, sort: 'az' }))}
+                  >
+                    A → Z
+                  </button>
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.sort === 'za' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, sort: 'za' }))}
+                  >
+                    Z → A
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="cf-section-label">Favorites</div>
+                <div className="cf-toggle-row">
+                  <button
+                    type="button"
+                    className={`cf-toggle ${filters.favorites ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, favorites: !p.favorites }))}
+                    aria-pressed={filters.favorites}
+                  >
+                    <span className="cf-toggle-slider" />
+                  </button>
+                  <span className="cf-toggle-label">{filters.favorites ? 'Show favorites only' : 'Show all modules'}</span>
+                </div>
+              </div>
+            </div>
+
+            {(filters.sort !== 'az' || filters.favorites) ? (
+              <div className="cf-actions">
+                <button className="cf-clear" type="button" onClick={() => setFilters({ sort: 'az', favorites: false })}>
+                  Clear All
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Master Page Content */}
         <div className="master-page">
       <div className="master-header">
+        <div className="master-header-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+          </svg>
+        </div>
         <div className="master-title-section">
           <h1 className="master-title">Masters</h1>
           <p className="master-subtitle">Manage your data at one place</p>
@@ -456,6 +601,7 @@ const MasterPage = () => {
       </div>
 
       <div className="master-search-section">
+        <div className="master-search-row">
         <div className="master-search-box">
           <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"></circle>
@@ -469,21 +615,51 @@ const MasterPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        <button
+          type="button"
+          className="master-filter-btn"
+          onClick={() => setIsFiltersOpen((v) => !v)}
+          aria-expanded={isFiltersOpen}
+          ref={filterBtnRef}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+          </svg>
+          <span>Filter</span>
+        </button>
+        </div>
       </div>
 
       <div className="master-grid">
         {/* UI-only: hide master cards that user cannot access (avoid clutter/disabled grid) */}
-        {filteredItems
-          .filter((item) => canSeeMasterCard(item.id))
-          .map((item) => (
-            <Link key={item.id} to={item.path} className="master-card">
-              <div className="master-card-icon">{item.icon}</div>
-              <h3 className="master-card-title">{item.title}</h3>
-              <p className="master-card-description">{item.description}</p>
-            </Link>
-          ))}
+        {visibleItems.map((item) => (
+          <Link key={item.id} to={item.path} className="master-card">
+            <button
+              type="button"
+              className={`cf-fav-btn ${favoriteIds.has(item.id) ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const next = new Set(favoriteIds);
+                if (next.has(item.id)) next.delete(item.id);
+                else next.add(item.id);
+                persistFavorites(next);
+              }}
+              aria-label={favoriteIds.has(item.id) ? 'Remove from favorites' : 'Add to favorites'}
+              title={favoriteIds.has(item.id) ? 'Favorited' : 'Favorite'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <div className="master-card-icon">{item.icon}</div>
+            <h3 className="master-card-title">{item.title}</h3>
+            <p className="master-card-description">{item.description}</p>
+          </Link>
+        ))}
 
-        {filteredItems.filter((item) => canSeeMasterCard(item.id)).length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div style={{ color: '#64748b', fontSize: 13, padding: '8px 4px' }}>
             No master modules available for your permissions.
           </div>

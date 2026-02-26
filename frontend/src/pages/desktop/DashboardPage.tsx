@@ -1022,7 +1022,7 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-page--home">
       <div className="app-layout">
       {/* Left Sidebar - Same as MasterPage */}
       <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
@@ -1110,6 +1110,7 @@ const DashboardPage: React.FC = () => {
         <PageHeader 
           title="Analytics Dashboard"
           subtitle="Real-time insights and performance metrics"
+          standard={false}
         />
 
         {/* Dashboard Content */}

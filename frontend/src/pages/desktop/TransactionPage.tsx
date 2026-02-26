@@ -1,17 +1,33 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../services/permissionService';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
+import './transactionPage.css';
 
 const TransactionPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filtersDrawerRef = useRef<HTMLDivElement | null>(null);
+  const filterBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [filtersPanelPos, setFiltersPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<{
+    moduleGroup: 'all' | 'assignments' | 'operations' | 'registers';
+    sort: 'az' | 'za';
+    favorites: boolean;
+  }>({
+    moduleGroup: 'all',
+    sort: 'az',
+    favorites: false,
+  });
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -205,12 +221,134 @@ const TransactionPage = () => {
       ),
       path: '/transaction/downtime-register',
     },
+    {
+      id: 'compliance-register',
+      title: 'Compliance Register',
+      description: 'Record and track regulatory compliance activities and documentation',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <path d="M9 15l2 2 4-4"></path>
+        </svg>
+      ),
+      path: '/transaction/compliance-register',
+    },
   ];
+
+  const transactionItemPermissionById: Record<string, string> = {
+    'route-assignment': 'ROUTE_ASSIGNMENT_VIEW',
+    'barcode-generation': 'BARCODE_LABEL_VIEW',
+    'waste-collection': 'WASTE_COLLECTION_VIEW',
+    'waste-transaction-data': 'WASTE_TRANSACTION_VIEW',
+    'vehicle-wise-waste-collection': 'VEHICLE_WASTE_COLLECTION_VIEW',
+    'waste-processing': 'WASTE_PROCESS_VIEW',
+    'incident-register': 'INCIDENT_REGISTER_VIEW',
+    'incineration-register': 'INCINERATION_REGISTER_VIEW',
+    'autoclave-register': 'AUTOCLAVE_REGISTER_VIEW',
+    'shredder-register': 'SHREDDER_REGISTER_VIEW',
+    'disposal-register': 'DISPOSAL_REGISTER_VIEW',
+    'emission-register': 'EMISSION_REGISTER_VIEW',
+    'etp-register': 'ETP_REGISTER_VIEW',
+    'downtime-register': 'DOWNTIME_REGISTER_VIEW',
+    'compliance-register': 'COMPLIANCE_REGISTER_VIEW',
+  };
+
+  const canSeeTransactionCard = (itemId: string) => {
+    const perms = Array.isArray(permissions) ? permissions : [];
+    if (perms.includes('*')) return true;
+    const required = transactionItemPermissionById[itemId];
+    if (!required) return false;
+    return hasPermission(perms, required);
+  };
 
   const filteredItems = transactionItems.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getItemCategory = (title: string, id: string): 'assignments' | 'operations' | 'registers' => {
+    const t = title.toLowerCase();
+    const i = id.toLowerCase();
+    if (t.includes('register') || i.includes('register')) return 'registers';
+    if (t.includes('assignment') || i.includes('assignment')) return 'assignments';
+    return 'operations';
+  };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('tx:favorites');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setFavoriteIds(new Set(parsed.filter((x) => typeof x === 'string')));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const persistFavorites = (next: Set<string>) => {
+    setFavoriteIds(next);
+    try {
+      localStorage.setItem('tx:favorites', JSON.stringify(Array.from(next)));
+    } catch {
+      // ignore
+    }
+  };
+
+  const visibleItems = useMemo(() => {
+    const byPerm = filteredItems.filter((item) => canSeeTransactionCard(item.id));
+
+    const byGroup =
+      filters.moduleGroup === 'all'
+        ? byPerm
+        : byPerm.filter((item) => getItemCategory(item.title, item.id) === filters.moduleGroup);
+
+    const byFavorites = filters.favorites ? byGroup.filter((item) => favoriteIds.has(item.id)) : byGroup;
+
+    const sorted = [...byFavorites].sort((a, b) => {
+      const cmp = a.title.localeCompare(b.title);
+      return filters.sort === 'za' ? -cmp : cmp;
+    });
+
+    return sorted;
+  }, [filteredItems, filters.moduleGroup, filters.sort, filters.favorites, favoriteIds, permissions]);
+
+  useEffect(() => {
+    if (!isFiltersOpen) return;
+
+    const updatePos = () => {
+      const btn = filterBtnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const width = 320;
+      const margin = 12;
+      const leftRaw = rect.right - width;
+      const left = Math.max(margin, Math.min(leftRaw, window.innerWidth - width - margin));
+      const top = Math.min(rect.bottom + 8, window.innerHeight - 140); // keep on-screen
+      setFiltersPanelPos({ top, left, width });
+    };
+
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
+
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = filtersDrawerRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setIsFiltersOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
+    };
+  }, [isFiltersOpen]);
 
   const navItemsAll = [
     { 
@@ -327,31 +465,6 @@ const TransactionPage = () => {
     ] : []),
   ];
 
-  const transactionItemPermissionById: Record<string, string> = {
-    'route-assignment': 'ROUTE_ASSIGNMENT_VIEW',
-    'barcode-generation': 'BARCODE_LABEL_VIEW',
-    'waste-collection': 'WASTE_COLLECTION_VIEW',
-    'waste-transaction-data': 'WASTE_TRANSACTION_VIEW',
-    'vehicle-wise-waste-collection': 'VEHICLE_WASTE_COLLECTION_VIEW',
-    'waste-processing': 'WASTE_PROCESS_VIEW',
-    'incident-register': 'INCIDENT_REGISTER_VIEW',
-    'incineration-register': 'INCINERATION_REGISTER_VIEW',
-    'autoclave-register': 'AUTOCLAVE_REGISTER_VIEW',
-    'shredder-register': 'SHREDDER_REGISTER_VIEW',
-    'disposal-register': 'DISPOSAL_REGISTER_VIEW',
-    'emission-register': 'EMISSION_REGISTER_VIEW',
-    'etp-register': 'ETP_REGISTER_VIEW',
-    'downtime-register': 'DOWNTIME_REGISTER_VIEW',
-  };
-
-  const canSeeTransactionCard = (itemId: string) => {
-    const perms = Array.isArray(permissions) ? permissions : [];
-    if (perms.includes('*')) return true;
-    const required = transactionItemPermissionById[itemId];
-    if (!required) return false;
-    return hasPermission(perms, required);
-  };
-
   const navItems = navItemsAll.filter((item) => {
     if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
     if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
@@ -444,21 +557,128 @@ const TransactionPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <PageHeader 
-          title="Transaction"
-          subtitle="Manage transactions and operations"
-        />
+        <PageHeader title="Transactions" subtitle="Manage transactions and operations" />
+
+        {isFiltersOpen ? <div className="cf-backdrop" onClick={() => setIsFiltersOpen(false)} /> : null}
+        {isFiltersOpen ? (
+          <div
+            className="cf-panel"
+            ref={filtersDrawerRef}
+            style={
+              filtersPanelPos ? { top: filtersPanelPos.top, left: filtersPanelPos.left, width: filtersPanelPos.width } : undefined
+            }
+          >
+            <div className="cf-header">
+              <h3>Filters</h3>
+              <button className="cf-close" type="button" onClick={() => setIsFiltersOpen(false)} aria-label="Close filters">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="cf-content">
+              <div>
+                <div className="cf-section-label">Module Group</div>
+                <div className="cf-seg">
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.moduleGroup === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, moduleGroup: 'all' }))}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.moduleGroup === 'assignments' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, moduleGroup: 'assignments' }))}
+                  >
+                    Assignments
+                  </button>
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.moduleGroup === 'operations' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, moduleGroup: 'operations' }))}
+                  >
+                    Operations
+                  </button>
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.moduleGroup === 'registers' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, moduleGroup: 'registers' }))}
+                  >
+                    Registers
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="cf-section-label">Sort</div>
+                <div className="cf-seg">
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.sort === 'az' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, sort: 'az' }))}
+                  >
+                    A → Z
+                  </button>
+                  <button
+                    type="button"
+                    className={`cf-seg-btn ${filters.sort === 'za' ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, sort: 'za' }))}
+                  >
+                    Z → A
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="cf-section-label">Favorites</div>
+                <div className="cf-toggle-row">
+                  <button
+                    type="button"
+                    className={`cf-toggle ${filters.favorites ? 'active' : ''}`}
+                    onClick={() => setFilters((p) => ({ ...p, favorites: !p.favorites }))}
+                    aria-pressed={filters.favorites}
+                  >
+                    <span className="cf-toggle-slider" />
+                  </button>
+                  <span className="cf-toggle-label">{filters.favorites ? 'Show favorites only' : 'Show all modules'}</span>
+                </div>
+              </div>
+            </div>
+
+            {(filters.moduleGroup !== 'all' || filters.sort !== 'az' || filters.favorites) ? (
+              <div className="cf-actions">
+                <button
+                  className="cf-clear"
+                  type="button"
+                  onClick={() => setFilters({ moduleGroup: 'all', sort: 'az', favorites: false })}
+                >
+                  Clear All
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Transaction Page Content */}
-        <div className="master-page">
+        <div className="master-page transaction-page">
           <div className="master-header">
+            <div className="master-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+            </div>
             <div className="master-title-section">
-              <h1 className="master-title">Transaction</h1>
-              <p className="master-subtitle">Manage your transactions at one place</p>
+              <h1 className="master-title">Transactions</h1>
+              <p className="master-subtitle">Manage transactions and operations</p>
             </div>
           </div>
 
           <div className="master-search-section">
+            <div className="master-search-row">
             <div className="master-search-box">
               <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -467,26 +687,56 @@ const TransactionPage = () => {
               <input
                 type="text"
                 className="master-search-input"
-                placeholder="Search"
+                placeholder="Search transactions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+            </div>
+
+            <button
+              type="button"
+              className="master-filter-btn"
+              onClick={() => setIsFiltersOpen((v) => !v)}
+              aria-expanded={isFiltersOpen}
+              ref={filterBtnRef}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 3H2l8 9v7l4 2v-9l8-9z"></path>
+              </svg>
+              <span>Filter</span>
+            </button>
             </div>
           </div>
 
       <div className="master-grid">
         {/* UI-only: hide transaction cards that user cannot access (avoid clutter/disabled grid) */}
-        {filteredItems
-          .filter((item) => canSeeTransactionCard(item.id))
-          .map((item) => (
-            <Link key={item.id} to={item.path} className="master-card">
-              <div className="master-card-icon">{item.icon}</div>
-              <h3 className="master-card-title">{item.title}</h3>
-              <p className="master-card-description">{item.description}</p>
-            </Link>
-          ))}
+        {visibleItems.map((item) => (
+          <Link key={item.id} to={item.path} className="master-card">
+            <button
+              type="button"
+              className={`cf-fav-btn ${favoriteIds.has(item.id) ? 'active' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const next = new Set(favoriteIds);
+                if (next.has(item.id)) next.delete(item.id);
+                else next.add(item.id);
+                persistFavorites(next);
+              }}
+              aria-label={favoriteIds.has(item.id) ? 'Remove from favorites' : 'Add to favorites'}
+              title={favoriteIds.has(item.id) ? 'Favorited' : 'Favorite'}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <div className="master-card-icon">{item.icon}</div>
+            <h3 className="master-card-title">{item.title}</h3>
+            <p className="master-card-description">{item.description}</p>
+          </Link>
+        ))}
 
-        {filteredItems.filter((item) => canSeeTransactionCard(item.id)).length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div style={{ color: '#64748b', fontSize: 13, padding: '8px 4px' }}>
             No transaction modules available for your permissions.
           </div>

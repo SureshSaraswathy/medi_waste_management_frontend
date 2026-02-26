@@ -647,6 +647,12 @@
   margin: 0;
 }
 
+/* Wizard: stable height + single scroll container (avoid nested scrollbars) */
+.modal-content.wizard-modal {
+  height: auto;
+  max-height: 95vh;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -656,6 +662,77 @@
   background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
   flex-shrink: 0;
   margin: 0;
+}
+
+.modal-content.wizard-modal .modal-header {
+  padding: 10px 14px;
+}
+
+.modal-content.wizard-modal .modal-title {
+  font-size: 17px;
+}
+
+/* Step content spacing (compact) */
+.modal-content.wizard-modal .wizard-content {
+  /* Keep padding consistent; scrolling is handled by .modal-content-area */
+  overflow: hidden;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+/* Fixed scroll area for wizard content */
+.modal-content-area {
+  height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.modal-content.wizard-modal .wizard-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-content.wizard-modal .wizard-step-header {
+  margin: 0 0 6px 0;
+}
+
+/* Keep vertical spacing compact across all steps */
+.modal-content.wizard-modal .form-group {
+  margin-bottom: 0;
+}
+
+.modal-content.wizard-modal .wizard-section-title {
+  margin-bottom: 10px; /* <= 12px */
+}
+
+/* Sticky footer */
+.modal-content.wizard-modal .wizard-footer {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding: 10px 14px;
+}
+
+/* Compact field sizing inside wizard */
+.modal-content.wizard-modal .form-group input,
+.modal-content.wizard-modal .form-group select,
+.modal-content.wizard-modal .form-group textarea {
+  height: 36px;
+  padding: 8px 12px;
+}
+
+.modal-content.wizard-modal .form-group textarea {
+  height: auto;
+  min-height: 70px;
+  padding: 10px 12px;
+}
+
+.modal-content.wizard-modal .hcf-toggle-btn {
+  height: 32px;
 }
 
 .modal-title {
@@ -744,6 +821,17 @@
   width: 100%;
 }
 
+/* Standard 2-column grid used across wizard pages */
+.form-grid-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -754,6 +842,11 @@
 
 .form-group--full {
   grid-column: 1 / -1;
+}
+
+/* In 2-col grids, full-width fields should span 2 columns */
+.form-grid-two-col .form-group--full {
+  grid-column: span 2;
 }
 
 .form-group label {
@@ -767,6 +860,10 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: 100%;
+}
+
+.modal-content.wizard-modal .form-group label {
+  margin-bottom: 6px;
 }
 
 .form-group input,
@@ -795,6 +892,159 @@
   line-height: 1.5;
   padding: 10px 12px;
   margin: 0;
+}
+
+/* Input/select icons (template style) - scoped to HCF wizard modal only */
+.wizard-modal .hcf-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.wizard-modal .hcf-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wizard-modal .hcf-select-arrow-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wizard-modal .hcf-input-wrapper .form-input,
+.wizard-modal .hcf-input-wrapper .form-select {
+  padding-left: 40px !important;
+}
+
+.wizard-modal .hcf-input-wrapper .form-textarea {
+  padding-left: 40px !important;
+}
+
+.wizard-modal .hcf-input-wrapper--textarea {
+  align-items: flex-start;
+}
+
+.wizard-modal .hcf-input-wrapper--textarea .hcf-input-icon {
+  top: 12px;
+  transform: none;
+}
+
+.wizard-modal .hcf-input-wrapper .form-select {
+  padding-right: 40px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none !important;
+}
+
+/* Wizard section grouping */
+.wizard-modal .wizard-section {
+  padding: 8px 0 0 0;
+  margin: 0;
+}
+
+.wizard-modal .wizard-section + .wizard-section {
+  margin-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 12px;
+}
+
+.wizard-modal .wizard-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* Billing option radios (horizontal) */
+.wizard-modal .hcf-billing-options {
+  display: flex;
+  gap: 24px;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 6px 0 4px 0;
+}
+
+.wizard-modal .hcf-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  font-weight: 600;
+  color: #334155;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.wizard-modal .hcf-radio-option input[type="radio"] {
+  margin: 0;
+  accent-color: #3b82f6;
+}
+
+/* Auto generate toggle */
+.wizard-modal .hcf-toggle {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  width: fit-content;
+}
+
+.wizard-modal .hcf-toggle-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wizard-modal .hcf-toggle-btn.is-active {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.wizard-modal .hcf-toggle-btn:hover:not(.is-active) {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+/* Dynamic billing logic: fade + disable but keep layout stable */
+.wizard-modal .billing-field--inactive {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.wizard-modal .billing-field--inactive .form-input,
+.wizard-modal .billing-field--inactive .form-select,
+.wizard-modal .billing-field--inactive .form-textarea {
+  background: #f8fafc !important;
 }
 
 .form-group select {
@@ -890,6 +1140,15 @@
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .wizard-modal .form-grid-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-modal .hcf-billing-options {
+    gap: 14px;
+    flex-wrap: wrap;
   }
 
   .hcf-master-actions {

@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import { notifyError } from '../../utils/notify';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './companyMasterPage.css';
+import '../desktop/autoclaveRegisterPage.css';
 
 interface State {
   id: string;
@@ -60,6 +62,18 @@ interface Company {
   createdOn: string;
   modifiedBy: string;
   modifiedOn: string;
+  // Contact Information
+  contactNum?: string;
+  webAddress?: string;
+  companyEmail?: string;
+  // Bank & Payment Information
+  bankAccountName?: string;
+  bankName?: string;
+  bankAccountNum?: string;
+  bankIFSCode?: string;
+  bankBranch?: string;
+  upiId?: string;
+  qrCode?: string;
 }
 
 const CompanyMasterPage = () => {
@@ -200,6 +214,18 @@ const CompanyMasterPage = () => {
       createdOn: apiCompany.createdOn,
       modifiedBy: apiCompany.modifiedBy || 'System',
       modifiedOn: apiCompany.modifiedOn,
+      // Contact Information
+      contactNum: apiCompany.contactNum || '',
+      webAddress: apiCompany.webAddress || '',
+      companyEmail: apiCompany.companyEmail || '',
+      // Bank & Payment Information
+      bankAccountName: apiCompany.bankAccountName || '',
+      bankName: apiCompany.bankName || '',
+      bankAccountNum: apiCompany.bankAccountNum || '',
+      bankIFSCode: apiCompany.bankIFSCode || '',
+      bankBranch: apiCompany.bankBranch || '',
+      upiId: apiCompany.upiId || '',
+      qrCode: apiCompany.qrCode || '',
     };
   };
 
@@ -305,19 +331,25 @@ const CompanyMasterPage = () => {
     try {
       if (editingCompany) {
         // Update existing company
-        // Note: Currently backend only supports companyCode, companyName, status
-        // Additional fields will need to be added to backend later
         const updateData = {
           companyCode: formData.companyCode,
           companyName: formData.companyName,
           status: formData.status,
+          contactNum: formData.contactNum,
+          webAddress: formData.webAddress,
+          companyEmail: formData.companyEmail,
+          bankAccountName: formData.bankAccountName,
+          bankName: formData.bankName,
+          bankAccountNum: formData.bankAccountNum,
+          bankIFSCode: formData.bankIFSCode,
+          bankBranch: formData.bankBranch,
+          upiId: formData.upiId,
+          qrCode: formData.qrCode,
         };
         
         await companyService.updateCompany(editingCompany.id, updateData);
       } else {
         // Create new company
-        // Note: Currently backend only supports companyCode and companyName
-        // Additional fields will need to be added to backend later
         if (!formData.companyCode || !formData.companyName) {
           throw new Error('Company Code and Company Name are required');
         }
@@ -325,6 +357,16 @@ const CompanyMasterPage = () => {
         const createData = {
           companyCode: formData.companyCode,
           companyName: formData.companyName,
+          contactNum: formData.contactNum,
+          webAddress: formData.webAddress,
+          companyEmail: formData.companyEmail,
+          bankAccountName: formData.bankAccountName,
+          bankName: formData.bankName,
+          bankAccountNum: formData.bankAccountNum,
+          bankIFSCode: formData.bankIFSCode,
+          bankBranch: formData.bankBranch,
+          upiId: formData.upiId,
+          qrCode: formData.qrCode,
         };
         
         await companyService.createCompany(createData);
@@ -682,39 +724,51 @@ interface CompanyFormModalProps {
 }
 
 const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose, onSave }: CompanyFormModalProps) => {
+  const defaultFormData = {
+    companyCode: '',
+    companyName: '',
+    regdOfficeAddress: '',
+    adminOfficeAddress: '',
+    factoryAddress: '',
+    gstin: '',
+    state: '',
+    pincode: '',
+    prefix: '',
+    authPersonName: '',
+    authPersonDesignation: '',
+    authPersonDOB: '',
+    pcbauthNum: '',
+    ctoWaterNum: '',
+    ctoWaterDate: '',
+    ctoWaterValidUpto: '',
+    ctoAirNum: '',
+    ctoAirDate: '',
+    ctoAirValidUpto: '',
+    cteWaterNum: '',
+    cteWaterDate: '',
+    cteWaterValidUpto: '',
+    cteAirNum: '',
+    cteAirDate: '',
+    cteAirValidUpto: '',
+    hazardousWasteNum: '',
+    pcbZoneID: '',
+    gstValidFrom: '',
+    gstRate: '',
+    status: 'Active' as 'Active' | 'Inactive',
+    contactNum: '',
+    webAddress: '',
+    companyEmail: '',
+    bankAccountName: '',
+    bankName: '',
+    bankAccountNum: '',
+    bankIFSCode: '',
+    bankBranch: '',
+    upiId: '',
+    qrCode: '',
+  };
+
   const [formData, setFormData] = useState<Partial<Company>>(
-    company || {
-      companyCode: '',
-      companyName: '',
-      regdOfficeAddress: '',
-      adminOfficeAddress: '',
-      factoryAddress: '',
-      gstin: '',
-      state: '',
-      pincode: '',
-      prefix: '',
-      authPersonName: '',
-      authPersonDesignation: '',
-      authPersonDOB: '',
-      pcbauthNum: '',
-      ctoWaterNum: '',
-      ctoWaterDate: '',
-      ctoWaterValidUpto: '',
-      ctoAirNum: '',
-      ctoAirDate: '',
-      ctoAirValidUpto: '',
-      cteWaterNum: '',
-      cteWaterDate: '',
-      cteWaterValidUpto: '',
-      cteAirNum: '',
-      cteAirDate: '',
-      cteAirValidUpto: '',
-      hazardousWasteNum: '',
-      pcbZoneID: '',
-      gstValidFrom: '',
-      gstRate: '',
-      status: 'Active',
-    }
+    company ? { ...defaultFormData, ...company } : defaultFormData
   );
 
   // Step-based navigation state
@@ -748,13 +802,14 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
     { number: 1, title: 'Basic Information', icon: 'building', key: 'basicInfo' },
     { number: 2, title: 'Addresses', icon: 'map-pin', key: 'addresses' },
     { number: 3, title: 'Authorized Person', icon: 'user', key: 'authorizedPerson' },
-    { number: 4, title: 'PCB & Compliance', icon: 'shield', key: 'pcbCompliance' },
-    { number: 5, title: 'Environmental Clearances', icon: 'water', key: 'environmentalClearances' },
+    { number: 4, title: 'Consent To Operate', icon: 'water', key: 'cto' },
+    { number: 5, title: 'Consent To Establish', icon: 'water', key: 'cte' },
     { number: 6, title: 'GST Details', icon: 'document', key: 'gstDetails' },
+    { number: 7, title: 'Bank Details', icon: 'phone', key: 'bankDetails' },
   ];
 
   const handleNext = () => {
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -770,7 +825,13 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
       e.preventDefault();
     }
     // Only allow submit on last step
-    if (currentStep === 6) {
+    if (currentStep === 7) {
+      // Validate bank details business rule
+      const hasAnyBankDetail = !!(formData.bankAccountName || formData.bankIFSCode || formData.bankBranch || formData.bankName || formData.upiId || formData.qrCode || formData.bankAccountNum);
+      if (hasAnyBankDetail && (!formData.bankName || !formData.bankAccountNum)) {
+        notifyError('Bank Name and Bank Account Number are required when any bank detail is entered.');
+        return;
+      }
       onSave(formData);
     }
   };
@@ -828,17 +889,23 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
             <line x1="16" y1="17" x2="8" y2="17"></line>
           </svg>
         );
+      case 'phone':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content company-form-modal wizard-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header company-form-header">
-          <div className="modal-header-content">
-            <div className="modal-header-icon">
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
                 <path d="M9 22v-4h6v4"></path>
@@ -853,9 +920,16 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 <path d="M16 14h.01"></path>
               </svg>
             </div>
-          <h2 className="modal-title">{company ? 'Edit Company' : 'Add Company'}</h2>
+            <div>
+              <h2 className="ra-assignment-modal-title">
+                {company ? 'Edit Company' : 'Add Company'}
+              </h2>
+              <p className="ra-assignment-modal-subtitle">
+                {company ? 'Update company details' : 'Create a new company record.'}
+              </p>
+            </div>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -889,102 +963,165 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
         </div>
 
         <div className="wizard-content">
-        <form className="company-form" onSubmit={handleSubmit}>
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
             {/* Step 1: Basic Information */}
             {currentStep === 1 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" style={{ paddingBottom: '20px' }}>
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon">
                     {getStepIcon('building')}
                   </div>
                   <h3 className="wizard-step-header-title">Basic Information</h3>
                 </div>
-                <div className="form-grid-two-col">
-                  <div className="form-group">
-                    <label className="form-label">
-                      Company Code <span className="required-asterisk">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.companyCode || ''}
-                      onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
-                      placeholder="e.g., COMP001"
-                      required
-                      className="form-input"
-                    />
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="company-code">
+                        Company Code <span className="ra-required">*</span>
+                      </label>
+                      <input
+                        id="company-code"
+                        type="text"
+                        value={formData.companyCode || ''}
+                        onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
+                        placeholder="e.g., COMP001"
+                        required
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="company-name">
+                        Company Name <span className="ra-required">*</span>
+                      </label>
+                      <input
+                        id="company-name"
+                        type="text"
+                        value={formData.companyName || ''}
+                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                        placeholder="Enter company name"
+                        required
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="gstin">
+                        GSTIN <span className="ra-required">*</span>
+                      </label>
+                      <input
+                        id="gstin"
+                        type="text"
+                        value={formData.gstin || ''}
+                        onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                        required
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="state">
+                        State <span className="ra-required">*</span>
+                      </label>
+                      <select
+                        id="state"
+                        value={formData.state || ''}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        required
+                        className="ra-assignment-select"
+                      >
+                        <option value="">Select State</option>
+                        {states.map((state) => (
+                          <option key={state.id} value={state.stateCode}>
+                            {state.stateCode}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Company Name <span className="required-asterisk">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.companyName || ''}
-                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                      placeholder="Enter company name"
-                      required
-                      className="form-input"
-                    />
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="pincode">Pincode</label>
+                      <input
+                        id="pincode"
+                        type="text"
+                        value={formData.pincode || ''}
+                        onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="prefix">Prefix</label>
+                      <input
+                        id="prefix"
+                        type="text"
+                        value={formData.prefix || ''}
+                        onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
+                        placeholder="e.g., TI"
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="status">Status</label>
+                      <select
+                        id="status"
+                        value={formData.status || 'Active'}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                        className="ra-assignment-select"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      GSTIN <span className="required-asterisk">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.gstin || ''}
-                      onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-                      required
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      State <span className="required-asterisk">*</span>
-                    </label>
-                    <select
-                      value={formData.state || ''}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      required
-                      className="form-select"
-                    >
-                      <option value="">Select State</option>
-                      {states.map((state) => (
-                        <option key={state.id} value={state.stateCode}>
-                          {state.stateCode}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Pincode</label>
-                    <input
-                      type="text"
-                      value={formData.pincode || ''}
-                      onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Prefix</label>
-                    <input
-                      type="text"
-                      value={formData.prefix || ''}
-                      onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
-                      placeholder="e.g., TI"
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Status</label>
-                    <select
-                      value={formData.status || 'Active'}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                      className="form-select"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
+                </div>
+
+                {/* Contact Information Section */}
+                <div style={{ marginTop: '32px', paddingTop: '24px', paddingBottom: '40px', borderTop: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                    Contact Information
+                  </h4>
+                  <div className="ra-assignment-form-grid">
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="contact-num">Contact Number</label>
+                        <input
+                          id="contact-num"
+                          type="text"
+                          value={formData.contactNum || ''}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 15);
+                            setFormData({ ...formData, contactNum: value });
+                          }}
+                          placeholder="Numbers only, max 15 digits"
+                          maxLength={15}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="web-address">Web Address</label>
+                        <input
+                          id="web-address"
+                          type="url"
+                          value={formData.webAddress || ''}
+                          onChange={(e) => setFormData({ ...formData, webAddress: e.target.value })}
+                          placeholder="https://example.com"
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="ra-assignment-form-col" style={{ gridColumn: '1 / -1' }}>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="company-email">Company Email</label>
+                        <input
+                          id="company-email"
+                          type="email"
+                          value={formData.companyEmail || ''}
+                          onChange={(e) => setFormData({ ...formData, companyEmail: e.target.value })}
+                          placeholder="company@example.com"
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -999,39 +1136,44 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                   </div>
                   <h3 className="wizard-step-header-title">Addresses</h3>
                 </div>
-                <div className="form-grid-two-col">
-                  <div className="form-group form-group--full">
-                    <label className="form-label">Registered Office Address</label>
-                    <textarea
-                      value={formData.regdOfficeAddress || ''}
-                      onChange={(e) => setFormData({ ...formData, regdOfficeAddress: e.target.value })}
-                      rows={3}
-                      className="form-textarea"
-                    />
-                  </div>
-                  <div className="form-group form-group--full">
-                    <label className="form-label">Admin Office Address</label>
-                    <textarea
-                      value={formData.adminOfficeAddress || ''}
-                      onChange={(e) => setFormData({ ...formData, adminOfficeAddress: e.target.value })}
-                      rows={3}
-                      className="form-textarea"
-                    />
-                  </div>
-                  <div className="form-group form-group--full">
-                    <label className="form-label">Factory Address</label>
-                    <textarea
-                      value={formData.factoryAddress || ''}
-                      onChange={(e) => setFormData({ ...formData, factoryAddress: e.target.value })}
-                      rows={3}
-                      className="form-textarea"
-                    />
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col" style={{ gridColumn: '1 / -1' }}>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="regd-office-address">Registered Office Address</label>
+                      <textarea
+                        id="regd-office-address"
+                        value={formData.regdOfficeAddress || ''}
+                        onChange={(e) => setFormData({ ...formData, regdOfficeAddress: e.target.value })}
+                        rows={3}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="admin-office-address">Admin Office Address</label>
+                      <textarea
+                        id="admin-office-address"
+                        value={formData.adminOfficeAddress || ''}
+                        onChange={(e) => setFormData({ ...formData, adminOfficeAddress: e.target.value })}
+                        rows={3}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="factory-address">Factory Address</label>
+                      <textarea
+                        id="factory-address"
+                        value={formData.factoryAddress || ''}
+                        onChange={(e) => setFormData({ ...formData, factoryAddress: e.target.value })}
+                        rows={3}
+                        className="ra-assignment-input"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Authorized Person */}
+            {/* Step 3: Authorized Person & PCB Compliance */}
             {currentStep === 3 && (
               <div className="wizard-step-content">
                 <div className="wizard-step-header">
@@ -1040,281 +1182,259 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                   </div>
                   <h3 className="wizard-step-header-title">Authorized Person</h3>
                 </div>
-                <div className="form-grid-two-col">
-                  <div className="form-group">
-                    <label className="form-label">Name</label>
-                    <input
-                      type="text"
-                      value={formData.authPersonName || ''}
-                      onChange={(e) => setFormData({ ...formData, authPersonName: e.target.value })}
-                      className="form-input"
-                    />
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="auth-person-name">Name</label>
+                      <input
+                        id="auth-person-name"
+                        type="text"
+                        value={formData.authPersonName || ''}
+                        onChange={(e) => setFormData({ ...formData, authPersonName: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="auth-person-dob">Date of Birth</label>
+                      <input
+                        id="auth-person-dob"
+                        type="date"
+                        value={formData.authPersonDOB || ''}
+                        onChange={(e) => setFormData({ ...formData, authPersonDOB: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Designation</label>
-                    <input
-                      type="text"
-                      value={formData.authPersonDesignation || ''}
-                      onChange={(e) => setFormData({ ...formData, authPersonDesignation: e.target.value })}
-                      className="form-input"
-                    />
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="auth-person-designation">Designation</label>
+                      <input
+                        id="auth-person-designation"
+                        type="text"
+                        value={formData.authPersonDesignation || ''}
+                        onChange={(e) => setFormData({ ...formData, authPersonDesignation: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Date of Birth</label>
-                    <input
-                      type="date"
-                      value={formData.authPersonDOB || ''}
-                      onChange={(e) => setFormData({ ...formData, authPersonDOB: e.target.value })}
-                      className="form-input"
-                    />
+                </div>
+
+                {/* PCB & Compliance Section */}
+                <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                    PCB & Compliance
+                  </h4>
+                  <div className="ra-assignment-form-grid">
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="pcb-auth-num">PCB Auth Num</label>
+                        <input
+                          id="pcb-auth-num"
+                          type="text"
+                          value={formData.pcbauthNum || ''}
+                          onChange={(e) => setFormData({ ...formData, pcbauthNum: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="hazardous-waste-num">Hazardous Waste Num</label>
+                        <input
+                          id="hazardous-waste-num"
+                          type="text"
+                          value={formData.hazardousWasteNum || ''}
+                          onChange={(e) => setFormData({ ...formData, hazardousWasteNum: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 4: PCB & Compliance */}
+            {/* Step 4: Consent To Operate */}
             {currentStep === 4 && (
               <div className="wizard-step-content">
                 <div className="wizard-step-header">
-                  <div className="wizard-step-header-icon icon-purple">
-                    {getStepIcon('shield')}
+                  <div className="wizard-step-header-icon icon-orange">
+                    {getStepIcon('water')}
                   </div>
-                  <h3 className="wizard-step-header-title">PCB & Compliance</h3>
+                  <h3 className="wizard-step-header-title">Consent To Operate</h3>
                 </div>
-                <div className="form-grid-two-col">
-                  <div className="form-group">
-                    <label className="form-label">PCB Auth Num</label>
-                    <input
-                      type="text"
-                      value={formData.pcbauthNum || ''}
-                      onChange={(e) => setFormData({ ...formData, pcbauthNum: e.target.value })}
-                      className="form-input"
-                    />
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col">
+                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Water</h5>
+                      {isExpiringSoon(formData.ctoWaterValidUpto || '') && (
+                        <span className="env-clearance-warning-badge">Expiring Soon</span>
+                      )}
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-water-num">Certificate Number</label>
+                      <input
+                        id="cto-water-num"
+                        type="text"
+                        value={formData.ctoWaterNum || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoWaterNum: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-water-date">Issue Date</label>
+                      <input
+                        id="cto-water-date"
+                        type="date"
+                        value={formData.ctoWaterDate || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoWaterDate: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-water-expiry">Expiry Date</label>
+                      <input
+                        id="cto-water-expiry"
+                        type="date"
+                        value={formData.ctoWaterValidUpto || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoWaterValidUpto: e.target.value })}
+                        className={`ra-assignment-input ${isExpiringSoon(formData.ctoWaterValidUpto || '') ? 'form-input--warning' : ''}`}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Hazardous Waste Num</label>
-                    <input
-                      type="text"
-                      value={formData.hazardousWasteNum || ''}
-                      onChange={(e) => setFormData({ ...formData, hazardousWasteNum: e.target.value })}
-                      className="form-input"
-                    />
+                  <div className="ra-assignment-form-col">
+                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Air</h5>
+                      {isExpiringSoon(formData.ctoAirValidUpto || '') && (
+                        <span className="env-clearance-warning-badge">Expiring Soon</span>
+                      )}
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-air-num">Certificate Number</label>
+                      <input
+                        id="cto-air-num"
+                        type="text"
+                        value={formData.ctoAirNum || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoAirNum: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-air-date">Issue Date</label>
+                      <input
+                        id="cto-air-date"
+                        type="date"
+                        value={formData.ctoAirDate || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoAirDate: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cto-air-expiry">Expiry Date</label>
+                      <input
+                        id="cto-air-expiry"
+                        type="date"
+                        value={formData.ctoAirValidUpto || ''}
+                        onChange={(e) => setFormData({ ...formData, ctoAirValidUpto: e.target.value })}
+                        className={`ra-assignment-input ${isExpiringSoon(formData.ctoAirValidUpto || '') ? 'form-input--warning' : ''}`}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 5: Environmental Clearances */}
+            {/* Step 5: Consent To Establish */}
             {currentStep === 5 && (
               <div className="wizard-step-content">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-orange">
                     {getStepIcon('water')}
                   </div>
-                  <h3 className="wizard-step-header-title">Environmental Clearances</h3>
+                  <h3 className="wizard-step-header-title">Consent To Establish</h3>
                 </div>
-
-                {/* CTO Section */}
-                <div className="env-clearance-section">
-                  <div className="env-clearance-section-header" onClick={() => toggleSection('cto')}>
-                    <h4 className="env-clearance-section-title">CTO (Consent To Operate)</h4>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className={`env-clearance-section-arrow ${expandedSections.cto ? 'expanded' : ''}`}
-                    >
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                  {expandedSections.cto && (
-                    <div className="env-clearance-grid">
-                      {/* Water Column */}
-                      <div className="env-clearance-column">
-                        <div className="env-clearance-column-header">
-                          <h5 className="env-clearance-column-title">Water</h5>
-                          {isExpiringSoon(formData.ctoWaterValidUpto || '') && (
-                            <span className="env-clearance-warning-badge">Expiring Soon</span>
-                          )}
-                        </div>
-                        <div className="env-clearance-column-content">
-                          <div className="form-group">
-                            <label className="form-label">Certificate Number</label>
-                            <input
-                              type="text"
-                              value={formData.ctoWaterNum || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoWaterNum: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Issue Date</label>
-                            <input
-                              type="date"
-                              value={formData.ctoWaterDate || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoWaterDate: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Expiry Date</label>
-                            <input
-                              type="date"
-                              value={formData.ctoWaterValidUpto || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoWaterValidUpto: e.target.value })}
-                              className={`form-input ${isExpiringSoon(formData.ctoWaterValidUpto || '') ? 'form-input--warning' : ''}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Air Column */}
-                      <div className="env-clearance-column">
-                        <div className="env-clearance-column-header">
-                          <h5 className="env-clearance-column-title">Air</h5>
-                          {isExpiringSoon(formData.ctoAirValidUpto || '') && (
-                            <span className="env-clearance-warning-badge">Expiring Soon</span>
-                          )}
-                        </div>
-                        <div className="env-clearance-column-content">
-                          <div className="form-group">
-                            <label className="form-label">Certificate Number</label>
-                            <input
-                              type="text"
-                              value={formData.ctoAirNum || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoAirNum: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Issue Date</label>
-                            <input
-                              type="date"
-                              value={formData.ctoAirDate || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoAirDate: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Expiry Date</label>
-                            <input
-                              type="date"
-                              value={formData.ctoAirValidUpto || ''}
-                              onChange={(e) => setFormData({ ...formData, ctoAirValidUpto: e.target.value })}
-                              className={`form-input ${isExpiringSoon(formData.ctoAirValidUpto || '') ? 'form-input--warning' : ''}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col">
+                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Water</h5>
+                      {isExpiringSoon(formData.cteWaterValidUpto || '') && (
+                        <span className="env-clearance-warning-badge">Expiring Soon</span>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                {/* CTE Section */}
-                <div className="env-clearance-section">
-                  <div className="env-clearance-section-header" onClick={() => toggleSection('cte')}>
-                    <h4 className="env-clearance-section-title">CTE (Consent To Establish)</h4>
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className={`env-clearance-section-arrow ${expandedSections.cte ? 'expanded' : ''}`}
-                    >
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                  {expandedSections.cte && (
-                    <div className="env-clearance-grid">
-                      {/* Water Column */}
-                      <div className="env-clearance-column">
-                        <div className="env-clearance-column-header">
-                          <h5 className="env-clearance-column-title">Water</h5>
-                          {isExpiringSoon(formData.cteWaterValidUpto || '') && (
-                            <span className="env-clearance-warning-badge">Expiring Soon</span>
-                          )}
-                        </div>
-                        <div className="env-clearance-column-content">
-                          <div className="form-group">
-                            <label className="form-label">Certificate Number</label>
-                            <input
-                              type="text"
-                              value={formData.cteWaterNum || ''}
-                              onChange={(e) => setFormData({ ...formData, cteWaterNum: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Issue Date</label>
-                            <input
-                              type="date"
-                              value={formData.cteWaterDate || ''}
-                              onChange={(e) => setFormData({ ...formData, cteWaterDate: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Expiry Date</label>
-                            <input
-                              type="date"
-                              value={formData.cteWaterValidUpto || ''}
-                              onChange={(e) => setFormData({ ...formData, cteWaterValidUpto: e.target.value })}
-                              className={`form-input ${isExpiringSoon(formData.cteWaterValidUpto || '') ? 'form-input--warning' : ''}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Air Column */}
-                      <div className="env-clearance-column">
-                        <div className="env-clearance-column-header">
-                          <h5 className="env-clearance-column-title">Air</h5>
-                          {isExpiringSoon(formData.cteAirValidUpto || '') && (
-                            <span className="env-clearance-warning-badge">Expiring Soon</span>
-                          )}
-                        </div>
-                        <div className="env-clearance-column-content">
-                          <div className="form-group">
-                            <label className="form-label">Certificate Number</label>
-                            <input
-                              type="text"
-                              value={formData.cteAirNum || ''}
-                              onChange={(e) => setFormData({ ...formData, cteAirNum: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Issue Date</label>
-                            <input
-                              type="date"
-                              value={formData.cteAirDate || ''}
-                              onChange={(e) => setFormData({ ...formData, cteAirDate: e.target.value })}
-                              className="form-input"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Expiry Date</label>
-                            <input
-                              type="date"
-                              value={formData.cteAirValidUpto || ''}
-                              onChange={(e) => setFormData({ ...formData, cteAirValidUpto: e.target.value })}
-                              className={`form-input ${isExpiringSoon(formData.cteAirValidUpto || '') ? 'form-input--warning' : ''}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-water-num">Certificate Number</label>
+                      <input
+                        id="cte-water-num"
+                        type="text"
+                        value={formData.cteWaterNum || ''}
+                        onChange={(e) => setFormData({ ...formData, cteWaterNum: e.target.value })}
+                        className="ra-assignment-input"
+                      />
                     </div>
-                  )}
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-water-date">Issue Date</label>
+                      <input
+                        id="cte-water-date"
+                        type="date"
+                        value={formData.cteWaterDate || ''}
+                        onChange={(e) => setFormData({ ...formData, cteWaterDate: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-water-expiry">Expiry Date</label>
+                      <input
+                        id="cte-water-expiry"
+                        type="date"
+                        value={formData.cteWaterValidUpto || ''}
+                        onChange={(e) => setFormData({ ...formData, cteWaterValidUpto: e.target.value })}
+                        className={`ra-assignment-input ${isExpiringSoon(formData.cteWaterValidUpto || '') ? 'form-input--warning' : ''}`}
+                      />
+                    </div>
+                  </div>
+                  <div className="ra-assignment-form-col">
+                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Air</h5>
+                      {isExpiringSoon(formData.cteAirValidUpto || '') && (
+                        <span className="env-clearance-warning-badge">Expiring Soon</span>
+                      )}
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-air-num">Certificate Number</label>
+                      <input
+                        id="cte-air-num"
+                        type="text"
+                        value={formData.cteAirNum || ''}
+                        onChange={(e) => setFormData({ ...formData, cteAirNum: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-air-date">Issue Date</label>
+                      <input
+                        id="cte-air-date"
+                        type="date"
+                        value={formData.cteAirDate || ''}
+                        onChange={(e) => setFormData({ ...formData, cteAirDate: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="cte-air-expiry">Expiry Date</label>
+                      <input
+                        id="cte-air-expiry"
+                        type="date"
+                        value={formData.cteAirValidUpto || ''}
+                        onChange={(e) => setFormData({ ...formData, cteAirValidUpto: e.target.value })}
+                        className={`ra-assignment-input ${isExpiringSoon(formData.cteAirValidUpto || '') ? 'form-input--warning' : ''}`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Step 6: GST Details */}
+            {/* Step 5: GST Details */}
             {currentStep === 6 && (
               <div className="wizard-step-content">
                 <div className="wizard-step-header">
@@ -1323,40 +1443,168 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
               </div>
                   <h3 className="wizard-step-header-title">GST Details</h3>
                 </div>
-                <div className="form-grid-two-col">
-                  <div className="form-group">
-                    <label className="form-label">PCB Zone ID</label>
-                    <select
-                      value={formData.pcbZoneID || ''}
-                      onChange={(e) => setFormData({ ...formData, pcbZoneID: e.target.value })}
-                      className="form-select"
-                    >
-                      <option value="">Select PCB Zone</option>
-                      {pcbZones.map((zone) => (
-                        <option key={zone.id} value={zone.pcbZoneName}>
-                          {zone.pcbZoneName}
-                        </option>
-                      ))}
-                    </select>
+                <div className="ra-assignment-form-grid">
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="pcb-zone-id">PCB Zone ID</label>
+                      <select
+                        id="pcb-zone-id"
+                        value={formData.pcbZoneID || ''}
+                        onChange={(e) => setFormData({ ...formData, pcbZoneID: e.target.value })}
+                        className="ra-assignment-select"
+                      >
+                        <option value="">Select PCB Zone</option>
+                        {pcbZones.map((zone) => (
+                          <option key={zone.id} value={zone.pcbZoneName}>
+                            {zone.pcbZoneName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="gst-rate">GST Rate</label>
+                      <input
+                        id="gst-rate"
+                        type="text"
+                        value={formData.gstRate || ''}
+                        onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
+                        placeholder="e.g., 18%"
+                        className="ra-assignment-input"
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">GST Valid From</label>
-                    <input
-                      type="date"
-                      value={formData.gstValidFrom || ''}
-                      onChange={(e) => setFormData({ ...formData, gstValidFrom: e.target.value })}
-                      className="form-input"
-                    />
+                  <div className="ra-assignment-form-col">
+                    <div className="ra-assignment-form-group">
+                      <label htmlFor="gst-valid-from">GST Valid From</label>
+                      <input
+                        id="gst-valid-from"
+                        type="date"
+                        value={formData.gstValidFrom || ''}
+                        onChange={(e) => setFormData({ ...formData, gstValidFrom: e.target.value })}
+                        className="ra-assignment-input"
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">GST Rate</label>
-                    <input
-                      type="text"
-                      value={formData.gstRate || ''}
-                      onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
-                      placeholder="e.g., 18%"
-                      className="form-input"
-                    />
+                </div>
+              </div>
+            )}
+
+            {/* Step 7: Bank Details */}
+            {currentStep === 7 && (
+              <div className="wizard-step-content">
+                <div className="wizard-step-header">
+                  <div className="wizard-step-header-icon icon-blue">
+                    {getStepIcon('phone')}
+                  </div>
+                  <h3 className="wizard-step-header-title">Bank Details</h3>
+                </div>
+                
+                {/* Bank & Payment Information Section */}
+                <div style={{ paddingTop: '24px', borderTop: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                    Bank & Payment Information
+                  </h4>
+                  <div className="ra-assignment-form-grid">
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="bank-account-name">Bank Account Name</label>
+                        <input
+                          id="bank-account-name"
+                          type="text"
+                          value={formData.bankAccountName || ''}
+                          onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="bank-name">
+                          Bank Name
+                          {((formData.bankAccountName || formData.bankIFSCode || formData.bankBranch || formData.bankAccountNum || formData.upiId || formData.qrCode) && !formData.bankName) && (
+                            <span className="ra-required"> *</span>
+                          )}
+                        </label>
+                        <input
+                          id="bank-name"
+                          type="text"
+                          value={formData.bankName || ''}
+                          onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="bank-ifsc-code">Bank IFSC Code</label>
+                        <input
+                          id="bank-ifsc-code"
+                          type="text"
+                          value={formData.bankIFSCode || ''}
+                          onChange={(e) => {
+                            const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+                            setFormData({ ...formData, bankIFSCode: value });
+                          }}
+                          placeholder="HDFC0001234"
+                          maxLength={11}
+                          className="ra-assignment-input"
+                        />
+                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                          Format: HDFC0001234
+                        </small>
+                      </div>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="upi-id">UPI ID</label>
+                        <input
+                          id="upi-id"
+                          type="text"
+                          value={formData.upiId || ''}
+                          onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+                          placeholder="name@bank"
+                          className="ra-assignment-input"
+                        />
+                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                          Format: name@bank
+                        </small>
+                      </div>
+                    </div>
+                    <div className="ra-assignment-form-col">
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="bank-account-num">
+                          Bank Account Number
+                          {((formData.bankAccountName || formData.bankIFSCode || formData.bankBranch || formData.bankName || formData.upiId || formData.qrCode) && !formData.bankAccountNum) && (
+                            <span className="ra-required"> *</span>
+                          )}
+                        </label>
+                        <input
+                          id="bank-account-num"
+                          type="text"
+                          value={formData.bankAccountNum || ''}
+                          onChange={(e) => setFormData({ ...formData, bankAccountNum: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="bank-branch">Bank Branch</label>
+                        <input
+                          id="bank-branch"
+                          type="text"
+                          value={formData.bankBranch || ''}
+                          onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                          className="ra-assignment-input"
+                        />
+                      </div>
+                      <div className="ra-assignment-form-group">
+                        <label htmlFor="qr-code">QR Code</label>
+                        <textarea
+                          id="qr-code"
+                          value={formData.qrCode || ''}
+                          onChange={(e) => setFormData({ ...formData, qrCode: e.target.value })}
+                          placeholder="Enter QR code string or upload QR image URL"
+                          rows={3}
+                          className="ra-assignment-input"
+                        />
+                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                          Enter QR code string value or image URL
+                        </small>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1364,24 +1612,26 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
           </form>
         </div>
 
-        <div className="modal-footer wizard-footer">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
+        <div className="ra-assignment-modal-footer" style={{ justifyContent: 'space-between' }}>
+          <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
             Cancel
           </button>
-          {currentStep > 1 && (
-            <button type="button" className="btn btn--secondary" onClick={handleBack}>
-              Back
-            </button>
-          )}
-          {currentStep < 6 ? (
-            <button type="button" className="btn btn--primary" onClick={handleNext}>
-              Next
-            </button>
-          ) : (
-            <button type="submit" className="btn btn--primary" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Company'}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {currentStep > 1 && (
+              <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={handleBack}>
+                Back
+              </button>
+            )}
+            {currentStep < 7 ? (
+              <button type="button" className="ra-assignment-btn ra-assignment-btn--primary" onClick={handleNext}>
+                Next
+              </button>
+            ) : (
+              <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary" disabled={loading} onClick={handleSubmit}>
+                {loading ? 'Saving...' : 'Save Company'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

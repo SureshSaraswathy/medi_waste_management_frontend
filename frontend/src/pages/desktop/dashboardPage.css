@@ -401,6 +401,12 @@ body {
   overflow: hidden;
 }
 
+/* Align sidebar header border with app header border on all non-dashboard pages */
+.dashboard-page:not(.dashboard-page--home) .sidebar-header,
+.dashboard-page:not(.dashboard-page--home) .sidebar-brand {
+  border-bottom: 1px solid #E5E9F2;
+}
+
 .sidebar-brand .brand-icon {
   width: 32px;
   height: 32px;
