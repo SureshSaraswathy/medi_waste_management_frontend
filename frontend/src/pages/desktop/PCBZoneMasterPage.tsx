@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
-import MasterPageLayout from '../../components/common/MasterPageLayout';
-import Tabs from '../../components/common/Tabs';
-import { Column } from '../../components/common/DataTable';
+import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
+import './pcbZoneMasterPage.css';
 
 interface PCBZone {
   id: string;
@@ -22,7 +22,7 @@ interface PCBZone {
 }
 
 const PCBZoneMasterPage = () => {
-  const { logout } = useAuth();
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -30,12 +30,23 @@ const PCBZoneMasterPage = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
   const [showModal, setShowModal] = useState(false);
   const [editingPCBZone, setEditingPCBZone] = useState<PCBZone | null>(null);
   const [pcbZones, setPcbZones] = useState<PCBZone[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  interface AdvancedFilters {
+    pcbZoneName: string;
+    contactEmail: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    pcbZoneName: '',
+    contactEmail: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Load PCB Zones from API
   const loadPcbZones = async () => {
@@ -71,97 +82,24 @@ const PCBZoneMasterPage = () => {
     loadPcbZones();
   }, []);
 
-  const navItems = [
-    { 
-      path: '/dashboard', 
-      label: 'Dashboard', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-      ), 
-      active: location.pathname === '/dashboard' 
-    },
-    { 
-      path: '/transaction', 
-      label: 'Transaction', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-          <line x1="1" y1="10" x2="23" y2="10"></line>
-        </svg>
-      ), 
-      active: location.pathname === '/transaction' || location.pathname.startsWith('/transaction')
-    },
-    { 
-      path: '/finance', 
-      label: 'Finance', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="1" x2="12" y2="23"></line>
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/finance' || location.pathname.startsWith('/finance')
-    },
-    { 
-      path: '/commercial-agreements', 
-      label: 'Commercial / Agreements', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-      ), 
-      active: location.pathname === '/commercial-agreements' || location.pathname.startsWith('/commercial-agreements')
-    },
-    { 
-      path: '/compliance-training', 
-      label: 'Compliance & Training', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <path d="M9 15l2 2 4-4"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/compliance-training' || location.pathname.startsWith('/compliance-training')
-    },
-    { 
-      path: '/master', 
-      label: 'Master', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/master' || location.pathname.startsWith('/master') 
-    },
-    { 
-      path: '/report', 
-      label: 'Report', 
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-      ), 
-      active: location.pathname === '/report' 
-    },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
-  const filteredPCBZones = pcbZones.filter(zone =>
-    zone.pcbZoneName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    zone.pcbZoneAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    zone.contactEmail.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPCBZones = pcbZones.filter(zone => {
+    const query = searchQuery.trim().toLowerCase();
+    const nameQuery = advancedFilters.pcbZoneName.trim().toLowerCase();
+    const emailQuery = advancedFilters.contactEmail.trim().toLowerCase();
+    
+    const matchesSearch = !query ||
+      zone.pcbZoneName.toLowerCase().includes(query) ||
+      zone.pcbZoneAddress.toLowerCase().includes(query) ||
+      zone.contactEmail.toLowerCase().includes(query);
+    
+    const matchesName = !nameQuery || zone.pcbZoneName.toLowerCase().includes(nameQuery);
+    const matchesEmail = !emailQuery || zone.contactEmail.toLowerCase().includes(emailQuery);
+    const matchesStatus = statusFilter === 'all' || zone.status === statusFilter;
+    
+    return matchesSearch && matchesName && matchesEmail && matchesStatus;
+  });
 
   const handleAdd = () => {
     setEditingPCBZone(null);
@@ -234,24 +172,6 @@ const PCBZoneMasterPage = () => {
     }
   };
 
-  // Define columns for the table
-  const columns: Column<PCBZone>[] = [
-    { key: 'pcbZoneName', label: 'PCB Zone Name', minWidth: 150, allowWrap: true },
-    { key: 'pcbZoneAddress', label: 'PCB Zone Address', minWidth: 250, allowWrap: true },
-    { key: 'contactNum', label: 'Contact Number', minWidth: 140 },
-    { key: 'contactEmail', label: 'Contact Email', minWidth: 180, allowWrap: true },
-    { key: 'alertEmail', label: 'Alert Email', minWidth: 180, allowWrap: true },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 100,
-      render: (zone) => (
-        <span className={`status-badge status-badge--${zone.status.toLowerCase()}`}>
-          {zone.status}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="dashboard-page">
@@ -330,11 +250,10 @@ const PCBZoneMasterPage = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Masters / PCB Zone Master</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="PCB Zone Master"
+          subtitle="Manage PCB zone master data"
+        />
 
         {/* Error Message */}
         {error && (
@@ -343,43 +262,185 @@ const PCBZoneMasterPage = () => {
             background: '#fee', 
             color: '#c33', 
             marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc'
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            {error}
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#c33', 
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0 8px'
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
 
         {/* Loading Indicator */}
         {loading && !pcbZones.length && (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             Loading PCB zones...
           </div>
         )}
 
-        {/* PCB Zone Master Content using reusable template */}
-        <MasterPageLayout
-          title="PCB Zone Master"
-          breadcrumb="/ Masters / PCB Zone Master"
-          data={pcbZones}
-          filteredData={filteredPCBZones}
-          columns={columns}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          getId={(zone) => zone.id}
-          addButtonLabel="Add PCB Zone"
-        >
-          {/* Tabs */}
-          <Tabs
-            tabs={[{ id: 'list', label: 'PCB Zone List' }]}
-            activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as 'list' | 'form')}
-          />
-        </MasterPageLayout>
+        <div className="pcb-zone-master-page">
+          {/* Page Header */}
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">PCB Zone Master</h1>
+              <p className="ra-page-subtitle">Manage PCB zone information and details</p>
+            </div>
+          </div>
+
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by PCB zone name, address, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
+            </div>
+            <div className="ra-actions">
+              <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Advanced Filter
+              </button>
+              <button className="ra-add-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add PCB Zone
+              </button>
+            </div>
+          </div>
+
+          {/* PCB Zones Table */}
+          <div className="pcb-zone-master-table-container">
+            <table className="pcb-zone-master-table">
+              <thead>
+                <tr>
+                  <th>PCB ZONE NAME</th>
+                  <th>PCB ZONE ADDRESS</th>
+                  <th>CONTACT NUMBER</th>
+                  <th>CONTACT EMAIL</th>
+                  <th>ALERT EMAIL</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPCBZones.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="empty-message">
+                      {loading ? 'Loading...' : 'No PCB zones found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPCBZones.map((zone) => (
+                    <tr key={zone.id}>
+                      <td>{zone.pcbZoneName || '-'}</td>
+                      <td>{zone.pcbZoneAddress || '-'}</td>
+                      <td>{zone.contactNum || '-'}</td>
+                      <td>{zone.contactEmail || '-'}</td>
+                      <td>{zone.alertEmail || '-'}</td>
+                      <td>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge status-badge--${zone.status.toLowerCase()}`}>
+                            {zone.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="action-buttons ra-actions">
+                          <button
+                            className="action-btn action-btn--view"
+                            onClick={() => handleEdit(zone)}
+                            title="View"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--edit"
+                            onClick={() => handleEdit(zone)}
+                            title="Edit"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => handleDelete(zone.id)}
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredPCBZones.length} of {pcbZones.length} items
+          </div>
+        </div>
       </main>
+
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <AdvancedFiltersModal
+          statusFilter={statusFilter}
+          advancedFilters={advancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onClear={() => {
+            setAdvancedFilters({ pcbZoneName: '', contactEmail: '' });
+            setStatusFilter('all');
+            setSearchQuery('');
+          }}
+          onApply={(payload) => {
+            setStatusFilter(payload.statusFilter);
+            setAdvancedFilters(payload.advancedFilters);
+            setShowAdvancedFilters(false);
+          }}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -392,6 +453,114 @@ const PCBZoneMasterPage = () => {
           onSave={handleSave}
         />
       )}
+    </div>
+  );
+};
+
+// Advanced Filters Modal Component
+interface AdvancedFiltersModalProps {
+  statusFilter: string;
+  advancedFilters: AdvancedFilters;
+  onClose: () => void;
+  onClear: () => void;
+  onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
+}
+
+const AdvancedFiltersModal = ({
+  statusFilter,
+  advancedFilters,
+  onClose,
+  onClear,
+  onApply,
+}: AdvancedFiltersModalProps) => {
+  const [draftStatus, setDraftStatus] = useState(statusFilter);
+  const [draft, setDraft] = useState<AdvancedFilters>(advancedFilters);
+
+  return (
+    <div className="modal-overlay cm-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content cm-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cm-filter-modal-header">
+          <div className="cm-filter-modal-titlewrap">
+            <div className="cm-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div className="cm-filter-title">Advanced Filters</div>
+              <div className="cm-filter-subtitle">Filter PCB zones by multiple criteria</div>
+            </div>
+          </div>
+          <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </div>
+
+        <div className="cm-filter-modal-body">
+          <div className="cm-filter-grid">
+            <div className="cm-filter-field">
+              <label>PCB Zone Name</label>
+              <input
+                type="text"
+                value={draft.pcbZoneName}
+                onChange={(e) => setDraft({ ...draft, pcbZoneName: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter PCB zone name"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Contact Email</label>
+              <input
+                type="text"
+                value={draft.contactEmail}
+                onChange={(e) => setDraft({ ...draft, contactEmail: e.target.value })}
+                className="cm-filter-input"
+                placeholder="Enter contact email"
+              />
+            </div>
+
+            <div className="cm-filter-field">
+              <label>Status</label>
+              <select
+                value={draftStatus}
+                onChange={(e) => setDraftStatus(e.target.value)}
+                className="cm-filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="cm-filter-modal-footer">
+          <button
+            type="button"
+            className="cm-link-btn"
+            onClick={() => {
+              setDraftStatus('all');
+              setDraft({ pcbZoneName: '', contactEmail: '' });
+              onClear();
+            }}
+          >
+            Clear Filters
+          </button>
+          <button
+            type="button"
+            className="cm-btn cm-btn--primary cm-btn--sm"
+            onClick={() =>
+              onApply({
+                statusFilter: draftStatus,
+                advancedFilters: draft,
+              })
+            }
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

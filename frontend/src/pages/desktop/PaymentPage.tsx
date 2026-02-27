@@ -1014,7 +1014,7 @@ const PaymentPage = () => {
                 <h2 style={{ margin: '0 0 16px 0', fontSize: '20px', fontWeight: 600 }}>Confirm Payment</h2>
                 <div style={{ marginBottom: '20px' }}>
                   <p style={{ margin: '0 0 12px 0', color: '#dc2626', fontWeight: 600 }}>
-                    ⚠️ This action cannot be undone.
+                    This action cannot be undone.
                   </p>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
                     You are about to process a payment of <strong>₹{formData.paymentAmount.toFixed(2)}</strong>.

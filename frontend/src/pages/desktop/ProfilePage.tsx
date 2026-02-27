@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { changePassword } from '../../services/passwordService';
 import { userService, UserResponse } from '../../services/userService';
+import PageHeader from '../../components/layout/PageHeader';
 import './profilePage.css';
 import './dashboardPage.css';
 
 const ProfilePage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -306,90 +308,7 @@ const ProfilePage = () => {
   const displayRole = profileData?.userRoleId || user?.roles.join(', ') || 'User';
   const displayStatus = profileData?.status || 'Active';
 
-  const navItems = [
-    { 
-      path: '/dashboard', 
-      label: 'Dashboard', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-      ), 
-      active: location.pathname === '/dashboard' 
-    },
-    { 
-      path: '/transaction', 
-      label: 'Transaction', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-          <line x1="1" y1="10" x2="23" y2="10"></line>
-        </svg>
-      ), 
-      active: location.pathname === '/transaction' || location.pathname.startsWith('/transaction')
-    },
-    { 
-      path: '/finance', 
-      label: 'Finance', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="12" y1="1" x2="12" y2="23"></line>
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/finance' || location.pathname.startsWith('/finance')
-    },
-    { 
-      path: '/commercial-agreements', 
-      label: 'Commercial / Agreements', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-      ), 
-      active: location.pathname === '/commercial-agreements' || location.pathname.startsWith('/commercial-agreements')
-    },
-    { 
-      path: '/compliance-training', 
-      label: 'Compliance & Training', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <path d="M9 15l2 2 4-4"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/compliance-training' || location.pathname.startsWith('/compliance-training')
-    },
-    { 
-      path: '/master', 
-      label: 'Master', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
-        </svg>
-      ), 
-      active: location.pathname === '/master' || location.pathname.startsWith('/master')
-    },
-    { 
-      path: '/report', 
-      label: 'Reports', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-      ), 
-      active: location.pathname.startsWith('/report')
-    },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">
@@ -467,38 +386,66 @@ const ProfilePage = () => {
       </aside>
 
       <main className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Profile</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Profile"
+          subtitle="Manage your profile and account settings"
+        />
 
         <div className="dashboard-content">
           <div className="profile-page">
             {/* Profile Header with Avatar */}
-            <div className="profile-header-card">
-              <div className="profile-header-avatar">
-                <div className="profile-avatar-large">
-                  {getInitials(displayName)}
+            <div className="profile-header-card profile-header-card--template">
+              <div className="profile-header-left">
+                <div className="profile-header-avatar">
+                  <div className="profile-avatar-large">{getInitials(displayName)}</div>
+                </div>
+
+                <div className="profile-header-info">
+                  <div className="profile-header-top">
+                    <h1 className="profile-header-name">{displayName}</h1>
+                    <div className="profile-header-badges">
+                      <span className="profile-role-pill">{displayRole}</span>
+                      <span className={`profile-status-pill ${getStatusBadgeClass(displayStatus)}`}>{displayStatus}</span>
+                    </div>
+                  </div>
+
+                  <div className="profile-header-sub">
+                    <span className="profile-header-subitem">
+                      {profileData?.emailAddress || user?.email || '—'}
+                    </span>
+                    <span className="profile-header-dot">•</span>
+                    <span className="profile-header-subitem">{profileData?.employmentType || 'Administration'}</span>
+                  </div>
                 </div>
               </div>
-              <div className="profile-header-info">
-                <h1 className="profile-header-name">{displayName}</h1>
-                <div className="profile-header-meta">
-                  <span className="profile-header-role">{displayRole}</span>
-                  <span className="profile-header-separator">•</span>
-                  <span className={`profile-header-status ${getStatusBadgeClass(displayStatus)}`}>
-                    {displayStatus}
-                  </span>
-                </div>
-                {profileData?.mobileNumber && profileData.mobileNumber !== '-' && (
-                  <div className="profile-header-contact">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                    </svg>
-                    {profileData.mobileNumber}
-                  </div>
-                )}
+
+              {/* UI-only: Save button uses existing contact save behavior (no API changes). */}
+              <div className="profile-header-actions">
+                <button
+                  type="button"
+                  className="profile-save-btn"
+                  onClick={handleContactSave}
+                  disabled={
+                    loading ||
+                    activeSection !== 'contact' ||
+                    !isEditingContact ||
+                    !profileData?.userId
+                  }
+                  title={
+                    activeSection !== 'contact'
+                      ? 'Switch to Contact Info to save'
+                      : !isEditingContact
+                        ? 'Click Edit Contact Info to make changes'
+                        : 'Save contact information'
+                  }
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  Save
+                </button>
               </div>
             </div>
 

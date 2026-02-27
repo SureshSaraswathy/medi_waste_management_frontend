@@ -1,48 +1,70 @@
 import { API_BASE_URL } from './apiBaseUrl';
 
-export type PermissionAdminItem = {
+type ApiResponse<T> = {
+  success: boolean;
+  data: T;
+  message: string;
+};
+
+export type AdminPermissionItem = {
   permissionId: string;
   permissionCode: string;
   permissionName: string;
   moduleName: string;
-  description: string | null;
+  description?: string | null;
   isActive: boolean;
 };
 
-type ApiResponse<T> = {
-  success: boolean;
-  data: T;
-  message?: string;
+const getAuthToken = (): string | null => {
+  const raw = localStorage.getItem('mw-auth-user');
+  if (!raw) return null;
+  try {
+    const user = JSON.parse(raw);
+    return user?.token || null;
+  } catch {
+    return null;
+  }
 };
 
-const authedFetch = async <T>(token: string, path: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...(init || {}),
+async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Unauthorized: missing token');
+  }
+
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      ...(init?.headers || {}),
+      ...(options.headers || {}),
     },
   });
 
-  const json = (await res.json().catch(() => null)) as ApiResponse<T> | null;
   if (!res.ok) {
-    const msg = (json as any)?.message || (json as any)?.error || `Request failed (${res.status})`;
-    throw new Error(msg);
+    const body = await res.json().catch(() => ({}));
+    const msg = body?.message || body?.error || `HTTP ${res.status}`;
+    throw new Error(Array.isArray(msg) ? msg.join(', ') : String(msg));
   }
-  if (!json?.success) throw new Error(json?.message || 'Request failed');
+
+  const json = (await res.json()) as ApiResponse<T>;
   return json.data;
-};
+}
 
 export const permissionAdminService = {
-  listAllPermissions: (token: string) => authedFetch<PermissionAdminItem[]>(token, '/permissions'),
-  getRolePermissionCodes: (token: string, roleId: string) =>
-    authedFetch<string[]>(token, `/permissions/roles/${roleId}`),
-  replaceRolePermissions: (token: string, roleId: string, permissionCodes: string[]) =>
-    authedFetch<string[]>(
-      token,
-      `/permissions/roles/${roleId}`,
-      { method: 'PUT', body: JSON.stringify({ permissionCodes }) },
-    ),
+  listPermissions: async (): Promise<AdminPermissionItem[]> => {
+    return apiRequest<AdminPermissionItem[]>('/permissions', { method: 'GET' });
+  },
+
+  getRolePermissionCodes: async (roleId: string): Promise<string[]> => {
+    return apiRequest<string[]>(`/permissions/roles/${roleId}`, { method: 'GET' });
+  },
+
+  replaceRolePermissions: async (roleId: string, permissionCodes: string[]): Promise<string[]> => {
+    return apiRequest<string[]>(`/permissions/roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissionCodes }),
+    });
+  },
 };
 

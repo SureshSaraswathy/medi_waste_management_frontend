@@ -18,7 +18,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { dashboardService } from '../../services/dashboardService';
 import { fetchWidgetData } from '../../services/widgetDataService';
 import { hasPermission } from '../../services/permissionService';
-import { WidgetConfig, Role } from '../../types/dashboard';
+import { WidgetConfig, Role, WidgetType } from '../../types/dashboard';
 import { MetricWidget } from '../../components/dashboard/widgets/MetricWidget';
 import { ChartWidget } from '../../components/dashboard/widgets/ChartWidget';
 import { TableWidget } from '../../components/dashboard/widgets/TableWidget';
@@ -27,6 +27,9 @@ import { ApprovalQueueWidget } from '../../components/dashboard/widgets/Approval
 import { AlertWidget } from '../../components/dashboard/widgets/AlertWidget';
 import { ActivityTimelineWidget } from '../../components/dashboard/widgets/ActivityTimelineWidget';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import { DraggableWidget } from '../../components/dashboard/DraggableWidget';
+import { RowSection } from '../../components/dashboard/RowSection';
+import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 
 // Lazy load widget components for better performance
@@ -205,6 +208,7 @@ const WidgetRenderer: React.FC<{ widget: WidgetConfig; permissions: Record<strin
       );
 
     case 'task-list':
+    case 'list':
       return (
         <TaskListWidget
           title={widget.title}
@@ -275,6 +279,15 @@ const DashboardPage: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [previewMode, setPreviewMode] = useState<{ enabled: boolean; role: Role | null }>({ enabled: false, role: null });
 
+  // Debug: Log widgets state changes
+  useEffect(() => {
+    console.log('[DashboardPage] Widgets state changed:', {
+      count: widgets.length,
+      widgets: widgets,
+      willRender: widgets.length > 0,
+    });
+  }, [widgets]);
+
   // Check for preview mode from URL or sessionStorage
   useEffect(() => {
     const isPreview = searchParams.get('preview') === 'true';
@@ -294,17 +307,40 @@ const DashboardPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Get current role (from preview mode or user)
-  const currentRole: Role = previewMode.enabled && previewMode.role
-    ? previewMode.role
-    : ((user?.roles?.[0] as Role) || 'viewer');
-
   const isPreviewMode = previewMode.enabled;
-  // SUPER_ADMIN is inferred from wildcard only.
+  // SUPER_ADMIN is inferred from permissions wildcard only.
   const isSuperAdminUser = userPermissions.includes('*');
-  // No-access mode should only be applied AFTER permissions have loaded (prevents first-login blank screen).
-  const noAccessMode =
-    permissionsLoaded && !isSuperAdminUser && (!Array.isArray(userPermissions) || userPermissions.length === 0);
+
+  // Get current role (from preview mode or user)
+  // IMPORTANT: Map user roles to dashboard roles
+  // SuperAdmin users (with '*' permission) should use 'superadmin' role for dashboard
+  const getUserRoleForDashboard = (): Role => {
+    if (previewMode.enabled && previewMode.role) {
+      return previewMode.role;
+    }
+    
+    // Check if user is SuperAdmin (has '*' permission)
+    if (isSuperAdminUser) {
+      console.log('[DashboardPage] User is SuperAdmin, using "superadmin" role for dashboard');
+      return 'superadmin';
+    }
+    
+    // Try to get role from user object
+    if (user?.roles && user.roles.length > 0) {
+      const userRole = user.roles[0];
+      // If it's already a valid Role type, use it
+      if (['admin', 'manager', 'viewer', 'user', 'staff', 'superadmin'].includes(userRole)) {
+        return userRole as Role;
+      }
+      // Otherwise, try to map common role IDs to dashboard roles
+      // This is a fallback - ideally roles should match
+    }
+    
+    // Default fallback
+    return 'user';
+  };
+  
+  const currentRole: Role = getUserRoleForDashboard();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -468,9 +504,23 @@ const DashboardPage: React.FC = () => {
       setLoading(true);
       try {
         console.log('[DashboardPage] Loading dashboard for role:', currentRole);
+        console.log('[DashboardPage] User info:', {
+          userId: user?.id,
+          userName: user?.name,
+          userRoles: user?.roles,
+          currentRole,
+        });
         
         // Load role configuration from backend
         const roleConfig = await dashboardService.getDashboardConfig(currentRole);
+        
+        console.log('[DashboardPage] Backend API response:', {
+          role: roleConfig.role,
+          widgetsCount: Array.isArray(roleConfig.widgets) ? roleConfig.widgets.length : 0,
+          widgets: roleConfig.widgets,
+          menuItemsCount: Array.isArray(roleConfig.menuItems) ? roleConfig.menuItems.length : 0,
+          permissions: roleConfig.permissions,
+        });
         
         console.log('[DashboardPage] Loaded role config:', {
           role: roleConfig.role,
@@ -826,8 +876,19 @@ const DashboardPage: React.FC = () => {
           
           // Check if widget has dataSource with endpoint
           if (!widget.dataSource || !widget.dataSource.endpoint) {
-            console.warn('[DashboardPage] Filtering out invalid widget (missing dataSource.endpoint):', widget);
-            return false;
+            console.warn('[DashboardPage] Widget missing dataSource.endpoint, using fallback:', {
+              widget,
+              hasDataSource: !!widget.dataSource,
+              endpoint: widget.dataSource?.endpoint,
+            });
+            // Don't filter out - use emergency fallback instead
+            if (!widget.dataSource) {
+              widget.dataSource = {};
+            }
+            if (!widget.dataSource.endpoint) {
+              widget.dataSource.endpoint = '/dashboard/kpi/total-invoices'; // Emergency fallback
+              console.warn('[DashboardPage] Using emergency fallback endpoint for widget:', widget.id);
+            }
           }
           
           return true;
@@ -836,6 +897,60 @@ const DashboardPage: React.FC = () => {
         console.log('[DashboardPage] Final validated widgets:', {
           count: validatedWidgets.length,
           widgets: validatedWidgets,
+        });
+        
+        // Debug: Log detailed information about widgets
+        console.log('[DashboardPage] Widget Processing Summary:', {
+          roleConfigWidgetsCount: Array.isArray(roleConfig.widgets) ? roleConfig.widgets.length : 0,
+          computedWidgetsCount: Array.isArray(computed.widgets) ? computed.widgets.length : 0,
+          widgetsToProcessCount: widgetsToProcess.length,
+          validatedWidgetsCount: validatedWidgets.length,
+          roleConfigWidgets: roleConfig.widgets,
+          computedWidgets: computed.widgets,
+          widgetsToProcess: widgetsToProcess,
+          validatedWidgets: validatedWidgets,
+        });
+        
+        // Debug: Log if widgets were filtered out
+        if (validatedWidgets.length === 0 && widgetsToProcess.length > 0) {
+          console.error('[DashboardPage] ERROR: All widgets were filtered out during validation!', {
+            originalCount: widgetsToProcess.length,
+            validatedCount: validatedWidgets.length,
+            originalWidgets: widgetsToProcess,
+            filteredWidgets: widgetsToProcess.map((w, idx) => ({
+              index: idx,
+              widget: w,
+              hasId: !!w?.id,
+              hasType: !!w?.type,
+              hasDataSource: !!w?.dataSource,
+              hasEndpoint: !!w?.dataSource?.endpoint,
+              keys: w ? Object.keys(w) : [],
+            })),
+          });
+        }
+        
+        // Debug: Log if no widgets were loaded at all
+        if (widgetsToProcess.length === 0) {
+          console.error('[DashboardPage] ERROR: No widgets found in configuration!', {
+            role: currentRole,
+            roleConfig: {
+              role: roleConfig.role,
+              widgets: roleConfig.widgets,
+              widgetsType: typeof roleConfig.widgets,
+              widgetsIsArray: Array.isArray(roleConfig.widgets),
+            },
+            userOverrides,
+            computed: {
+              widgets: computed.widgets,
+              widgetsType: typeof computed.widgets,
+              widgetsIsArray: Array.isArray(computed.widgets),
+            },
+          });
+        }
+        
+        console.log('[DashboardPage] Setting widgets state:', {
+          count: validatedWidgets.length,
+          willRender: validatedWidgets.length > 0,
         });
         
         setWidgets(validatedWidgets);
@@ -864,58 +979,105 @@ const DashboardPage: React.FC = () => {
 
 
   // Group widgets by row for grid layout
-  const widgetRows = useMemo(() => {
-    const rows: WidgetConfig[][] = [];
-    let currentRow: WidgetConfig[] = [];
-    let currentRowWidth = 0;
+  const normalizeWidgetType = (widget: WidgetConfig): string =>
+    String(widget?.type || '').toLowerCase().trim();
+
+  const groupedWidgets = useMemo(() => {
+    const kpiWidgets: WidgetConfig[] = [];
+    const middleInfo: WidgetConfig[] = [];
+    const bottomAnalytics: WidgetConfig[] = [];
 
     widgets.forEach((widget) => {
-      const widgetWidth = widget.gridColumn || 1;
+      const type = normalizeWidgetType(widget);
+      const widgetWithSpan = { ...widget };
       
-      if (currentRowWidth + widgetWidth > 4) {
-        rows.push(currentRow);
-        currentRow = [widget];
-        currentRowWidth = widgetWidth;
+      // Assign spans based on widget type for 12-column grid
+      // Desktop spans (will be overridden by CSS for tablet/mobile)
+      if (!widgetWithSpan.span) {
+      if (type === 'metric' || type === 'kpi') {
+          // KPIs: 4 columns = 3 per row on desktop
+          widgetWithSpan.span = 4;
+      } else if (type === 'chart') {
+          // Charts: 3 columns = 4 per row on desktop
+          const rawSize = String((widget as any)?.size || widget?.props?.size || '').toLowerCase().trim();
+          if (rawSize === 'xl' || (widget.gridColumn || 1) >= 4 || (widget.gridRow || 1) >= 3) {
+            widgetWithSpan.span = 12; // Large chart full width
       } else {
-        currentRow.push(widget);
-        currentRowWidth += widgetWidth;
+            widgetWithSpan.span = 3; // Small chart 4 per row
+          }
+        } else {
+          // Medium widgets (list, table, task-list, approval-queue, alert): 4 columns = 3 per row on desktop
+          widgetWithSpan.span = 4;
+        }
+      }
+      
+      if (type === 'metric' || type === 'kpi') {
+        kpiWidgets.push(widgetWithSpan);
+      } else if (type === 'chart') {
+        bottomAnalytics.push(widgetWithSpan);
+      } else {
+        middleInfo.push(widgetWithSpan);
       }
     });
 
-    if (currentRow.length > 0) {
-      rows.push(currentRow);
-    }
-
-    return rows;
+    return { kpiWidgets, middleInfo, bottomAnalytics };
   }, [widgets]);
 
-  return (
-    <div className="dashboard-page">
-      {/* Left Sidebar - Same as MasterPage */}
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
+  const getDashboardCardClasses = (widget: WidgetConfig): string => {
+    const classes = ['dashboard-card'];
+    const type = normalizeWidgetType(widget);
 
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+    if (type === 'chart') {
+      classes.push('chart-container');
+      const rawSize = String((widget as any)?.size || widget?.props?.size || '').toLowerCase().trim();
+      if (rawSize === 'xl' || (widget.gridColumn || 1) >= 4 || (widget.gridRow || 1) >= 3) {
+        classes.push('large-chart');
+      }
+    }
+
+    const rawSize = String((widget as any)?.size || widget?.props?.size || '').toLowerCase().trim();
+    if (rawSize === 'xl') {
+      classes.push('full-width');
+    }
+
+    return classes.join(' ');
+  };
+
+  return (
+    <div className="dashboard-page dashboard-page--home">
+      <div className="app-layout">
+      {/* Left Sidebar - Same as MasterPage */}
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -939,6 +1101,7 @@ const DashboardPage: React.FC = () => {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
+            {!isSidebarCollapsed && <span>Notifications</span>}
             <span className="notification-badge">3</span>
           </button>
           <Link
@@ -964,39 +1127,16 @@ const DashboardPage: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="dashboard-main">
+      <main className="dashboard-main main-container">
         {/* Top Header */}
-        <header className="dashboard-header">
-          <div className="header-left">
-            <span className="breadcrumb">/ Dashboard</span>
-          </div>
-        </header>
+        <PageHeader 
+          title="Analytics Dashboard"
+          subtitle="Real-time insights and performance metrics"
+          standard={false}
+        />
 
         {/* Dashboard Content */}
-        <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {/* No-permission Welcome message (inside Dashboard layout) */}
-          {noAccessMode && (
-            <div
-              style={{
-                maxWidth: 720,
-                margin: '40px auto',
-                background: '#ffffff',
-                border: '1px solid #e5e7eb',
-                borderRadius: 12,
-                padding: 20,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
-              }}
-            >
-              <h2 style={{ margin: 0, color: '#111827' }}>Welcome to MEDI‑WASTE System Management</h2>
-              <p style={{ marginTop: 10, color: '#4b5563', lineHeight: 1.6 }}>
-                Your account is active, but <strong>no permissions are assigned</strong> yet.
-              </p>
-              <p style={{ marginTop: 8, color: '#6b7280' }}>
-                Please contact your SuperAdmin to assign permissions for your role.
-              </p>
-            </div>
-          )}
-
+        <div className="dashboard-page-content page-body">
           {/* Preview Mode Banner */}
           {isPreviewMode && (
             <div className="dashboard-preview-selector" style={{ 
@@ -1015,7 +1155,7 @@ const DashboardPage: React.FC = () => {
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
                 <span style={{ fontWeight: '600', color: '#92400e' }}>
-                  Preview Mode: {previewMode.role?.charAt(0).toUpperCase() + previewMode.role?.slice(1)}
+                  Preview Mode: {previewMode.role ? previewMode.role.charAt(0).toUpperCase() + previewMode.role.slice(1) : 'Unknown'}
                 </span>
               </div>
               <button
@@ -1044,65 +1184,123 @@ const DashboardPage: React.FC = () => {
             </div>
           )}
 
-          {/* Widget Grid */}
+          {/* Dashboard Canvas */}
           {!loading && (
-            <div className="dashboard-widget-grid">
-              {widgetRows.map((row, rowIndex) => (
-                <div key={`row-${rowIndex}`} className="dashboard-widget-row">
-                  {row.map((widget, widgetIndex) => {
-                    // Validate widget before rendering
-                    if (!widget || typeof widget !== 'object' || Array.isArray(widget) || !widget.id || !widget.type) {
-                      console.error('[DashboardPage] Invalid widget in render:', widget);
-                      return (
-                        <div
-                          key={`invalid-widget-${rowIndex}-${widgetIndex}`}
-                          className="dashboard-widget-cell"
-                          style={{
-                            gridColumn: `span 1`,
-                          }}
-                        >
-                          <div className="widget-error">Invalid widget configuration</div>
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <div
-                        key={widget.id || `widget-${rowIndex}-${widgetIndex}`}
-                        className="dashboard-widget-cell"
-                        style={{
-                          gridColumn: `span ${widget.gridColumn || 1}`,
-                          gridRow: widget.gridRow ? `span ${widget.gridRow}` : undefined,
-                        }}
-                      >
-                        <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
-                          <WidgetRenderer
-                            widget={widget}
-                            permissions={widgetPermissions}
-                            isPreviewMode={isPreviewMode}
-                          />
-                        </Suspense>
-                      </div>
-                    );
-                  })}
+            <div className="dashboard-canvas">
+              {widgets.length === 0 ? (
+                <div className="dashboard-empty-state-modern">
+                  {/* Background pattern */}
+                  <div className="dashboard-empty-state__pattern"></div>
+                  {/* Gradient orbs */}
+                  <div className="dashboard-empty-state__orb dashboard-empty-state__orb--left"></div>
+                  <div className="dashboard-empty-state__orb dashboard-empty-state__orb--right"></div>
+                  
+                  <div className="dashboard-empty-state__content">
+                    <div className="dashboard-empty-state__icon">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                      </svg>
+                    </div>
+                    <h3 className="dashboard-empty-state__title">
+                      Start Building Your Dashboard
+                    </h3>
+                    <p className="dashboard-empty-state__description">
+                      Add widgets from the sidebar to create a powerful, customized dashboard experience
+                    </p>
+                    <div className="dashboard-empty-state__hint">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        <line x1="9" y1="10" x2="15" y2="10"></line>
+                      </svg>
+                      <span>Contact your administrator to configure widgets for your role</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <>
+                  {/* Unified KPI Grid - All KPIs in one responsive grid container */}
+                  {groupedWidgets.kpiWidgets.length > 0 && (
+                    <div className="kpi-grid-container">
+                      {groupedWidgets.kpiWidgets.map((widget, index) => (
+                        <DraggableWidget
+                          key={widget.id || `kpi-${index}`}
+                          widget={widget}
+                          index={index}
+                          className={getDashboardCardClasses(widget)}
+                          disableGridSizing={false}
+                          isSelected={false}
+                        >
+                          <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
+                            <WidgetRenderer
+                              widget={widget}
+                              permissions={widgetPermissions}
+                              isPreviewMode={isPreviewMode}
+                            />
+                          </Suspense>
+                        </DraggableWidget>
+                      ))}
+                    </div>
+                  )}
 
-          {/* Empty State */}
-          {!loading && widgets.length === 0 && (
-            <div className="dashboard-empty-state">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-              <h2>No widgets configured</h2>
-              <p>Your dashboard is empty. Contact your administrator to configure widgets for your role.</p>
+                  {groupedWidgets.middleInfo.length > 0 && (
+                    <RowSection className="middle-info">
+                      {groupedWidgets.middleInfo.map((widget, index) => (
+                        <DraggableWidget
+                          key={widget.id || `middle-${index}`}
+                          widget={widget}
+                          index={index}
+                          className={getDashboardCardClasses(widget)}
+                          disableGridSizing={false}
+                          isSelected={false}
+                        >
+                          <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
+                            <WidgetRenderer
+                              widget={widget}
+                              permissions={widgetPermissions}
+                              isPreviewMode={isPreviewMode}
+                            />
+                          </Suspense>
+                        </DraggableWidget>
+                      ))}
+                    </RowSection>
+                  )}
+
+                  {groupedWidgets.bottomAnalytics.length > 0 && (
+                    <RowSection className="bottom-analytics">
+                      {groupedWidgets.bottomAnalytics.map((widget, index) => (
+                        <DraggableWidget
+                          key={widget.id || `bottom-${index}`}
+                          widget={widget}
+                          index={index}
+                          className={getDashboardCardClasses(widget)}
+                          disableGridSizing={false}
+                          isSelected={false}
+                        >
+                          <Suspense fallback={<div className="widget-loading">Loading widget...</div>}>
+                            <WidgetRenderer
+                              widget={widget}
+                              permissions={widgetPermissions}
+                              isPreviewMode={isPreviewMode}
+                            />
+                          </Suspense>
+                        </DraggableWidget>
+                      ))}
+                    </RowSection>
+                  )}
+                  
+                  {/* Bottom breathing space for scroll comfort */}
+                  <div className="page-end-space"></div>
+                </>
+              )}
             </div>
           )}
         </div>
       </main>
+      </div>
     </div>
   );
 };

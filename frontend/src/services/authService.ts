@@ -17,9 +17,13 @@ interface LoginResponse {
   email?: string;
   companyId: string;
   userRoleId: string | null;
+  userType?: 'USER' | 'HCF'; // NEW: Distinguish user type
+  hcfId?: string; // NEW: If HCF user
   status: string;
   requiresOTP: boolean;
-  forcePasswordChange: boolean;
+  forcePasswordChange?: boolean; // For regular users
+  requiresPasswordChange?: boolean; // For HCF users
+  passwordExpired?: boolean; // For HCF users
   token?: string;
 }
 
@@ -94,7 +98,7 @@ export const sendOTPEmail = async (usernameOrEmail: string): Promise<void> => {
 export const loginRequest = async (
   usernameOrEmail: string,
   password: string,
-): Promise<{ requiresOTP: boolean; email?: string; user?: User; forcePasswordChange?: boolean }> => {
+): Promise<{ requiresOTP: boolean; email?: string; user?: User; forcePasswordChange?: boolean; requiresPasswordChange?: boolean; passwordExpired?: boolean }> => {
   try {
     const result = await apiRequest<LoginResponse>('/auth/login', {
       method: 'POST',
@@ -115,6 +119,9 @@ export const loginRequest = async (
       // If SuperAdmin, set role to 'superadmin', otherwise use backend role
       roles: isSuperAdmin ? ['superadmin'] : (result.userRoleId ? [result.userRoleId] : ['user']),
       token: result.token || `token-${result.userId}`,
+      userType: result.userType || 'USER', // NEW: Include user type
+      hcfId: result.hcfId, // NEW: Include HCF ID if HCF user
+      companyId: result.companyId, // NEW: Include company ID
     };
 
     // If OTP is required, send OTP and return that info
@@ -125,15 +132,29 @@ export const loginRequest = async (
         email: result.email || result.userName,
         user,
         forcePasswordChange: result.forcePasswordChange,
+        requiresPasswordChange: result.requiresPasswordChange,
+        passwordExpired: result.passwordExpired,
       };
     }
 
-    // If password change is forced, return that info
+    // If password change is forced (for regular users), return that info
     if (result.forcePasswordChange) {
       return {
         requiresOTP: false,
         user,
         forcePasswordChange: true,
+        requiresPasswordChange: result.requiresPasswordChange,
+        passwordExpired: result.passwordExpired,
+      };
+    }
+
+    // If password change is required (for HCF users), return that info
+    if (result.requiresPasswordChange) {
+      return {
+        requiresOTP: false,
+        user,
+        requiresPasswordChange: true,
+        passwordExpired: result.passwordExpired,
       };
     }
 
@@ -141,6 +162,8 @@ export const loginRequest = async (
     return {
       requiresOTP: false,
       user,
+      requiresPasswordChange: result.requiresPasswordChange,
+      passwordExpired: result.passwordExpired,
     };
   } catch (error) {
     console.error('Login error:', error);
@@ -167,6 +190,9 @@ export const loginWithOTP = async (email: string, otp: string): Promise<User> =>
       email: result.email || result.userName,
       roles: isSuperAdmin ? ['superadmin'] : (result.userRoleId ? [result.userRoleId] : ['user']),
       token: result.token || `token-${result.userId}`,
+      userType: result.userType || 'USER', // NEW: Include user type
+      hcfId: result.hcfId, // NEW: Include HCF ID if HCF user
+      companyId: result.companyId, // NEW: Include company ID
     };
 
     return user;

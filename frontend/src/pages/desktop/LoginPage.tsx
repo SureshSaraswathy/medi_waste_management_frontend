@@ -33,7 +33,9 @@ const LoginPage = () => {
   useEffect(() => {
     if (user && !loading) {
       const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
-      navigate(redirect || '/dashboard', { replace: true });
+      // If user is HCF, redirect to HCF dashboard, otherwise regular dashboard
+      const defaultPath = user.userType === 'HCF' ? '/hcf/dashboard' : '/dashboard';
+      navigate(redirect || defaultPath, { replace: true });
     }
   }, [user, loading, navigate, location]);
 
@@ -109,8 +111,17 @@ const LoginPage = () => {
         setShowOTP(true);
         setResendTimer(60);
       } else {
-        const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
-        navigate(redirect || '/dashboard', { replace: true });
+        // Check if password change is required (for HCF users)
+        if (result.requiresPasswordChange) {
+          // Redirect to HCF change password page
+          navigate('/hcf/change-password', { replace: true });
+        } else {
+          // Check user type and redirect accordingly
+          const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
+          // If user is HCF, redirect to HCF dashboard, otherwise regular dashboard
+          const defaultPath = user?.userType === 'HCF' ? '/hcf/dashboard' : '/dashboard';
+          navigate(redirect || defaultPath, { replace: true });
+        }
       }
     } catch (err) {
       setError((err as Error).message || 'Invalid credentials. Please check your username and password.');
@@ -192,7 +203,7 @@ const LoginPage = () => {
                   placeholder.className = 'image-placeholder';
                   placeholder.innerHTML = `
                     <div style="color: #cbd5e0; text-align: center; padding: 40px;">
-                      <p style="font-size: 18px; margin-bottom: 16px;">📋 Waste Segregation Infographic</p>
+                      <p style="font-size: 18px; margin-bottom: 16px;">Waste Segregation Infographic</p>
                       <p style="font-size: 14px; color: #94a3b8;">Please add the image file:</p>
                       <p style="font-size: 12px; color: #718096; margin-top: 8px;">frontend/public/waste-segregation-infographic.png</p>
                     </div>
@@ -338,7 +349,7 @@ const LoginPage = () => {
                     />
                     <span>Remember Me</span>
                   </label>
-                  <Link to="/forgot-password" className="forgot-password-link">Forgot Password?</Link>
+                  <Link to="/hcf/forgot-password" className="forgot-password-link">Forgot Password?</Link>
                 </div>
 
                 {error && <div className="error-message">{error}</div>}

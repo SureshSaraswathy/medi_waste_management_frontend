@@ -1,6 +1,9 @@
 import { PropsWithChildren, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getAdminNavItems } from '../../utils/adminNavItems';
+import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import PageHeader from '../layout/PageHeader';
 import './appLayout.css';
 
 interface NavItem {
@@ -12,10 +15,12 @@ interface NavItem {
 
 interface AppLayoutProps extends PropsWithChildren {
   navItems?: NavItem[];
+  pageTitle?: string;
+  pageSubtitle?: string;
 }
 
-const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
-  const { user, logout } = useAuth();
+const AppLayout = ({ children, navItems = [], pageTitle, pageSubtitle }: AppLayoutProps) => {
+  const { user, logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -118,7 +123,25 @@ const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
     },
   ];
 
-  const items = navItems.length > 0 ? navItems : defaultNavItems;
+  const itemsBase = navItems.length > 0 ? navItems : defaultNavItems;
+  const itemsFiltered = itemsBase.filter((item) => {
+    // Strict module gating for any layout using AppLayout
+    if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
+    if (item.path === '/transaction' || item.path.startsWith('/transaction')) return canAccessDesktopModule(permissions, 'transaction');
+    if (item.path === '/finance' || item.path.startsWith('/finance')) return canAccessDesktopModule(permissions, 'finance');
+    if (item.path === '/commercial-agreements' || item.path.startsWith('/commercial-agreements'))
+      return canAccessDesktopModule(permissions, 'commercial');
+    if (item.path === '/compliance-training' || item.path.startsWith('/compliance-training'))
+      return canAccessDesktopModule(permissions, 'compliance');
+    if (item.path === '/master' || item.path.startsWith('/master')) return canAccessDesktopModule(permissions, 'master');
+    if (item.path === '/report' || item.path.startsWith('/report')) return canAccessDesktopModule(permissions, 'report');
+    return true;
+  });
+  const adminItems = getAdminNavItems(Array.isArray(permissions) ? permissions : [], location.pathname);
+  const items = [
+    ...itemsFiltered,
+    ...adminItems.filter((a) => !itemsFiltered.some((i) => i.path === a.path)),
+  ];
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -154,31 +177,38 @@ const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
       )}
 
       <aside className={`app-layout__sidebar ${isSidebarCollapsed ? 'collapsed' : ''} ${isMobile && isMobileMenuOpen ? 'open' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
 
-        {!isMobile && (
-          <button
-            className="sidebar-toggle"
-            onClick={toggleSidebar}
-            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isSidebarCollapsed ? (
-                <polyline points="9 18 15 12 9 6"></polyline>
-              ) : (
-                <polyline points="15 18 9 12 15 6"></polyline>
-              )}
-            </svg>
-          </button>
-        )}
+          {!isMobile && (
+            <button
+              className="toggle-button"
+              onClick={toggleSidebar}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              type="button"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+              </svg>
+            </button>
+          )}
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -216,6 +246,12 @@ const AppLayout = ({ children, navItems = [] }: AppLayoutProps) => {
       </aside>
 
       <main className="app-layout__content">
+        {pageTitle && (
+          <PageHeader 
+            title={pageTitle}
+            subtitle={pageSubtitle}
+          />
+        )}
         {children}
       </main>
     </div>

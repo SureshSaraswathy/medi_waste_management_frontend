@@ -66,6 +66,7 @@ export interface WidgetConfig {
   // Grid layout: column span (1-4 for desktop, responsive on mobile)
   gridColumn: number;
   gridRow?: number; // Optional row span
+  span?: number; // Grid column span for 12-column layout (1-12)
   // Permissions: widget visibility and actions
   permissions?: {
     view?: string; // Permission code required to view this widget

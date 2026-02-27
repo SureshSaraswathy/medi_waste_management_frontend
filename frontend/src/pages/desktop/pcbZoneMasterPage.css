@@ -1,164 +1,233 @@
 .pcb-zone-master-page {
-  min-height: calc(100vh - 64px);
-  background: #f8fafc;
   padding: 24px;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #ffffff;
+  min-height: calc(100vh - 100px);
 }
 
-.pcb-zone-master-header {
+/* Page Header - Match Route Assignment Template */
+.ra-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
-.pcb-zone-master-title {
-  font-size: 18px;
-  font-weight: 700;
+.ra-header-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  border-radius: 8px;
+  color: #ffffff;
+}
+
+.ra-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ra-page-title {
+  font-size: 24px;
+  font-weight: 600;
   color: #1e293b;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-/* Tabs */
-.pcb-zone-master-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.tab-button {
-  padding: 10px 18px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
+.ra-page-subtitle {
+  font-size: 14px;
+  font-weight: 400;
   color: #64748b;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  margin: 0;
+  line-height: 1.5;
 }
 
-.tab-button:hover {
-  color: #1e293b;
-}
-
-.tab-button--active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-  font-weight: 600;
-}
-
-/* Actions Bar */
-.pcb-zone-master-actions {
+/* Search and Actions - Match Route Assignment Template */
+.ra-search-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
   gap: 16px;
+  margin-bottom: 24px;
 }
 
-.pcb-zone-search-box {
+.ra-search-box {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #ffffff;
+  flex: 0 0 500px;
+  max-width: 100%;
+}
+
+.ra-search-box svg {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.ra-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 10px 14px;
-  flex: 1;
-  max-width: 400px;
-}
-
-.pcb-zone-search-box svg {
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.pcb-zone-search-input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 13px;
+  font-size: 14px;
   color: #1e293b;
-  width: 100%;
+  background: #ffffff;
+  transition: border-color 0.2s;
 }
 
-.pcb-zone-search-input::placeholder {
-  color: #94a3b8;
+.ra-search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.add-pcb-zone-btn {
+.ra-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ra-filter-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #2d3748;
-  color: #ffffff;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ra-filter-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.ra-filter-btn svg {
+  color: #64748b;
+}
+
+.ra-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #0f172a;
+  color: white;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-.add-pcb-zone-btn:hover {
-  background: #1a202c;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(45, 55, 72, 0.3);
+.ra-add-btn:hover {
+  background: #1e293b;
 }
 
-/* Table */
-.pcb-zone-table-container {
+/* Table - Match Route Assignment Template */
+.pcb-zone-master-table-container {
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
 }
 
-.pcb-zone-table {
+.pcb-zone-master-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
 }
 
-.pcb-zone-table thead {
+.pcb-zone-master-table thead {
   background: #f1f5f9;
 }
 
-.pcb-zone-table th {
-  padding: 10px 14px;
+.pcb-zone-master-table th {
+  padding: 10px 16px;
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.pcb-zone-table td {
-  padding: 12px 14px;
-  font-size: 13px;
-  color: #1e293b;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.pcb-zone-table tbody tr:hover {
+  border-bottom: 2px solid #e2e8f0;
+  vertical-align: middle;
   background: #f8fafc;
 }
 
-.pcb-zone-table tbody tr:last-child td {
+.pcb-zone-master-table th:nth-last-child(2) {
+  text-align: center; /* STATUS */
+  width: 12%;
+  min-width: 120px;
+}
+
+.pcb-zone-master-table th:last-child {
+  text-align: center; /* ACTIONS - centered */
+  width: 12%;
+  min-width: 160px;
+}
+
+.pcb-zone-master-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.pcb-zone-master-table td:nth-last-child(2) {
+  text-align: center; /* STATUS */
+  white-space: nowrap;
+}
+
+.pcb-zone-master-table td:last-child {
+  text-align: center; /* ACTIONS - centered */
+  white-space: nowrap !important;
+  padding-left: 8px;
+  padding-right: 12px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  vertical-align: middle;
+  overflow: visible;
+  width: 12%;
+  min-width: 160px;
+  line-height: 1;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  display: table-cell;
+}
+
+.pcb-zone-master-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.pcb-zone-master-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Status Badge */
+/* Status Badge - Match Route Assignment Template */
 .status-badge {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .status-badge--active {
@@ -171,43 +240,267 @@
   color: #991b1b;
 }
 
-/* Action Buttons */
-.action-btn {
-  display: inline-flex;
+/* Action Buttons - Match Route Assignment Template */
+.action-buttons {
+  display: flex !important;
+  gap: 6px;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-right: 8px;
+  border-top: none !important;
+  background: transparent;
+  padding: 0;
+  padding-top: 0px !important;
+  margin: 0;
+  margin-top: 0px !important;
+  flex-direction: row !important;
+  height: 100%;
 }
 
-.action-btn--edit {
-  background: #dbeafe;
-  color: #1e40af;
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  padding-top: 0px;
+  margin-top: 0px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.action-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
 }
 
 .action-btn--edit:hover {
-  background: #bfdbfe;
-}
-
-.action-btn--delete {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
 }
 
 .action-btn--delete:hover {
-  background: #fecaca;
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
 }
 
-/* Pagination Info */
-.pcb-zone-pagination-info {
+.action-btn--view:hover {
+  background: #e0e7ff;
+  border-color: #6366f1;
+  color: #4338ca;
+}
+
+/* Inner wrappers for vertical centering */
+.ra-cell-center {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* Empty Message */
+.empty-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* Pagination Info - Match Route Assignment Template */
+.cm-pagination-info {
+  margin-top: 16px;
+  padding: 12px 16px;
   font-size: 12px;
   color: #64748b;
-  padding: 12px 0;
+  text-align: right;
+}
+
+/* Advanced Filter Modal */
+.cm-filter-modal-overlay {
+  z-index: 1100;
+}
+
+.cm-filter-modal {
+  max-width: 720px;
+}
+
+.cm-filter-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cm-filter-modal-titlewrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cm-filter-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  margin-top: 2px;
+}
+
+.cm-filter-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cm-filter-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.cm-filter-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cm-filter-close:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.cm-filter-modal-body {
+  padding: 14px 16px 6px 16px;
+}
+
+.cm-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.cm-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cm-filter-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.cm-filter-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cm-filter-input,
+.cm-filter-select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  color: #0f172a;
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cm-filter-input:focus,
+.cm-filter-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.cm-filter-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.cm-filter-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 16px 14px 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cm-link-btn {
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: color 0.2s;
+}
+
+.cm-link-btn:hover {
+  color: #1e293b;
+}
+
+.cm-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.cm-btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.cm-btn--primary:hover {
+  background: #1e293b;
+}
+
+.cm-btn--sm {
+  padding: 8px 16px;
+  font-size: 13px;
 }
 
 /* Modal */
@@ -217,22 +510,29 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  overflow-y: auto;
 }
 
 .modal-content {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  height: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  margin: auto;
 }
 
 .modal-header {
@@ -268,124 +568,18 @@
   color: #1e293b;
 }
 
-/* Form */
-.pcb-zone-form {
-  padding: 24px;
-}
-
-.form-section {
-  margin-bottom: 32px;
-}
-
-.form-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group--full {
-  grid-column: 1 / -1;
-}
-
-.form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 6px;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #1e293b;
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 24px;
-  border-top: 1px solid #e2e8f0;
-  margin-top: 24px;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn--primary {
-  background: #2d3748;
-  color: #ffffff;
-}
-
-.btn--primary:hover {
-  background: #1a202c;
-}
-
-.btn--secondary {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.btn--secondary:hover {
-  background: #e2e8f0;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .pcb-zone-master-page {
     padding: 16px;
   }
 
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pcb-zone-master-actions {
+  .ra-search-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .pcb-zone-search-box {
+  .ra-search-box {
     max-width: 100%;
   }
 }

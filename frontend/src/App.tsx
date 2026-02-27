@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -9,6 +10,7 @@ import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
 import DashboardConfigurationPage from './pages/desktop/DashboardConfigurationPage';
 import PermissionConfigurationPage from './pages/desktop/admin/PermissionConfigurationPage';
+import NotAuthorizedPage from './pages/desktop/NotAuthorizedPage';
 import TransactionPage from './pages/desktop/TransactionPage';
 import FinancePage from './pages/desktop/FinancePage';
 import CommercialAgreementsPage from './pages/desktop/CommercialAgreementsPage';
@@ -30,17 +32,28 @@ import FleetManagementPage from './pages/desktop/FleetManagementPage';
 import RouteHCFMappingPage from './pages/desktop/RouteHCFMappingPage';
 import FrequencyMasterPage from './pages/desktop/FrequencyMasterPage';
 import RouteAssignmentPage from './pages/desktop/RouteAssignmentPage';
+import IncidentRegisterPage from './pages/desktop/IncidentRegisterPage';
+import IncinerationRegisterPage from './pages/desktop/IncinerationRegisterPage';
+import AutoclaveRegisterPage from './pages/desktop/AutoclaveRegisterPage';
+import ShredderRegisterPage from './pages/desktop/ShredderRegisterPage';
+import DisposalRegisterPage from './pages/desktop/DisposalRegisterPage';
+import EmissionRegisterPage from './pages/desktop/EmissionRegisterPage';
+import ETPRegisterPage from './pages/desktop/ETPRegisterPage';
+import DowntimeRegisterPage from './pages/desktop/DowntimeRegisterPage';
 import WasteCollectionPage from './pages/desktop/WasteCollectionPage';
 import WasteTransactionPage from './pages/desktop/WasteTransactionPage';
 import VehicleWasteCollectionPage from './pages/desktop/VehicleWasteCollectionPage';
 import WasteProcessPage from './pages/desktop/WasteProcessPage';
 import InvoiceManagementPage from './pages/desktop/InvoiceManagementPage';
+import GenerateInvoicesPage from './pages/desktop/GenerateInvoicesPage';
+import DraftInvoiceBatchEditPage from './pages/desktop/DraftInvoiceBatchEditPage';
 import PaymentPage from './pages/desktop/PaymentPage';
 import PaymentSuccessPage from './pages/desktop/PaymentSuccessPage';
 import ReceiptManagementPage from './pages/desktop/ReceiptManagementPage';
 import FinancialBalanceSummaryPage from './pages/desktop/FinancialBalanceSummaryPage';
 import BarcodeGenerationPage from './pages/desktop/BarcodeGenerationPage';
 import TrainingCertificatePage from './pages/desktop/TrainingCertificatePage';
+import ComplianceRegisterPage from './pages/desktop/ComplianceRegisterPage';
 import ContractMasterPage from './pages/desktop/ContractMasterPage';
 import AgreementPage from './pages/desktop/AgreementPage';
 import AgreementClausePage from './pages/desktop/AgreementClausePage';
@@ -80,6 +93,11 @@ import MobileProfilePage from './pages/mobile/MobileProfilePage';
 import MobileWasteCollectionsPage from './pages/mobile/MobileWasteCollectionsPage';
 import MobileAssignedHcfListPage from './pages/mobile/MobileAssignedHcfListPage';
 import MobileAnalyticsPage from './pages/mobile/MobileAnalyticsPage';
+import RequireAnyPermission from './components/layout/RequireAnyPermission';
+import HCFForgotPasswordPage from './pages/desktop/HCFForgotPasswordPage';
+import HCFResetPasswordPage from './pages/desktop/HCFResetPasswordPage';
+import HCFChangePasswordPage from './pages/desktop/HCFChangePasswordPage';
+import HCFDashboardPage from './pages/desktop/HCFDashboardPage';
 
 // Wrapper component to provide Dashboard context
 const AppWithDashboard = () => {
@@ -183,13 +201,34 @@ const AppWithDashboard = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/not-authorized"
+        element={
+          <ProtectedRoute>
+            <NotAuthorizedPage />
+          </ProtectedRoute>
+        }
+      />
       {/* Dashboard Configuration route - SuperAdmin only */}
       {/* This route is additive and does not affect existing navigation */}
       <Route
         path="/admin/dashboard-configuration"
         element={
           <ProtectedRoute>
-            <DashboardConfigurationPage />
+            <RequireAnyPermission anyOf={['DASHBOARD_CONFIG_UPDATE', 'DASHBOARD_CONFIG.UPDATE']}>
+              <DashboardConfigurationPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      {/* Permission Configuration route - SuperAdmin only (UI gated) */}
+      <Route
+        path="/admin/permission-configuration"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['ROLE_PERMISSIONS_MANAGE', 'ROLE_PERMISSIONS.MANAGE']}>
+              <PermissionConfigurationPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -213,7 +252,9 @@ const AppWithDashboard = () => {
         path="/transaction"
         element={
           <ProtectedRoute>
-            <TransactionPage />
+            <RequireAnyPermission anyOf={['MENU_TRANSACTION_VIEW', 'MENU_TRANSACTION.VIEW']}>
+              <TransactionPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -221,7 +262,9 @@ const AppWithDashboard = () => {
         path="/transaction/barcode-generation"
         element={
           <ProtectedRoute>
-            <BarcodeGenerationPage />
+            <RequireAnyPermission anyOf={['BARCODE_LABEL_VIEW', 'BARCODE_LABEL_CREATE', 'BARCODE_LABEL_DELETE']}>
+              <BarcodeGenerationPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -229,7 +272,106 @@ const AppWithDashboard = () => {
         path="/transaction/route-assignment"
         element={
           <ProtectedRoute>
-            <RouteAssignmentPage />
+            <RequireAnyPermission anyOf={['ROUTE_ASSIGNMENT_VIEW', 'ROUTE_ASSIGNMENT_CREATE', 'ROUTE_ASSIGNMENT_EDIT']}>
+              <RouteAssignmentPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/incident-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['INCIDENT_REGISTER_VIEW', 'INCIDENT_REGISTER_CREATE', 'INCIDENT_REGISTER_EDIT']}>
+              <IncidentRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/incineration-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['INCINERATION_REGISTER_VIEW', 'INCINERATION_REGISTER_CREATE', 'INCINERATION_REGISTER_EDIT']}>
+              <IncinerationRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/autoclave-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['AUTOCLAVE_REGISTER_VIEW', 'AUTOCLAVE_REGISTER_CREATE', 'AUTOCLAVE_REGISTER_EDIT']}>
+              <AutoclaveRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/shredder-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['SHREDDER_REGISTER_VIEW', 'SHREDDER_REGISTER_CREATE', 'SHREDDER_REGISTER_EDIT']}>
+              <ShredderRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/disposal-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['DISPOSAL_REGISTER_VIEW', 'DISPOSAL_REGISTER_CREATE', 'DISPOSAL_REGISTER_EDIT']}>
+              <DisposalRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/emission-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['EMISSION_REGISTER_VIEW', 'EMISSION_REGISTER_CREATE', 'EMISSION_REGISTER_EDIT']}>
+              <EmissionRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/etp-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['ETP_REGISTER_VIEW', 'ETP_REGISTER_CREATE', 'ETP_REGISTER_EDIT']}>
+              <ETPRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/downtime-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['DOWNTIME_REGISTER_VIEW', 'DOWNTIME_REGISTER_CREATE', 'DOWNTIME_REGISTER_EDIT']}>
+              <DowntimeRegisterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/compliance-register"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission
+              anyOf={[
+                'COMPLIANCE_REGISTER_VIEW',
+                'COMPLIANCE_REGISTER_CREATE',
+                'COMPLIANCE_REGISTER_EDIT',
+                'COMPLIANCE_REGISTER_DELETE',
+              ]}
+            >
+              <ComplianceRegisterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -237,7 +379,9 @@ const AppWithDashboard = () => {
         path="/transaction/waste-collection"
         element={
           <ProtectedRoute>
-            <WasteCollectionPage />
+            <RequireAnyPermission anyOf={['WASTE_COLLECTION_VIEW', 'WASTE_COLLECTION_CREATE', 'WASTE_COLLECTION_EDIT']}>
+              <WasteCollectionPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -245,7 +389,16 @@ const AppWithDashboard = () => {
         path="/transaction/waste-transaction-data"
         element={
           <ProtectedRoute>
-            <WasteTransactionPage />
+            <RequireAnyPermission
+              anyOf={[
+                'WASTE_TRANSACTION_VIEW',
+                'WASTE_TRANSACTION_CREATE',
+                'WASTE_TRANSACTION_EDIT',
+                'WASTE_TRANSACTION_VERIFY',
+              ]}
+            >
+              <WasteTransactionPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -253,7 +406,16 @@ const AppWithDashboard = () => {
         path="/transaction/vehicle-wise-waste-collection"
         element={
           <ProtectedRoute>
-            <VehicleWasteCollectionPage />
+            <RequireAnyPermission
+              anyOf={[
+                'VEHICLE_WASTE_COLLECTION_VIEW',
+                'VEHICLE_WASTE_COLLECTION_CREATE',
+                'VEHICLE_WASTE_COLLECTION_EDIT',
+                'VEHICLE_WASTE_COLLECTION_VERIFY',
+              ]}
+            >
+              <VehicleWasteCollectionPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -261,7 +423,17 @@ const AppWithDashboard = () => {
         path="/transaction/waste-processing"
         element={
           <ProtectedRoute>
-            <WasteProcessPage />
+            <RequireAnyPermission
+              anyOf={[
+                'WASTE_PROCESS_VIEW',
+                'WASTE_PROCESS_CREATE',
+                'WASTE_PROCESS_EDIT',
+                'WASTE_PROCESS_VERIFY',
+                'WASTE_PROCESS_CLOSE',
+              ]}
+            >
+              <WasteProcessPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -269,7 +441,9 @@ const AppWithDashboard = () => {
         path="/finance"
         element={
           <ProtectedRoute>
-            <FinancePage />
+            <RequireAnyPermission anyOf={['MENU_FINANCE_VIEW', 'MENU_FINANCE.VIEW', 'FINANCE_VIEW', 'FINANCE.VIEW']}>
+              <FinancePage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -277,7 +451,9 @@ const AppWithDashboard = () => {
         path="/commercial-agreements"
         element={
           <ProtectedRoute>
-            <CommercialAgreementsPage />
+            <RequireAnyPermission anyOf={['MENU_COMMERCIAL_VIEW', 'MENU_COMMERCIAL.VIEW']}>
+              <CommercialAgreementsPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -285,7 +461,9 @@ const AppWithDashboard = () => {
         path="/commercial-agreements/contract-master"
         element={
           <ProtectedRoute>
-            <ContractMasterPage />
+            <RequireAnyPermission anyOf={['CONTRACT_VIEW', 'CONTRACT_CREATE', 'CONTRACT_EDIT', 'CONTRACT_DELETE']}>
+              <ContractMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -293,7 +471,9 @@ const AppWithDashboard = () => {
         path="/commercial-agreements/agreement"
         element={
           <ProtectedRoute>
-            <AgreementPage />
+            <RequireAnyPermission anyOf={['AGREEMENT_VIEW', 'AGREEMENT_CREATE', 'AGREEMENT_EDIT', 'AGREEMENT_DELETE']}>
+              <AgreementPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -301,7 +481,16 @@ const AppWithDashboard = () => {
         path="/commercial-agreements/agreement-clause"
         element={
           <ProtectedRoute>
-            <AgreementClausePage />
+            <RequireAnyPermission
+              anyOf={[
+                'AGREEMENT_CLAUSE_VIEW',
+                'AGREEMENT_CLAUSE_CREATE',
+                'AGREEMENT_CLAUSE_EDIT',
+                'AGREEMENT_CLAUSE_DELETE',
+              ]}
+            >
+              <AgreementClausePage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -309,7 +498,9 @@ const AppWithDashboard = () => {
         path="/compliance-training"
         element={
           <ProtectedRoute>
-            <ComplianceTrainingPage />
+            <RequireAnyPermission anyOf={['MENU_COMPLIANCE_VIEW', 'MENU_COMPLIANCE.VIEW']}>
+              <ComplianceTrainingPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -317,7 +508,16 @@ const AppWithDashboard = () => {
         path="/compliance-training/training-certificate-management"
         element={
           <ProtectedRoute>
-            <TrainingCertificatePage />
+            <RequireAnyPermission
+              anyOf={[
+                'TRAINING_CERTIFICATE_VIEW',
+                'TRAINING_CERTIFICATE_CREATE',
+                'TRAINING_CERTIFICATE_EDIT',
+                'TRAINING_CERTIFICATE_DELETE',
+              ]}
+            >
+              <TrainingCertificatePage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -325,7 +525,22 @@ const AppWithDashboard = () => {
         path="/master"
         element={
           <ProtectedRoute>
-            <MasterPage />
+            {/* Permission gating:
+             * - Prefer explicit MENU_MASTER_VIEW
+             * - Backward compatibility: allow MASTER/MASTERS view permissions as well
+             */}
+            <RequireAnyPermission
+              anyOf={[
+                'MENU_MASTER_VIEW',
+                'MENU_MASTER.VIEW',
+                'MASTERS_VIEW',
+                'MASTERS.VIEW',
+                'MASTER_VIEW',
+                'MASTER.VIEW',
+              ]}
+            >
+              <MasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -333,7 +548,9 @@ const AppWithDashboard = () => {
         path="/master/company"
         element={
           <ProtectedRoute>
-            <CompanyMasterPage />
+            <RequireAnyPermission anyOf={['COMPANY_VIEW', 'COMPANY_CREATE', 'COMPANY_EDIT', 'COMPANY_DELETE']}>
+              <CompanyMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -341,7 +558,9 @@ const AppWithDashboard = () => {
         path="/master/state"
         element={
           <ProtectedRoute>
-            <StateMasterPage />
+            <RequireAnyPermission anyOf={['STATE_VIEW', 'STATE_CREATE', 'STATE_EDIT', 'STATE_DELETE']}>
+              <StateMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -349,7 +568,9 @@ const AppWithDashboard = () => {
         path="/master/area"
         element={
           <ProtectedRoute>
-            <AreaMasterPage />
+            <RequireAnyPermission anyOf={['AREA_VIEW', 'AREA_CREATE', 'AREA_EDIT', 'AREA_DELETE']}>
+              <AreaMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -357,7 +578,9 @@ const AppWithDashboard = () => {
         path="/master/category"
         element={
           <ProtectedRoute>
-            <CategoryMasterPage />
+            <RequireAnyPermission anyOf={['CATEGORY_VIEW', 'CATEGORY_CREATE', 'CATEGORY_EDIT', 'CATEGORY_DELETE']}>
+              <CategoryMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -365,7 +588,9 @@ const AppWithDashboard = () => {
         path="/master/pcb-zone"
         element={
           <ProtectedRoute>
-            <PCBZoneMasterPage />
+            <RequireAnyPermission anyOf={['PCB_ZONE_VIEW', 'PCB_ZONE_CREATE', 'PCB_ZONE_EDIT', 'PCB_ZONE_DELETE']}>
+              <PCBZoneMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -373,7 +598,9 @@ const AppWithDashboard = () => {
         path="/master/route"
         element={
           <ProtectedRoute>
-            <RouteMasterPage />
+            <RequireAnyPermission anyOf={['ROUTE_VIEW', 'ROUTE_CREATE', 'ROUTE_EDIT', 'ROUTE_DELETE']}>
+              <RouteMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -381,7 +608,9 @@ const AppWithDashboard = () => {
         path="/master/color-code"
         element={
           <ProtectedRoute>
-            <ColorCodeMasterPage />
+            <RequireAnyPermission anyOf={['COLOR_VIEW', 'COLOR_CREATE', 'COLOR_EDIT', 'COLOR_DELETE']}>
+              <ColorCodeMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -389,7 +618,11 @@ const AppWithDashboard = () => {
         path="/master/user-management"
         element={
           <ProtectedRoute>
-            <UserManagementPage />
+            <RequireAnyPermission
+              anyOf={['USER_VIEW', 'USER_CREATE', 'USER_EDIT', 'USER_DELETE', 'USER_ACTIVATE', 'USER_DEACTIVATE']}
+            >
+              <UserManagementPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -397,7 +630,11 @@ const AppWithDashboard = () => {
         path="/master/roles-permissions"
         element={
           <ProtectedRoute>
-            <RolesPermissionsPage />
+            <RequireAnyPermission
+              anyOf={['ROLE_VIEW', 'ROLE_CREATE', 'ROLE_EDIT', 'ROLE_DELETE', 'ROLE_PERMISSIONS_MANAGE']}
+            >
+              <RolesPermissionsPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -405,7 +642,9 @@ const AppWithDashboard = () => {
         path="/master/hcf-master"
         element={
           <ProtectedRoute>
-            <HCFMasterPage />
+            <RequireAnyPermission anyOf={['HCF_VIEW', 'HCF_CREATE', 'HCF_EDIT', 'HCF_DELETE']}>
+              <HCFMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -413,7 +652,11 @@ const AppWithDashboard = () => {
         path="/master/hcf-amendments"
         element={
           <ProtectedRoute>
-            <HCFAmendmentsPage />
+            <RequireAnyPermission
+              anyOf={['HCF_AMENDMENT_VIEW', 'HCF_AMENDMENT_CREATE', 'HCF_AMENDMENT_EDIT', 'HCF_AMENDMENT_DELETE']}
+            >
+              <HCFAmendmentsPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -421,7 +664,9 @@ const AppWithDashboard = () => {
         path="/master/hcf-type"
         element={
           <ProtectedRoute>
-            <HCFTypeMasterPage />
+            <RequireAnyPermission anyOf={['HCF_TYPE_VIEW', 'HCF_TYPE_CREATE', 'HCF_TYPE_EDIT', 'HCF_TYPE_DELETE']}>
+              <HCFTypeMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -429,7 +674,9 @@ const AppWithDashboard = () => {
         path="/master/fleet-management"
         element={
           <ProtectedRoute>
-            <FleetManagementPage />
+            <RequireAnyPermission anyOf={['FLEET_VIEW', 'FLEET_CREATE', 'FLEET_EDIT', 'FLEET_DELETE']}>
+              <FleetManagementPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -437,7 +684,9 @@ const AppWithDashboard = () => {
         path="/master/route-hcf-mapping"
         element={
           <ProtectedRoute>
-            <RouteHCFMappingPage />
+            <RequireAnyPermission anyOf={['ROUTE_HCF_VIEW', 'ROUTE_HCF_CREATE', 'ROUTE_HCF_EDIT', 'ROUTE_HCF_DELETE']}>
+              <RouteHCFMappingPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -445,7 +694,9 @@ const AppWithDashboard = () => {
         path="/master/frequency"
         element={
           <ProtectedRoute>
-            <FrequencyMasterPage />
+            <RequireAnyPermission anyOf={['FREQUENCY_VIEW', 'FREQUENCY_CREATE', 'FREQUENCY_EDIT', 'FREQUENCY_DELETE']}>
+              <FrequencyMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -453,7 +704,29 @@ const AppWithDashboard = () => {
           path="/finance/invoice-management"
           element={
             <ProtectedRoute>
-              <InvoiceManagementPage />
+              <RequireAnyPermission anyOf={['INVOICE_VIEW', 'INVOICE_CREATE', 'INVOICE_UPDATE', 'INVOICE_DELETE']}>
+                <InvoiceManagementPage />
+              </RequireAnyPermission>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/finance/generate-invoices"
+          element={
+            <ProtectedRoute>
+              <RequireAnyPermission anyOf={['INVOICE_CREATE']}>
+                <GenerateInvoicesPage />
+              </RequireAnyPermission>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/finance/draft-invoices/:batchId"
+          element={
+            <ProtectedRoute>
+              <RequireAnyPermission anyOf={['INVOICE_CREATE', 'INVOICE_UPDATE']}>
+                <DraftInvoiceBatchEditPage />
+              </RequireAnyPermission>
             </ProtectedRoute>
           }
         />
@@ -461,7 +734,9 @@ const AppWithDashboard = () => {
           path="/finance/payment"
           element={
             <ProtectedRoute>
-              <PaymentPage />
+              <RequireAnyPermission anyOf={['INVOICE_VIEW', 'INVOICE_CREATE']}>
+                <PaymentPage />
+              </RequireAnyPermission>
             </ProtectedRoute>
           }
         />
@@ -477,7 +752,9 @@ const AppWithDashboard = () => {
         path="/finance/receipt-management"
         element={
           <ProtectedRoute>
-            <ReceiptManagementPage />
+            <RequireAnyPermission anyOf={['INVOICE_VIEW', 'INVOICE_CREATE']}>
+              <ReceiptManagementPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -485,7 +762,9 @@ const AppWithDashboard = () => {
         path="/finance/financial-balance-summary"
         element={
           <ProtectedRoute>
-            <FinancialBalanceSummaryPage />
+            <RequireAnyPermission anyOf={['INVOICE_VIEW', 'INVOICE_CREATE']}>
+              <FinancialBalanceSummaryPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -493,7 +772,9 @@ const AppWithDashboard = () => {
         path="/report"
         element={
           <ProtectedRoute>
-            <ReportPage />
+            <RequireAnyPermission anyOf={['MENU_REPORTS_VIEW', 'MENU_REPORTS.VIEW', 'REPORTS_VIEW', 'REPORTS.VIEW']}>
+              <ReportPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -726,6 +1007,26 @@ const AppWithDashboard = () => {
           </AppShell>
         }
       />
+      {/* HCF Routes */}
+      <Route path="/hcf/forgot-password" element={<HCFForgotPasswordPage />} />
+      <Route path="/hcf/reset-password" element={<HCFResetPasswordPage />} />
+      <Route
+        path="/hcf/change-password"
+        element={
+          <ProtectedRoute>
+            <HCFChangePasswordPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hcf/dashboard"
+        element={
+          <ProtectedRoute>
+            <HCFDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* TODO: Add more HCF routes: /hcf/profile, /hcf/invoices, /hcf/payments, /hcf/waste-entries */}
       </Routes>
     </DashboardProvider>
   );
@@ -734,6 +1035,50 @@ const AppWithDashboard = () => {
 const App = () => (
   <AuthProvider>
     <AppWithDashboard />
+    <Toaster
+      position="top-right"
+      reverseOrder={false}
+      gutter={12}
+      containerStyle={{
+        top: 20,
+        right: 20,
+      }}
+      toastOptions={{
+        duration: 4000,
+        style: {
+          borderRadius: '8px',
+          background: '#ffffff',
+          color: '#1e293b',
+          padding: '12px 16px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          fontSize: '14px',
+          fontWeight: '500',
+          maxWidth: '400px',
+        },
+        success: {
+          duration: 4000,
+          iconTheme: {
+            primary: '#10b981',
+            secondary: '#ffffff',
+          },
+          style: {
+            border: '1px solid #d1fae5',
+            borderLeft: '4px solid #10b981',
+          },
+        },
+        error: {
+          duration: 4000,
+          iconTheme: {
+            primary: '#ef4444',
+            secondary: '#ffffff',
+          },
+          style: {
+            border: '1px solid #fee2e2',
+            borderLeft: '4px solid #ef4444',
+          },
+        },
+      }}
+    />
   </AuthProvider>
 );
 

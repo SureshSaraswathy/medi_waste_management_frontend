@@ -1,0 +1,40 @@
+.transaction-page .master-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Desktop/Laptop/Tablet/Mobile explicit targets */
+@media (min-width: 1600px) {
+  .transaction-page .master-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .transaction-page .master-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .transaction-page .master-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .transaction-page .master-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card UI hover per requirement */
+.transaction-page .master-card {
+  padding: 16px;
+}
+
+.transaction-page .master-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+

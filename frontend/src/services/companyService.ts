@@ -9,12 +9,32 @@ interface ApiResponse<T> {
 export interface CreateCompanyRequest {
   companyCode: string;
   companyName: string;
+  contactNum?: string;
+  webAddress?: string;
+  companyEmail?: string;
+  bankAccountName?: string;
+  bankName?: string;
+  bankAccountNum?: string;
+  bankIFSCode?: string;
+  bankBranch?: string;
+  upiId?: string;
+  qrCode?: string;
 }
 
 export interface UpdateCompanyRequest {
   companyCode?: string;
   companyName?: string;
   status?: 'Active' | 'Inactive';
+  contactNum?: string;
+  webAddress?: string;
+  companyEmail?: string;
+  bankAccountName?: string;
+  bankName?: string;
+  bankAccountNum?: string;
+  bankIFSCode?: string;
+  bankBranch?: string;
+  upiId?: string;
+  qrCode?: string;
 }
 
 export interface CompanyResponse {
@@ -26,6 +46,16 @@ export interface CompanyResponse {
   createdOn: string;
   modifiedBy: string | null;
   modifiedOn: string;
+  contactNum?: string | null;
+  webAddress?: string | null;
+  companyEmail?: string | null;
+  bankAccountName?: string | null;
+  bankName?: string | null;
+  bankAccountNum?: string | null;
+  bankIFSCode?: string | null;
+  bankBranch?: string | null;
+  upiId?: string | null;
+  qrCode?: string | null;
 }
 
 // Get auth token from localStorage
@@ -130,7 +160,7 @@ export const companyService = {
     const response = await apiRequest<ApiResponse<CompanyResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data;
+    return response.data || [];
   },
 
   // Update company

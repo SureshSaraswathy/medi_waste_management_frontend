@@ -1,0 +1,51 @@
+/* FormLayout Component Styles */
+/* Provides consistent 2-column responsive grid layout for forms */
+
+.form-layout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* FormGrid alias for backward compatibility */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* Form Field */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  gap: 6px;
+}
+
+/* Full width field (spans both columns) */
+.form-field--full {
+  grid-column: 1 / -1;
+}
+
+/* Responsive: Single column on mobile */
+@media (max-width: 768px) {
+  .form-grid,
+  .form-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .form-field--full {
+    grid-column: 1;
+  }
+}
