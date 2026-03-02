@@ -216,9 +216,21 @@
   font-weight: 600;
 }
 
+/* Exclude sidebar from appLayout nav-link styles */
+.dashboard-sidebar .nav-link--active {
+  background: #1E293B !important; /* Darker slate to match header and logout button */
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
 .nav-link--active .nav-icon svg {
   color: #ffffff;
   stroke: #ffffff;
+}
+
+.dashboard-sidebar .nav-link--active .nav-icon svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 .nav-icon {

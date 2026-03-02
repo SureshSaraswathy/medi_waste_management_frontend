@@ -1,14 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService, Notification, NotificationPriority } from '../services/notificationService';
 import './NotificationBell.css';
 
-const NotificationBell = () => {
+interface NotificationBellProps {
+  variant?: 'default' | 'sidebar';
+  showLabel?: boolean;
+}
+
+const NotificationBell = ({ variant = 'default', showLabel }: NotificationBellProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties | undefined>(undefined);
   const navigate = useNavigate();
 
   const loadNotifications = async () => {
@@ -46,6 +53,51 @@ const NotificationBell = () => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || variant !== 'sidebar') {
+      setPanelStyle(undefined);
+      return;
+    }
+
+    const updatePanelPosition = () => {
+      const btn = buttonRef.current;
+      if (!btn) return;
+
+      const rect = btn.getBoundingClientRect();
+      const panelWidth = Math.min(360, window.innerWidth - 24);
+      const panelMaxHeight = 600;
+      const gutter = 8;
+
+      let left = rect.right + gutter;
+      if (left + panelWidth > window.innerWidth - gutter) {
+        left = Math.max(gutter, rect.left - panelWidth - gutter);
+      }
+
+      let top = rect.bottom + gutter;
+      if (top + panelMaxHeight > window.innerHeight - gutter) {
+        top = Math.max(gutter, rect.top - panelMaxHeight - gutter);
+      }
+
+      setPanelStyle({
+        position: 'fixed',
+        left,
+        top,
+        width: panelWidth,
+        maxHeight: Math.min(panelMaxHeight, window.innerHeight - 2 * gutter),
+        zIndex: 2000,
+      });
+    };
+
+    updatePanelPosition();
+    window.addEventListener('resize', updatePanelPosition);
+    window.addEventListener('scroll', updatePanelPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition);
+      window.removeEventListener('scroll', updatePanelPosition, true);
+    };
+  }, [isOpen, variant]);
 
   const handleNotificationClick = async (notification: Notification) => {
     // Find unread receiver for current user
@@ -137,9 +189,13 @@ const NotificationBell = () => {
   const groupedNotifications = groupNotifications(notifications);
 
   return (
-    <div className="notification-bell-container" ref={panelRef}>
+    <div
+      className={`notification-bell-container ${variant === 'sidebar' ? 'notification-bell-container--sidebar' : ''}`}
+      ref={panelRef}
+    >
       <button
-        className="notification-bell-btn"
+        ref={buttonRef}
+        className={`notification-bell-btn ${variant === 'sidebar' ? 'notification-bell-btn--sidebar sidebar-notification-btn' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Notifications"
       >
@@ -147,13 +203,19 @@ const NotificationBell = () => {
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
+        {(showLabel ?? variant === 'sidebar') && (
+          <span className="notification-bell-label">Notifications</span>
+        )}
         {unreadCount > 0 && (
           <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
       </button>
 
       {isOpen && (
-        <div className="notification-panel">
+        <div
+          className={`notification-panel ${variant === 'sidebar' ? 'notification-panel--sidebar' : ''}`}
+          style={panelStyle}
+        >
           <div className="notification-panel-header">
             <h3>Notifications</h3>
             {unreadCount > 0 && (

@@ -74,10 +74,36 @@
   color: #ffffff;
 }
 
-.nav-link--active {
-  background: #2d3142;
-  color: #667eea;
-  border-left: 3px solid #667eea;
+.dashboard-sidebar .nav-link--active {
+  background: #1E293B !important; /* Darker slate to match header and logout button */
+  color: #ffffff !important; /* White text */
+  border-left: 3px solid #1E293B !important;
+}
+
+.dashboard-sidebar .nav-link--active .nav-icon {
+  color: #ffffff !important; /* White icon when active */
+  background: transparent !important; /* Ensure no background on icon container */
+}
+
+.dashboard-sidebar .nav-link--active .nav-icon svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important; /* Ensure SVG doesn't have fill */
+  background: transparent !important;
+}
+
+.dashboard-sidebar .nav-link--active:hover {
+  background: #334155 !important; /* Lighter slate shade on hover */
+  color: #ffffff !important;
+}
+
+.dashboard-sidebar .nav-link--active .submenu-arrow {
+  color: #ffffff !important;
+}
+
+.dashboard-sidebar .nav-link--active .submenu-arrow svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 .nav-icon {
@@ -86,6 +112,12 @@
   justify-content: center;
   width: 20px;
   height: 20px;
+  background: transparent !important; /* Ensure no background on icon */
+}
+
+.nav-icon svg {
+  background: transparent !important;
+  fill: none !important; /* Ensure SVG doesn't have fill color */
 }
 
 .nav-label {
@@ -131,11 +163,16 @@
   padding-left: 52px;
 }
 
-.submenu-link--active {
-  background: #2d3142;
-  color: #667eea;
-  border-left: 3px solid #667eea;
+.dashboard-sidebar .submenu-link--active {
+  background: #1E293B !important; /* Darker slate to match header and logout button */
+  color: #ffffff !important; /* White text */
+  border-left: 3px solid #1E293B !important;
   padding-left: 45px;
+}
+
+.dashboard-sidebar .submenu-link--active:hover {
+  background: #334155 !important; /* Lighter slate shade on hover */
+  color: #ffffff !important;
 }
 
 .sidebar-footer {
@@ -208,7 +245,7 @@
   gap: 10px;
   padding: 10px 12px;
   width: 100%;
-  background: #2d3142;
+  background: #0f172a; /* Dark black to match header */
   color: #ef4444;
   border: none;
   border-radius: 6px;

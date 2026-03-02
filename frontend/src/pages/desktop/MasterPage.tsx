@@ -6,6 +6,8 @@ import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import '../desktop/dashboardPage.css';
+import './masterPageHeader.css';
+import NotificationBell from '../../components/NotificationBell';
 
 const MasterPage = () => {
   const { logout, permissions } = useAuth();
@@ -485,13 +487,7 @@ const MasterPage = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="sidebar-notification-btn" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            <span className="notification-badge">3</span>
-          </button>
+          <NotificationBell variant="sidebar" />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -586,7 +582,7 @@ const MasterPage = () => {
         ) : null}
 
         {/* Master Page Content */}
-        <div className="master-page">
+        <div className="master-page master-page-header">
       <div className="master-header">
         <div className="master-header-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -1,5 +1,5 @@
-/* Dashboard Configuration Page Header Icon Styling */
-.dashboard-configuration-page .master-header-icon {
+/* Commercial Agreements Page Header Icon Styling */
+.commercial-agreements-page .master-header-icon {
   width: 44px;
   height: 44px;
   min-width: 44px;
@@ -13,7 +13,7 @@
   flex-shrink: 0;
 }
 
-.dashboard-configuration-page .master-header-icon svg {
+.commercial-agreements-page .master-header-icon svg {
   width: 24px;
   height: 24px;
   stroke: #1E40AF; /* Icon color */
@@ -21,6 +21,6 @@
   stroke-width: 2;
 }
 
-.dashboard-configuration-page .master-header {
+.commercial-agreements-page .master-header {
   gap: 12px; /* Consistent spacing between icon and title */
 }

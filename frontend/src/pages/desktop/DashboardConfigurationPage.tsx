@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import DashboardConfigurationContent from './admin/dashboard-configuration/DashboardConfigurationContent';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import PageHeader from '../../components/layout/PageHeader';
+import NotificationBell from '../../components/NotificationBell';
 import './dashboardConfigurationPage.css';
 import './dashboardPage.css';
 import './masterPage.css';
@@ -213,6 +214,7 @@ const DashboardConfigurationPage: React.FC = () => {
         </nav>
 
         <div className="sidebar-footer">
+          <NotificationBell variant="sidebar" />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -242,7 +244,7 @@ const DashboardConfigurationPage: React.FC = () => {
         />
 
         <div className="dashboard-page-content" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
-          <div className="master-page">
+          <div className="master-page dashboard-configuration-page">
             <div className="master-header">
               <div className="master-header-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

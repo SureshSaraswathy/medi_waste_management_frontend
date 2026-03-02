@@ -1,9 +1,9 @@
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
-import NotificationBell from '../NotificationBell';
 import BreadcrumbNavigation, { BreadcrumbItem } from '../common/BreadcrumbNavigation';
 import { resolveBreadcrumbMeta } from '../../utils/breadcrumbConfig';
 import './pageHeader.css';
+import NotificationBell from '../NotificationBell';
 
 interface PageHeaderProps {
   title: string;

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getAdminNavItems } from '../../utils/adminNavItems';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
 import PageHeader from '../layout/PageHeader';
+import NotificationBell from '../NotificationBell';
 import './appLayout.css';
 
 interface NavItem {
@@ -227,6 +228,7 @@ const AppLayout = ({ children, navItems = [], pageTitle, pageSubtitle }: AppLayo
         </nav>
 
         <div className="sidebar-footer">
+          <NotificationBell variant="sidebar" />
           <Link to="/profile" className="sidebar-profile-link">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>

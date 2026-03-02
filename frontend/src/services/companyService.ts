@@ -9,9 +9,46 @@ interface ApiResponse<T> {
 export interface CreateCompanyRequest {
   companyCode: string;
   companyName: string;
+  gstin?: string;
+  pincode?: string;
+  state?: string;
+  prefix?: string;
+  // Address Information
+  regdOfficeAddress?: string;
+  adminOfficeAddress?: string;
+  factoryAddress?: string;
+  // Authorized Person Information
+  authPersonName?: string;
+  authPersonDesignation?: string;
+  authPersonDOB?: string;
+  // PCB & Compliance
+  pcbauthNum?: string;
+  hazardousWasteNum?: string;
+  // CTO (Consent To Operate) - Water
+  ctoWaterNum?: string;
+  ctoWaterDate?: string;
+  ctoWaterValidUpto?: string;
+  // CTO (Consent To Operate) - Air
+  ctoAirNum?: string;
+  ctoAirDate?: string;
+  ctoAirValidUpto?: string;
+  // CTE (Consent To Establish) - Water
+  cteWaterNum?: string;
+  cteWaterDate?: string;
+  cteWaterValidUpto?: string;
+  // CTE (Consent To Establish) - Air
+  cteAirNum?: string;
+  cteAirDate?: string;
+  cteAirValidUpto?: string;
+  // GST Details
+  pcbZoneID?: string;
+  gstValidFrom?: string;
+  gstRate?: string;
+  // Contact Information
   contactNum?: string;
   webAddress?: string;
   companyEmail?: string;
+  // Bank & Payment Information
   bankAccountName?: string;
   bankName?: string;
   bankAccountNum?: string;
@@ -24,10 +61,47 @@ export interface CreateCompanyRequest {
 export interface UpdateCompanyRequest {
   companyCode?: string;
   companyName?: string;
+  gstin?: string;
+  pincode?: string;
+  state?: string;
+  prefix?: string;
+  // Address Information
+  regdOfficeAddress?: string;
+  adminOfficeAddress?: string;
+  factoryAddress?: string;
+  // Authorized Person Information
+  authPersonName?: string;
+  authPersonDesignation?: string;
+  authPersonDOB?: string;
+  // PCB & Compliance
+  pcbauthNum?: string;
+  hazardousWasteNum?: string;
+  // CTO (Consent To Operate) - Water
+  ctoWaterNum?: string;
+  ctoWaterDate?: string;
+  ctoWaterValidUpto?: string;
+  // CTO (Consent To Operate) - Air
+  ctoAirNum?: string;
+  ctoAirDate?: string;
+  ctoAirValidUpto?: string;
+  // CTE (Consent To Establish) - Water
+  cteWaterNum?: string;
+  cteWaterDate?: string;
+  cteWaterValidUpto?: string;
+  // CTE (Consent To Establish) - Air
+  cteAirNum?: string;
+  cteAirDate?: string;
+  cteAirValidUpto?: string;
+  // GST Details
+  pcbZoneID?: string;
+  gstValidFrom?: string;
+  gstRate?: string;
   status?: 'Active' | 'Inactive';
+  // Contact Information
   contactNum?: string;
   webAddress?: string;
   companyEmail?: string;
+  // Bank & Payment Information
   bankAccountName?: string;
   bankName?: string;
   bankAccountNum?: string;
@@ -41,14 +115,51 @@ export interface CompanyResponse {
   id: string;
   companyCode: string;
   companyName: string;
+  gstin?: string | null;
+  pincode?: string | null;
+  state?: string | null;
+  prefix?: string | null;
+  // Address Information
+  regdOfficeAddress?: string | null;
+  adminOfficeAddress?: string | null;
+  factoryAddress?: string | null;
+  // Authorized Person Information
+  authPersonName?: string | null;
+  authPersonDesignation?: string | null;
+  authPersonDOB?: string | null;
+  // PCB & Compliance
+  pcbauthNum?: string | null;
+  hazardousWasteNum?: string | null;
+  // CTO (Consent To Operate) - Water
+  ctoWaterNum?: string | null;
+  ctoWaterDate?: string | null;
+  ctoWaterValidUpto?: string | null;
+  // CTO (Consent To Operate) - Air
+  ctoAirNum?: string | null;
+  ctoAirDate?: string | null;
+  ctoAirValidUpto?: string | null;
+  // CTE (Consent To Establish) - Water
+  cteWaterNum?: string | null;
+  cteWaterDate?: string | null;
+  cteWaterValidUpto?: string | null;
+  // CTE (Consent To Establish) - Air
+  cteAirNum?: string | null;
+  cteAirDate?: string | null;
+  cteAirValidUpto?: string | null;
+  // GST Details
+  pcbZoneID?: string | null;
+  gstValidFrom?: string | null;
+  gstRate?: string | null;
   status: 'Active' | 'Inactive';
   createdBy: string | null;
   createdOn: string;
   modifiedBy: string | null;
   modifiedOn: string;
+  // Contact Information
   contactNum?: string | null;
   webAddress?: string | null;
   companyEmail?: string | null;
+  // Bank & Payment Information
   bankAccountName?: string | null;
   bankName?: string | null;
   bankAccountNum?: string | null;

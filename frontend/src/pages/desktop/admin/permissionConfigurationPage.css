@@ -1,3 +1,28 @@
+﻿.permission-config-wrapper .master-header {
+  gap: 12px;
+}
+
+.permission-config-wrapper .master-header-icon {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.permission-config-wrapper .master-header-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: #1e40af;
+  fill: none;
+  stroke-width: 2;
+}
+
 .perm-config-page {
   /* Layout change (alignment + font size only):
    * - dashboard-page-content already applies padding
@@ -34,6 +59,10 @@
   /* Typography alignment (Masters template) */
   font-size: 13px;
   color: #64748b;
+}
+
+.perm-config-header--compact .perm-config-header-copy p {
+  margin: 0;
 }
 
 .perm-config-save {
@@ -777,4 +806,5 @@
     max-height: unset;
   }
 }
+
 

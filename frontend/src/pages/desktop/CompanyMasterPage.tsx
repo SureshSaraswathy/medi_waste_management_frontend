@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import { stateService, StateResponse } from '../../services/stateService';
+import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { clearFieldValidation, focusAndScrollToField, setFieldValidationError, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
+import { notifySuccess, notifyError } from '../../utils/notify';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './companyMasterPage.css';
 import '../desktop/autoclaveRegisterPage.css';
+import NotificationBell from '../../components/NotificationBell';
 
 interface State {
   id: string;
@@ -109,116 +113,112 @@ const CompanyMasterPage = () => {
   });
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
-  // States from State Master - Load active states only
-  const [states] = useState<State[]>([
-    {
-      id: '1',
-      stateCode: 'MH',
-      stateName: 'Maharashtra',
-      status: 'Active',
-    },
-    {
-      id: '2',
-      stateCode: 'DL',
-      stateName: 'Delhi',
-      status: 'Active',
-    },
-    {
-      id: '3',
-      stateCode: 'KA',
-      stateName: 'Karnataka',
-      status: 'Active',
-    },
-    {
-      id: '4',
-      stateCode: 'TN',
-      stateName: 'Tamil Nadu',
-      status: 'Active',
-    },
-    {
-      id: '5',
-      stateCode: 'GJ',
-      stateName: 'Gujarat',
-      status: 'Active',
-    },
-  ]);
-
-  // PCB Zones from PCB Zone Master - Load active zones only
-  const [pcbZones] = useState<PCBZone[]>([
-    {
-      id: '1',
-      pcbZoneName: 'Zone A',
-      pcbZoneAddress: '123 Industrial Area, Mumbai',
-      contactNum: '+91-9876543210',
-      contactEmail: 'zonea@example.com',
-      alertEmail: 'alert.zonea@example.com',
-      status: 'Active',
-    },
-    {
-      id: '2',
-      pcbZoneName: 'Zone B',
-      pcbZoneAddress: '456 Commercial Street, Delhi',
-      contactNum: '+91-9876543211',
-      contactEmail: 'zoneb@example.com',
-      alertEmail: 'alert.zoneb@example.com',
-      status: 'Active',
-    },
-    {
-      id: '3',
-      pcbZoneName: 'Zone C',
-      pcbZoneAddress: '789 Business Park, Bangalore',
-      contactNum: '+91-9876543212',
-      contactEmail: 'zonec@example.com',
-      alertEmail: 'alert.zonec@example.com',
-      status: 'Active',
-    },
-  ]);
+  // States from State Master - Load from API
+  const [states, setStates] = useState<State[]>([]);
+  
+  // PCB Zones from PCB Zone Master - Load from API
+  const [pcbZones, setPcbZones] = useState<PCBZone[]>([]);
 
   const [companies, setCompanies] = useState<Company[]>([]);
 
   // Map backend CompanyResponse to frontend Company interface
+  // This ensures API response fields correctly populate form fields
   const mapCompanyResponseToCompany = (apiCompany: CompanyResponse): Company => {
+    // Log API response for debugging
+    console.log('[CompanyMaster] Mapping API response to Company:', {
+      id: apiCompany.id,
+      companyCode: apiCompany.companyCode,
+      companyName: apiCompany.companyName,
+      gstin: apiCompany.gstin,
+      pincode: apiCompany.pincode,
+      state: apiCompany.state,
+      prefix: apiCompany.prefix,
+      regdOfficeAddress: apiCompany.regdOfficeAddress,
+      adminOfficeAddress: apiCompany.adminOfficeAddress,
+      factoryAddress: apiCompany.factoryAddress,
+      authPersonName: apiCompany.authPersonName,
+      authPersonDesignation: apiCompany.authPersonDesignation,
+      authPersonDOB: apiCompany.authPersonDOB,
+      pcbauthNum: apiCompany.pcbauthNum,
+      hazardousWasteNum: apiCompany.hazardousWasteNum,
+      ctoWaterNum: apiCompany.ctoWaterNum,
+      ctoWaterDate: apiCompany.ctoWaterDate,
+      ctoWaterValidUpto: apiCompany.ctoWaterValidUpto,
+      ctoAirNum: apiCompany.ctoAirNum,
+      ctoAirDate: apiCompany.ctoAirDate,
+      ctoAirValidUpto: apiCompany.ctoAirValidUpto,
+      cteWaterNum: apiCompany.cteWaterNum,
+      cteWaterDate: apiCompany.cteWaterDate,
+      cteWaterValidUpto: apiCompany.cteWaterValidUpto,
+      cteAirNum: apiCompany.cteAirNum,
+      cteAirDate: apiCompany.cteAirDate,
+      cteAirValidUpto: apiCompany.cteAirValidUpto,
+      pcbZoneID: apiCompany.pcbZoneID,
+      gstValidFrom: apiCompany.gstValidFrom,
+      gstRate: apiCompany.gstRate,
+      contactNum: apiCompany.contactNum,
+      webAddress: apiCompany.webAddress,
+      companyEmail: apiCompany.companyEmail,
+      bankAccountName: apiCompany.bankAccountName,
+      bankName: apiCompany.bankName,
+      bankAccountNum: apiCompany.bankAccountNum,
+      bankIFSCode: apiCompany.bankIFSCode,
+      bankBranch: apiCompany.bankBranch,
+      upiId: apiCompany.upiId,
+      qrCode: apiCompany.qrCode,
+    });
+    
     return {
       id: apiCompany.id,
       companyCode: apiCompany.companyCode,
       companyName: apiCompany.companyName,
-      regdOfficeAddress: '', // Will be added to backend later
-      adminOfficeAddress: '', // Will be added to backend later
-      factoryAddress: '', // Will be added to backend later
-      gstin: '', // Will be added to backend later
-      state: '', // Will be added to backend later
-      pincode: '', // Will be added to backend later
-      prefix: '', // Will be added to backend later
-      authPersonName: '', // Will be added to backend later
-      authPersonDesignation: '', // Will be added to backend later
-      authPersonDOB: '', // Will be added to backend later
-      pcbauthNum: '', // Will be added to backend later
-      ctoWaterNum: '', // Will be added to backend later
-      ctoWaterDate: '', // Will be added to backend later
-      ctoWaterValidUpto: '', // Will be added to backend later
-      ctoAirNum: '', // Will be added to backend later
-      ctoAirDate: '', // Will be added to backend later
-      ctoAirValidUpto: '', // Will be added to backend later
-      cteWaterNum: '', // Will be added to backend later
-      cteWaterDate: '', // Will be added to backend later
-      cteWaterValidUpto: '', // Will be added to backend later
-      cteAirNum: '', // Will be added to backend later
-      cteAirDate: '', // Will be added to backend later
-      cteAirValidUpto: '', // Will be added to backend later
-      hazardousWasteNum: '', // Will be added to backend later
-      pcbZoneID: '', // Will be added to backend later
-      gstValidFrom: '', // Will be added to backend later
-      gstRate: '', // Will be added to backend later
+      // Basic Information - Backend supported fields
+      gstin: apiCompany.gstin || '',
+      pincode: apiCompany.pincode || '',
+      state: apiCompany.state || '',
+      prefix: apiCompany.prefix || '',
       status: apiCompany.status,
+      // Address Information - Backend supported fields
+      regdOfficeAddress: apiCompany.regdOfficeAddress || '',
+      adminOfficeAddress: apiCompany.adminOfficeAddress || '',
+      factoryAddress: apiCompany.factoryAddress || '',
+      // Authorized Person Information - Backend supported fields
+      authPersonName: apiCompany.authPersonName || '',
+      authPersonDesignation: apiCompany.authPersonDesignation || '',
+      authPersonDOB: apiCompany.authPersonDOB || '',
+      // PCB & Compliance - Backend supported fields
+      pcbauthNum: apiCompany.pcbauthNum || '',
+      hazardousWasteNum: apiCompany.hazardousWasteNum || '',
+      // CTO (Consent To Operate) - Water - Backend supported fields
+      ctoWaterNum: apiCompany.ctoWaterNum || '',
+      ctoWaterDate: apiCompany.ctoWaterDate || '',
+      ctoWaterValidUpto: apiCompany.ctoWaterValidUpto || '',
+      // CTO (Consent To Operate) - Air - Backend supported fields
+      ctoAirNum: apiCompany.ctoAirNum || '',
+      ctoAirDate: apiCompany.ctoAirDate || '',
+      ctoAirValidUpto: apiCompany.ctoAirValidUpto || '',
+      // CTE (Consent To Establish) - Water - Backend supported fields
+      cteWaterNum: apiCompany.cteWaterNum || '',
+      cteWaterDate: apiCompany.cteWaterDate || '',
+      cteWaterValidUpto: apiCompany.cteWaterValidUpto || '',
+      // CTE (Consent To Establish) - Air - Backend supported fields
+      cteAirNum: apiCompany.cteAirNum || '',
+      cteAirDate: apiCompany.cteAirDate || '',
+      cteAirValidUpto: apiCompany.cteAirValidUpto || '',
+      // GST Details - Backend supported fields
+      pcbZoneID: apiCompany.pcbZoneID || '',
+      gstValidFrom: apiCompany.gstValidFrom || '',
+      gstRate: apiCompany.gstRate || '',
+      // Metadata
       createdBy: apiCompany.createdBy || 'System',
       createdOn: apiCompany.createdOn,
       modifiedBy: apiCompany.modifiedBy || 'System',
       modifiedOn: apiCompany.modifiedOn,
-      // Contact Information
+      // Contact Information - Backend supported fields
       contactNum: apiCompany.contactNum || '',
       webAddress: apiCompany.webAddress || '',
       companyEmail: apiCompany.companyEmail || '',
-      // Bank & Payment Information
+      // Bank & Payment Information - Backend supported fields
       bankAccountName: apiCompany.bankAccountName || '',
       bankName: apiCompany.bankName || '',
       bankAccountNum: apiCompany.bankAccountNum || '',
@@ -264,9 +264,50 @@ const CompanyMasterPage = () => {
     }
   };
 
-  // Load companies on component mount
+  // Load states from State Master API
+  const loadStates = async () => {
+    try {
+      const apiStates = await stateService.getAllStates(true); // Get only active states
+      const mappedStates: State[] = apiStates.map((state: StateResponse) => ({
+        id: state.id,
+        stateCode: state.stateCode,
+        stateName: state.stateName,
+        status: state.status,
+      }));
+      setStates(mappedStates);
+    } catch (err: any) {
+      console.error('Error loading states:', err);
+      // Don't show error toast here as it's not critical for initial load
+      // States will just be empty, user can retry by refreshing
+    }
+  };
+
+  // Load PCB zones from PCB Zone Master API
+  const loadPcbZones = async () => {
+    try {
+      const apiZones = await pcbZoneService.getAllPcbZones(true); // Get only active zones
+      const mappedZones: PCBZone[] = apiZones.map((zone: PcbZoneResponse) => ({
+        id: zone.id,
+        pcbZoneName: zone.pcbZoneName,
+        pcbZoneAddress: zone.pcbZoneAddress || '',
+        contactNum: zone.contactNum || '',
+        contactEmail: zone.contactEmail || '',
+        alertEmail: zone.alertEmail || '',
+        status: zone.status,
+      }));
+      setPcbZones(mappedZones);
+    } catch (err: any) {
+      console.error('Error loading PCB zones:', err);
+      // Don't show error toast here as it's not critical for initial load
+      // PCB zones will just be empty, user can retry by refreshing
+    }
+  };
+
+  // Load companies, states, and PCB zones on component mount
   useEffect(() => {
     loadCompanies();
+    loadStates();
+    loadPcbZones();
   }, []);
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
@@ -315,13 +356,122 @@ const CompanyMasterPage = () => {
     setError(null);
     try {
       await companyService.deleteCompany(id);
+      notifySuccess('Company deleted successfully');
       await loadCompanies(); // Reload companies after deletion
     } catch (err) {
-      setError((err as Error).message || 'Failed to delete company');
+      const errorMessage = (err as Error).message || 'Failed to delete company';
+      setError(errorMessage);
+      notifyError(errorMessage);
       console.error('Error deleting company:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to clean payload - removes undefined, null, empty strings, and whitespace-only strings
+  const cleanPayload = <T extends Record<string, any>>(payload: T): Partial<T> => {
+    const cleaned: Partial<T> = {};
+    Object.keys(payload).forEach((key) => {
+      const value = payload[key];
+      // Skip undefined, null, empty strings, and whitespace-only strings
+      if (value === undefined || value === null) {
+        return; // Skip this field
+      }
+      // For string values, trim and check if empty
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '') {
+          return; // Skip empty or whitespace-only strings
+        }
+        cleaned[key as keyof T] = trimmed as any; // Use trimmed value
+      } else {
+        // For non-string values (numbers, booleans, dates, etc.), include them
+        cleaned[key as keyof T] = value;
+      }
+    });
+    return cleaned;
+  };
+
+  // Helper function to check if a value is non-empty (handles strings, trimming whitespace)
+  const hasValue = (value: any): boolean => {
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    return true; // For non-string values (numbers, booleans, dates), consider them as having value
+  };
+
+  // Helper function to build API payload from form data
+  const buildApiPayload = (formData: Partial<Company>, isUpdate: boolean) => {
+    const payload: Record<string, any> = {};
+    
+    // Required fields (always included)
+    if (hasValue(formData.companyCode)) payload.companyCode = formData.companyCode;
+    if (hasValue(formData.companyName)) payload.companyName = formData.companyName;
+    
+    // Optional basic fields
+    if (hasValue(formData.gstin)) payload.gstin = formData.gstin;
+    if (hasValue(formData.pincode)) payload.pincode = formData.pincode;
+    if (hasValue(formData.state)) payload.state = formData.state;
+    if (hasValue(formData.prefix)) payload.prefix = formData.prefix;
+    
+    // Address Information
+    if (hasValue(formData.regdOfficeAddress)) payload.regdOfficeAddress = formData.regdOfficeAddress;
+    if (hasValue(formData.adminOfficeAddress)) payload.adminOfficeAddress = formData.adminOfficeAddress;
+    if (hasValue(formData.factoryAddress)) payload.factoryAddress = formData.factoryAddress;
+    
+    // Authorized Person Information
+    if (hasValue(formData.authPersonName)) payload.authPersonName = formData.authPersonName;
+    if (hasValue(formData.authPersonDesignation)) payload.authPersonDesignation = formData.authPersonDesignation;
+    if (hasValue(formData.authPersonDOB)) payload.authPersonDOB = formData.authPersonDOB;
+    
+    // PCB & Compliance
+    if (hasValue(formData.pcbauthNum)) payload.pcbauthNum = formData.pcbauthNum;
+    if (hasValue(formData.hazardousWasteNum)) payload.hazardousWasteNum = formData.hazardousWasteNum;
+    
+    // CTO (Consent To Operate) - Water
+    if (hasValue(formData.ctoWaterNum)) payload.ctoWaterNum = formData.ctoWaterNum;
+    if (hasValue(formData.ctoWaterDate)) payload.ctoWaterDate = formData.ctoWaterDate;
+    if (hasValue(formData.ctoWaterValidUpto)) payload.ctoWaterValidUpto = formData.ctoWaterValidUpto;
+    
+    // CTO (Consent To Operate) - Air
+    if (hasValue(formData.ctoAirNum)) payload.ctoAirNum = formData.ctoAirNum;
+    if (hasValue(formData.ctoAirDate)) payload.ctoAirDate = formData.ctoAirDate;
+    if (hasValue(formData.ctoAirValidUpto)) payload.ctoAirValidUpto = formData.ctoAirValidUpto;
+    
+    // CTE (Consent To Establish) - Water
+    if (hasValue(formData.cteWaterNum)) payload.cteWaterNum = formData.cteWaterNum;
+    if (hasValue(formData.cteWaterDate)) payload.cteWaterDate = formData.cteWaterDate;
+    if (hasValue(formData.cteWaterValidUpto)) payload.cteWaterValidUpto = formData.cteWaterValidUpto;
+    
+    // CTE (Consent To Establish) - Air
+    if (hasValue(formData.cteAirNum)) payload.cteAirNum = formData.cteAirNum;
+    if (hasValue(formData.cteAirDate)) payload.cteAirDate = formData.cteAirDate;
+    if (hasValue(formData.cteAirValidUpto)) payload.cteAirValidUpto = formData.cteAirValidUpto;
+    
+    // GST Details
+    if (hasValue(formData.pcbZoneID)) payload.pcbZoneID = formData.pcbZoneID;
+    if (hasValue(formData.gstValidFrom)) payload.gstValidFrom = formData.gstValidFrom;
+    if (hasValue(formData.gstRate)) payload.gstRate = formData.gstRate;
+    
+    // Status (only for updates)
+    if (isUpdate && formData.status) payload.status = formData.status;
+    
+    // Contact Information
+    if (hasValue(formData.contactNum)) payload.contactNum = formData.contactNum;
+    if (hasValue(formData.webAddress)) payload.webAddress = formData.webAddress;
+    if (hasValue(formData.companyEmail)) payload.companyEmail = formData.companyEmail;
+    
+    // Bank & Payment Information
+    if (hasValue(formData.bankAccountName)) payload.bankAccountName = formData.bankAccountName;
+    if (hasValue(formData.bankName)) payload.bankName = formData.bankName;
+    if (hasValue(formData.bankAccountNum)) payload.bankAccountNum = formData.bankAccountNum;
+    if (hasValue(formData.bankIFSCode)) payload.bankIFSCode = formData.bankIFSCode;
+    if (hasValue(formData.bankBranch)) payload.bankBranch = formData.bankBranch;
+    if (hasValue(formData.upiId)) payload.upiId = formData.upiId;
+    if (hasValue(formData.qrCode)) payload.qrCode = formData.qrCode;
+    
+    return cleanPayload(payload);
   };
 
   const handleSave = async (formData: Partial<Company>) => {
@@ -329,47 +479,34 @@ const CompanyMasterPage = () => {
     setError(null);
     
     try {
+      // Log form data before processing
+      console.log('[CompanyMaster] Form data before save:', JSON.stringify(formData, null, 2));
+      
       if (editingCompany) {
         // Update existing company
-        const updateData = {
-          companyCode: formData.companyCode,
-          companyName: formData.companyName,
-          status: formData.status,
-          contactNum: formData.contactNum,
-          webAddress: formData.webAddress,
-          companyEmail: formData.companyEmail,
-          bankAccountName: formData.bankAccountName,
-          bankName: formData.bankName,
-          bankAccountNum: formData.bankAccountNum,
-          bankIFSCode: formData.bankIFSCode,
-          bankBranch: formData.bankBranch,
-          upiId: formData.upiId,
-          qrCode: formData.qrCode,
-        };
+        const updateData = buildApiPayload(formData, true);
         
-        await companyService.updateCompany(editingCompany.id, updateData);
+        console.log('[CompanyMaster] Update payload (cleaned):', JSON.stringify(updateData, null, 2));
+        console.log('[CompanyMaster] Updating company ID:', editingCompany.id);
+        
+        const result = await companyService.updateCompany(editingCompany.id, updateData);
+        
+        console.log('[CompanyMaster] Update API response:', JSON.stringify(result, null, 2));
+        notifySuccess('Company updated successfully');
       } else {
         // Create new company
         if (!formData.companyCode || !formData.companyName) {
           throw new Error('Company Code and Company Name are required');
         }
         
-        const createData = {
-          companyCode: formData.companyCode,
-          companyName: formData.companyName,
-          contactNum: formData.contactNum,
-          webAddress: formData.webAddress,
-          companyEmail: formData.companyEmail,
-          bankAccountName: formData.bankAccountName,
-          bankName: formData.bankName,
-          bankAccountNum: formData.bankAccountNum,
-          bankIFSCode: formData.bankIFSCode,
-          bankBranch: formData.bankBranch,
-          upiId: formData.upiId,
-          qrCode: formData.qrCode,
-        };
+        const createData = buildApiPayload(formData, false);
         
-        await companyService.createCompany(createData);
+        console.log('[CompanyMaster] Create payload (cleaned):', JSON.stringify(createData, null, 2));
+        
+        const result = await companyService.createCompany(createData);
+        
+        console.log('[CompanyMaster] Create API response:', JSON.stringify(result, null, 2));
+        notifySuccess('Company created successfully');
       }
       
       // Reload companies after save
@@ -379,11 +516,14 @@ const CompanyMasterPage = () => {
     } catch (err) {
       const errorMessage = (err as Error).message || 'Failed to save company';
       setError(errorMessage);
+      notifyError(errorMessage);
       console.error('Error saving company:', err);
       
       // If authentication error, suggest login
       if (errorMessage.includes('403') || errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-        setError('Authentication failed. Please login again.');
+        const authError = 'Authentication failed. Please login again.';
+        setError(authError);
+        notifyError(authError);
       }
     } finally {
       setLoading(false);
@@ -436,13 +576,7 @@ const CompanyMasterPage = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="sidebar-notification-btn" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            <span className="notification-badge">3</span>
-          </button>
+          <NotificationBell variant="sidebar" />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -752,9 +886,58 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
     qrCode: '',
   };
 
-  const [formData, setFormData] = useState<Partial<Company>>(
-    company ? { ...defaultFormData, ...company } : defaultFormData
-  );
+  const [formData, setFormData] = useState<Partial<Company>>(() => {
+    if (company) {
+      // When editing, merge company data with defaults
+      // This ensures all fields are initialized correctly
+      const merged = { ...defaultFormData, ...company };
+      console.log('[CompanyFormModal] Initializing form data for edit:', {
+        companyId: company.id,
+        companyCode: merged.companyCode,
+        companyName: merged.companyName,
+        gstin: merged.gstin,
+        pincode: merged.pincode,
+        state: merged.state,
+        prefix: merged.prefix,
+        regdOfficeAddress: merged.regdOfficeAddress,
+        adminOfficeAddress: merged.adminOfficeAddress,
+        factoryAddress: merged.factoryAddress,
+        authPersonName: merged.authPersonName,
+        authPersonDesignation: merged.authPersonDesignation,
+        authPersonDOB: merged.authPersonDOB,
+        pcbauthNum: merged.pcbauthNum,
+        hazardousWasteNum: merged.hazardousWasteNum,
+        ctoWaterNum: merged.ctoWaterNum,
+        ctoWaterDate: merged.ctoWaterDate,
+        ctoWaterValidUpto: merged.ctoWaterValidUpto,
+        ctoAirNum: merged.ctoAirNum,
+        ctoAirDate: merged.ctoAirDate,
+        ctoAirValidUpto: merged.ctoAirValidUpto,
+        cteWaterNum: merged.cteWaterNum,
+        cteWaterDate: merged.cteWaterDate,
+        cteWaterValidUpto: merged.cteWaterValidUpto,
+        cteAirNum: merged.cteAirNum,
+        cteAirDate: merged.cteAirDate,
+        cteAirValidUpto: merged.cteAirValidUpto,
+        pcbZoneID: merged.pcbZoneID,
+        gstValidFrom: merged.gstValidFrom,
+        gstRate: merged.gstRate,
+        contactNum: merged.contactNum,
+        webAddress: merged.webAddress,
+        companyEmail: merged.companyEmail,
+        bankAccountName: merged.bankAccountName,
+        bankName: merged.bankName,
+        bankAccountNum: merged.bankAccountNum,
+        bankIFSCode: merged.bankIFSCode,
+        bankBranch: merged.bankBranch,
+        upiId: merged.upiId,
+        qrCode: merged.qrCode,
+      });
+      return merged;
+    }
+    console.log('[CompanyFormModal] Initializing form data for create');
+    return defaultFormData;
+  });
 
   // Step-based navigation state
   const [currentStep, setCurrentStep] = useState(1);
@@ -1473,7 +1656,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                       >
                         <option value="">Select PCB Zone</option>
                         {pcbZones.map((zone) => (
-                          <option key={zone.id} value={zone.pcbZoneName}>
+                          <option key={zone.id} value={zone.id}>
                             {zone.pcbZoneName}
                           </option>
                         ))}
@@ -1559,12 +1742,12 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                             const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
                             setFormData({ ...formData, bankIFSCode: value });
                           }}
-                          placeholder="HDFC0001234"
+                          placeholder="ICIC000024 or HDFC0001234"
                           maxLength={11}
                           className="ra-assignment-input"
                         />
                         <small className="company-helper-text">
-                          Format: HDFC0001234
+                          Format: 4 letters + 0 + 5-6 alphanumeric (e.g., ICIC000024, HDFC0001234)
                         </small>
                       </div>
                       <div className="ra-assignment-form-group">
@@ -1574,11 +1757,11 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                           type="text"
                           value={formData.upiId || ''}
                           onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
-                          placeholder="name@bank"
+                          placeholder="john@paytm or 9876543210@ybl"
                           className="ra-assignment-input"
                         />
                         <small className="company-helper-text">
-                          Format: name@bank
+                          Format: name@bank (e.g., john@paytm, 9876543210@ybl, name@okaxis)
                         </small>
                       </div>
                     </div>

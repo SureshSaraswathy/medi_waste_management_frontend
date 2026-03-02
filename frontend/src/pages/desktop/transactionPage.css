@@ -1,5 +1,28 @@
+/* Transaction Page Header Icon Styling */
 .transaction-page .master-header-icon {
-  background: #2563EB;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  background: #EEF2FF; /* Soft blue background */
+  border-radius: 10px;
+  border: 1px solid #E0E7FF; /* Light border */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.transaction-page .master-header-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: #1E40AF; /* Icon color */
+  fill: none;
+  stroke-width: 2;
+}
+
+.transaction-page .master-header {
+  gap: 12px; /* Consistent spacing between icon and title */
 }
 
 .transaction-page .master-grid {

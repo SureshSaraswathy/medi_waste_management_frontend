@@ -7,6 +7,7 @@ import { companyService, CompanyResponse } from '../../../services/companyServic
 import { permissionAdminService, AdminPermissionItem } from '../../../services/permissionAdminService';
 import { hasPermission } from '../../../services/permissionService';
 import PageHeader from '../../../components/layout/PageHeader';
+import NotificationBell from '../../../components/NotificationBell';
 import './permissionConfigurationPage.css';
 import '../dashboardPage.css';
 import '../masterPage.css';
@@ -575,6 +576,7 @@ const PermissionConfigurationPage: React.FC = () => {
         })()}
 
         <div className="sidebar-footer">
+          <NotificationBell variant="sidebar" />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -603,7 +605,7 @@ const PermissionConfigurationPage: React.FC = () => {
           subtitle="Manage user roles and permissions"
         />
 
-        <div className="dashboard-page-content" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+        <div className="dashboard-page-content permission-config-wrapper" style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           <div className="master-page">
             <div className="master-header">
               <div className="master-header-icon">
@@ -620,9 +622,8 @@ const PermissionConfigurationPage: React.FC = () => {
             </div>
           </div>
           <div className="perm-config-page">
-        <div className="perm-config-header">
-          <div>
-            <h1>Permission Configuration</h1>
+        <div className="perm-config-header perm-config-header--compact">
+          <div className="perm-config-header-copy">
             <p>Assign permissions to roles (writes to existing <code>role_permissions</code> table)</p>
           </div>
           {/* UI-only: sticky save button + unsaved indicator; save payload/behavior unchanged */}
