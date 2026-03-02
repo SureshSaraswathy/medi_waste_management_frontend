@@ -1,3 +1,7 @@
+.transaction-page .master-header-icon {
+  background: #2563EB;
+}
+
 .transaction-page .master-grid {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;

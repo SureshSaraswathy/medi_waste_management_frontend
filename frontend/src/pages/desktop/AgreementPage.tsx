@@ -8,6 +8,7 @@ import { contractService } from '../../services/contractService';
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import toast from 'react-hot-toast';
 // @ts-ignore - html2pdf.js doesn't have TypeScript definitions
 import html2pdf from 'html2pdf.js';
 import PageHeader from '../../components/layout/PageHeader';
@@ -174,7 +175,7 @@ const AgreementPage = () => {
         });
       } else {
         if (!data.contractID) {
-          alert('Please select a contract');
+          toast.error('Please select a contract');
           return;
         }
         await agreementService.createAgreement({
@@ -190,7 +191,7 @@ const AgreementPage = () => {
     } catch (err: any) {
       console.error('Failed to save agreement:', err);
       setError(err.message || 'Failed to save agreement');
-      alert(err.message || 'Failed to save agreement');
+      toast.error(err.message || 'Failed to save agreement');
     } finally {
       setSaving(false);
     }
@@ -538,7 +539,7 @@ const AgreementFormModal = ({ agreement, contracts, contractIdParam, saving, onC
     e.preventDefault();
     
     if (!formData.contractID || !formData.agreementDate) {
-      alert('Please fill in all required fields');
+      toast.error('Please complete the required fields.');
       return;
     }
 
@@ -721,7 +722,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
 
   const handleDownloadPDF = async () => {
     if (!agreementDocumentRef.current) {
-      alert('Unable to generate PDF. Please try again.');
+      toast.error('Unable to generate PDF. Please try again.');
       return;
     }
 
@@ -749,7 +750,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
       await html2pdf().set(opt).from(element).save();
     } catch (error: any) {
       console.error('Failed to generate PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     } finally {
       setGeneratingPDF(false);
     }

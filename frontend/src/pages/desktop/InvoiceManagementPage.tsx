@@ -2018,7 +2018,7 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.companyName || !formData.hcfCode) {
-      notifyWarning('Please fill in all required fields');
+      notifyWarning('Please complete the required fields.');
       return;
     }
     if (window.confirm('Are you sure you want to generate this invoice? This action cannot be undone.')) {

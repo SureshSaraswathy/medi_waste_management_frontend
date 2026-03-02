@@ -13,9 +13,11 @@ import { routeService, RouteResponse } from '../../services/routeService';
 import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
 import PageHeader from '../../components/layout/PageHeader';
+import { clearFieldValidation, focusAndScrollToField, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
 import './hcfMasterPage.css';
 import './companyMasterPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface HCF {
   id: string;
@@ -440,7 +442,7 @@ const HCFMasterPage = () => {
     try {
       setLoading(true);
       const result = await adminResetHCFPassword(hcfId);
-      alert(`Password reset successfully. Temporary password: ${result.temporaryPassword}\n\nPlease inform the HCF to check their email for the temporary password.`);
+      toast.error(`Password reset successfully. Temporary password: ${result.temporaryPassword}\n\nPlease inform the HCF to check their email for the temporary password.`);
     } catch (err) {
       setError((err as Error).message || 'Failed to reset password');
     } finally {
@@ -457,7 +459,7 @@ const HCFMasterPage = () => {
       } catch (err: any) {
         console.error('Failed to delete HCF:', err);
         setError(err.message || 'Failed to delete HCF');
-        alert(err.message || 'Failed to delete HCF');
+        toast.error(err.message || 'Failed to delete HCF');
       } finally {
         setLoading(false);
       }
@@ -592,7 +594,7 @@ const HCFMasterPage = () => {
     } catch (err: any) {
       console.error('Failed to save HCF:', err);
       setError(err.message || 'Failed to save HCF');
-      alert(err.message || 'Failed to save HCF');
+      toast.error(err.message || 'Failed to save HCF');
     } finally {
       setSaving(false);
     }
@@ -1113,6 +1115,15 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
   ];
 
   const handleNext = () => {
+    const stepContainer = document.querySelector<HTMLElement>(`[data-hcf-step="${currentStep}"]`);
+    if (stepContainer) {
+      const invalidFields = validateRequiredFields(stepContainer);
+      if (invalidFields.length > 0) {
+        showValidationToast();
+        focusAndScrollToField(invalidFields[0]);
+        return;
+      }
+    }
     if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
     }
@@ -1130,6 +1141,15 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
     }
     // Only allow submit on last step
     if (currentStep === 7) {
+      const stepContainer = document.querySelector<HTMLElement>('[data-hcf-step="7"]');
+      if (stepContainer) {
+        const invalidFields = validateRequiredFields(stepContainer);
+        if (invalidFields.length > 0) {
+          showValidationToast();
+          focusAndScrollToField(invalidFields[0]);
+          return;
+        }
+      }
       onSave(formData);
     }
   };
@@ -1261,10 +1281,10 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
         </div>
 
         <div className="wizard-content modal-content-area">
-          <form className="company-form" onSubmit={handleSubmit}>
+          <form className="company-form" onSubmit={handleSubmit} onInput={(e) => clearFieldValidation(e.target as HTMLElement)}>
             {/* Step 1: Basic Information */}
             {currentStep === 1 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="1">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon">
                     {getStepIcon('building')}
@@ -1462,7 +1482,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 2: Location Information */}
             {currentStep === 2 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="2">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-pink">
                     {getStepIcon('map-pin')}
@@ -1609,7 +1629,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 3: Addresses */}
             {currentStep === 3 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="3">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-green">
                     {getStepIcon('address')}
@@ -1674,7 +1694,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 4: Registration & GST */}
             {currentStep === 4 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="4">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-purple">
                     {getStepIcon('shield')}
@@ -1855,7 +1875,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 5: Billing Configuration */}
             {currentStep === 5 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="5">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-blue">
                     {getStepIcon('billing')}
@@ -2062,7 +2082,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 6: Contact Information */}
             {currentStep === 6 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="6">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-orange">
                     {getStepIcon('contacts')}
@@ -2204,7 +2224,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 7: Service & Configuration */}
             {currentStep === 7 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-hcf-step="7">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-purple">
                     {getStepIcon('settings')}
@@ -2426,7 +2446,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
             )}
             {currentStep < 7 ? (
               <button type="button" className="wp-btn wp-btn--primary" onClick={handleNext} disabled={saving}>
-                Next
+                {saving ? 'Processing...' : 'Next'}
               </button>
             ) : (
               <button type="button" className="wp-btn wp-btn--primary" onClick={handleSubmit} disabled={saving}>

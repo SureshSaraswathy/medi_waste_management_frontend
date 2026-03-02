@@ -1,4 +1,5 @@
 import ReportDesignPage from '../../../components/reports/ReportDesignPage';
+import toast from 'react-hot-toast';
 
 const BarcodeReportPage = () => {
   const companies = [
@@ -56,7 +57,7 @@ const BarcodeReportPage = () => {
 
   const handleGenerate = async (params: Record<string, any>) => {
     console.log('Generating Barcode Usage Report with parameters:', params);
-    alert(`Barcode Usage Report generated with parameters:\n${JSON.stringify(params, null, 2)}`);
+    toast.error(`Barcode Usage Report generated with parameters:\n${JSON.stringify(params, null, 2)}`);
   };
 
   return (

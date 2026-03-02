@@ -56,30 +56,30 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9fa;
-  border: 1px solid #e2e8f0;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
   border-radius: 6px;
-  color: #495057;
+  color: #1e3a8a;
   transition: all 0.15s ease;
   margin-right: 10px;
   vertical-align: top;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(30, 58, 138, 0.12);
 }
 
-/* Icon color - dark grey outline icons (border only, white inside) */
+/* Icon color - primary brand blue outline icons */
 .report-card-modern-icon svg {
   fill: none;
-  stroke: #495057;
+  stroke: #1e3a8a;
   stroke-width: 2;
-  color: #495057;
+  color: #1e3a8a;
   width: 18px;
   height: 18px;
 }
 
 .report-card-modern:hover .report-card-modern-icon {
-  background: #f8f9fa;
-  border-color: #e2e8f0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  box-shadow: 0 1px 4px rgba(30, 58, 138, 0.16);
 }
 
 .report-card-modern-title-section {

@@ -16,6 +16,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { MenuItem, PreviewMode } from '../../types/dashboard';
 import { dashboardService } from '../../services/dashboardService';
 import { hasPermission } from '../../services/permissionService';
+import BreadcrumbNavigation, { BreadcrumbItem } from '../common/BreadcrumbNavigation';
+import { resolveBreadcrumbMeta } from '../../utils/breadcrumbConfig';
 import './dashboardShell.css';
 
 interface DashboardShellProps {
@@ -156,22 +158,25 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Generate breadcrumb from current path
-  const breadcrumb = useMemo(() => {
-    const pathParts = location.pathname.split('/').filter(Boolean);
-    if (pathParts.length === 0) return '/ Dashboard';
-    
-    // Custom breadcrumb for draft invoice batch edit page
-    if (location.pathname.startsWith('/finance/draft-invoices/')) {
-      return '/ Finance / Billing Runs / Batch Edit';
+  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
+    const meta = resolveBreadcrumbMeta(location.pathname);
+    const items: BreadcrumbItem[] = [{ label: 'Home', path: '/dashboard', isCurrent: false }];
+
+    if (meta.moduleLabel && meta.moduleLabel !== 'Home' && meta.moduleLabel !== meta.pageLabel) {
+      items.push({
+        label: meta.moduleLabel,
+        path: meta.modulePath || undefined,
+        isCurrent: false,
+      });
     }
-    
-    const breadcrumbParts = pathParts.map((part, index) => {
-      const label = part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ');
-      return label;
-    });
-    
-    return `/ ${breadcrumbParts.join(' / ')}`;
+
+    if (meta.pageLabel !== 'Home') {
+      items.push({ label: meta.pageLabel, isCurrent: true });
+    } else {
+      items[0].isCurrent = true;
+    }
+
+    return items;
   }, [location.pathname]);
 
   // Toggle submenu expansion
@@ -184,6 +189,12 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
 
   // Check if menu item or any child is active
   const isMenuItemActive = (item: MenuItem): boolean => {
+    const normalizedPath = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : location.pathname;
+    const isComplianceRegisterRoute = normalizedPath === '/transaction/compliance-register';
+
+    if (item.path === '/transaction' && isComplianceRegisterRoute) return false;
+    if (item.path === '/compliance-training' && isComplianceRegisterRoute) return true;
+
     if (item.path === location.pathname) return true;
     if (location.pathname.startsWith(item.path) && item.path !== '/dashboard') return true;
     if (item.children) {
@@ -387,8 +398,7 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
               </svg>
               <span>MEDI-WASTE</span>
             </div>
-            {/* Breadcrumb */}
-            <span className="dashboard-shell__breadcrumb">{breadcrumb}</span>
+            <BreadcrumbNavigation items={breadcrumbItems} className="dashboard-shell__breadcrumb" />
           </div>
           <div className="dashboard-shell__header-right">
             {/* Preview Mode Banner (for SuperAdmin) */}

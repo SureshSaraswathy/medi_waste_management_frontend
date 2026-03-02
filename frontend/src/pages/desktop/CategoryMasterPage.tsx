@@ -7,6 +7,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './categoryMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: string;
@@ -159,10 +160,10 @@ const CategoryMasterPage = () => {
         setLoading(true);
         await categoryService.deleteCategory(id);
         await loadCategories();
-        alert('Category deleted successfully');
+        toast.error('Category deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete category';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting category:', err);
       } finally {
         setLoading(false);
@@ -178,7 +179,7 @@ const CategoryMasterPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === formData.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -187,11 +188,11 @@ const CategoryMasterPage = () => {
         await categoryService.updateCategory(editingCategory.id, {
           status: formData.status,
         });
-        alert('Category updated successfully');
+        toast.error('Category updated successfully');
       } else {
         // Add new
         if (!formData.categoryCode || !formData.categoryName || !formData.companyName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await categoryService.createCategory({
@@ -199,7 +200,7 @@ const CategoryMasterPage = () => {
           categoryName: formData.categoryName,
           companyId: selectedCompany.id,
         });
-        alert('Category created successfully');
+        toast.error('Category created successfully');
       }
       
       setShowModal(false);
@@ -208,7 +209,7 @@ const CategoryMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save category';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving category:', err);
     } finally {
       setLoading(false);
@@ -640,11 +641,25 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{category ? 'Edit Category' : 'Add Category'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">{category ? 'Edit Category' : 'Add Category'}</h2>
+              <p className="ra-assignment-modal-subtitle">
+                {category ? 'Update category details' : 'Create a new category record.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -652,17 +667,20 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
           </button>
         </div>
 
-        <form className="category-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company Name *</label>
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="category-company-name">
+                  Company Name <span className="ra-required">*</span>
+                </label>
                 <select
+                  id="category-company-name"
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
-                  disabled={!!category} // Disable when editing (immutable field)
-                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  disabled={!!category}
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -672,35 +690,45 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Category Code *</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="category-name">
+                  Category Name <span className="ra-required">*</span>
+                </label>
                 <input
-                  type="text"
-                  value={formData.categoryCode || ''}
-                  onChange={(e) => setFormData({ ...formData, categoryCode: e.target.value })}
-                  required
-                  placeholder="Enter Category Code"
-                  disabled={!!category} // Disable when editing (immutable field)
-                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="form-group">
-                <label>Category Name *</label>
-                <input
+                  id="category-name"
                   type="text"
                   value={formData.categoryName || ''}
                   onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
                   required
-                  placeholder="Enter Category Name"
-                  disabled={!!category} // Disable when editing (immutable field)
-                  style={category ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  placeholder="Enter category name"
+                  disabled={!!category}
+                  className="ra-assignment-input"
                 />
               </div>
-              <div className="form-group">
-                <label>Status</label>
+            </div>
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="category-code">
+                  Category Code <span className="ra-required">*</span>
+                </label>
+                <input
+                  id="category-code"
+                  type="text"
+                  value={formData.categoryCode || ''}
+                  onChange={(e) => setFormData({ ...formData, categoryCode: e.target.value })}
+                  required
+                  placeholder="Enter category code"
+                  disabled={!!category}
+                  className="ra-assignment-input"
+                />
+              </div>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="category-status">Status</label>
                 <select
+                  id="category-status"
                   value={formData.status || 'Active'}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                  className="ra-assignment-select"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -709,12 +737,12 @@ const CategoryFormModal = ({ category, companies, onClose, onSave }: CategoryFor
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              {category ? 'Update' : 'Save'}
+            <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary">
+              {category ? 'Update Category' : 'Create Category'}
             </button>
           </div>
         </form>

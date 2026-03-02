@@ -8,6 +8,7 @@ import { agreementService, AgreementResponse } from '../../services/agreementSer
 import PageHeader from '../../components/layout/PageHeader';
 import './agreementClausePage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface Agreement {
   id: string;
@@ -152,7 +153,7 @@ const AgreementClausePage = () => {
   // Handle Edit
   const handleEdit = (clause: AgreementClause) => {
     if (!canEditClause(clause)) {
-      alert('Clauses can only be edited when the agreement status is Draft.');
+      toast.error('Clauses can only be edited when the agreement status is Draft.');
       return;
     }
     setEditingClause(clause);
@@ -162,7 +163,7 @@ const AgreementClausePage = () => {
   // Handle Move Up
   const handleMoveUp = async (clause: AgreementClause) => {
     if (!canEditClause(clause)) {
-      alert('Clauses can only be reordered when the agreement status is Draft.');
+      toast.error('Clauses can only be reordered when the agreement status is Draft.');
       return;
     }
     
@@ -184,7 +185,7 @@ const AgreementClausePage = () => {
       } catch (err: any) {
         console.error('Failed to reorder clause:', err);
         setError(err.message || 'Failed to reorder clause');
-        alert(err.message || 'Failed to reorder clause');
+        toast.error(err.message || 'Failed to reorder clause');
       } finally {
         setLoading(false);
       }
@@ -194,7 +195,7 @@ const AgreementClausePage = () => {
   // Handle Move Down
   const handleMoveDown = async (clause: AgreementClause) => {
     if (!canEditClause(clause)) {
-      alert('Clauses can only be reordered when the agreement status is Draft.');
+      toast.error('Clauses can only be reordered when the agreement status is Draft.');
       return;
     }
     
@@ -216,7 +217,7 @@ const AgreementClausePage = () => {
       } catch (err: any) {
         console.error('Failed to reorder clause:', err);
         setError(err.message || 'Failed to reorder clause');
-        alert(err.message || 'Failed to reorder clause');
+        toast.error(err.message || 'Failed to reorder clause');
       } finally {
         setLoading(false);
       }
@@ -275,7 +276,7 @@ const AgreementClausePage = () => {
     } catch (err: any) {
       console.error('Failed to save clause:', err);
       setError(err.message || 'Failed to save clause');
-      alert(err.message || 'Failed to save clause');
+      toast.error(err.message || 'Failed to save clause');
     } finally {
       setSaving(false);
     }
@@ -686,7 +687,7 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
     e.preventDefault();
     
     if (!formData.agreementID || !formData.pointText || !formData.pointNum) {
-      alert('Please fill in all required fields');
+      toast.error('Please complete the required fields.');
       return;
     }
 

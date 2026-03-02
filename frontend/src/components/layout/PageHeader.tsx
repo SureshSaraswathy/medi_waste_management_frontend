@@ -1,13 +1,9 @@
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import NotificationBell from '../NotificationBell';
+import BreadcrumbNavigation, { BreadcrumbItem } from '../common/BreadcrumbNavigation';
+import { resolveBreadcrumbMeta } from '../../utils/breadcrumbConfig';
 import './pageHeader.css';
-
-type BreadcrumbItem = {
-  label: string;
-  onClick?: () => void;
-  isCurrent?: boolean;
-};
 
 interface PageHeaderProps {
   title: string;
@@ -34,6 +30,7 @@ const PageHeader = ({
 }: PageHeaderProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Get user display name
   const displayName = user?.name || user?.username || 'User';
@@ -51,20 +48,26 @@ const PageHeader = ({
 
   const effectiveBreadcrumbItems =
     standard && (!breadcrumbItems || breadcrumbItems.length === 0)
-      ? ([
-          {
-            label: 'Home',
-            onClick: () => {
-              try {
-                navigate('/dashboard');
-              } catch {
-                window.history.back();
-              }
-            },
-            isCurrent: false,
-          },
-          { label: title, isCurrent: true },
-        ] as BreadcrumbItem[])
+      ? (() => {
+          const meta = resolveBreadcrumbMeta(location.pathname, title);
+          const items: BreadcrumbItem[] = [{ label: 'Home', path: '/dashboard', isCurrent: false }];
+
+          if (meta.moduleLabel && meta.moduleLabel !== 'Home' && meta.moduleLabel !== meta.pageLabel) {
+            items.push({
+              label: meta.moduleLabel,
+              path: meta.modulePath || undefined,
+              isCurrent: false,
+            });
+          }
+
+          if (meta.pageLabel !== 'Home') {
+            items.push({ label: meta.pageLabel, isCurrent: true });
+          } else {
+            items[0].isCurrent = true;
+          }
+
+          return items;
+        })()
       : breadcrumbItems;
 
   const hasBreadcrumb = !!effectiveBreadcrumbItems?.length;
@@ -83,33 +86,7 @@ const PageHeader = ({
         <div className="app-title-group">
           {effectiveBreadcrumbItems?.length ? (
             <div className="app-breadcrumb-wrap">
-              <nav className="app-breadcrumb" aria-label="Breadcrumb">
-                {effectiveBreadcrumbItems.map((item, idx) => {
-                  const isLast = idx === effectiveBreadcrumbItems.length - 1;
-                  const isCurrent = item.isCurrent ?? isLast;
-                  const isClickable = !!item.onClick && !isCurrent;
-
-                  return (
-                    <span key={`${item.label}-${idx}`} className="app-breadcrumb__item">
-                      <span
-                        className={
-                          isCurrent
-                            ? 'app-breadcrumb__current'
-                            : isClickable
-                              ? 'app-breadcrumb__link'
-                              : 'app-breadcrumb__text'
-                        }
-                        onClick={isClickable ? item.onClick : undefined}
-                        role={isClickable ? 'button' : undefined}
-                        tabIndex={isClickable ? 0 : undefined}
-                      >
-                        {item.label}
-                      </span>
-                      {!isLast && <span className="app-breadcrumb__separator">/</span>}
-                    </span>
-                  );
-                })}
-              </nav>
+              <BreadcrumbNavigation items={effectiveBreadcrumbItems} />
 
               {!effectiveBreadcrumbOnly ? (
                 <div className="app-breadcrumb-title" aria-label="Page title">

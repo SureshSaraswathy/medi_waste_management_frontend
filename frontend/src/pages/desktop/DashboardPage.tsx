@@ -311,6 +311,9 @@ const DashboardPage: React.FC = () => {
   // SUPER_ADMIN is inferred from permissions wildcard only.
   const isSuperAdminUser = userPermissions.includes('*');
 
+  // Check if user has no access (permissions loaded but empty or no meaningful permissions)
+  const noAccessMode = permissionsLoaded && (!userPermissions || userPermissions.length === 0) && !isSuperAdminUser;
+
   // Get current role (from preview mode or user)
   // IMPORTANT: Map user roles to dashboard roles
   // SuperAdmin users (with '*' permission) should use 'superadmin' role for dashboard
@@ -481,14 +484,31 @@ const DashboardPage: React.FC = () => {
 
   // Load dashboard configuration
   useEffect(() => {
+    console.log('[DashboardPage] useEffect triggered:', {
+      permissionsLoaded,
+      noAccessMode,
+      isSuperAdminUser,
+      previewModeEnabled: previewMode.enabled,
+      currentRole,
+    });
+    
     // Wait for permissions to load before requesting dashboard config/widgets.
-    if (!permissionsLoaded) {
+    // BUT: SuperAdmin users don't need permissions, so allow them to load widgets immediately
+    if (!permissionsLoaded && !isSuperAdminUser) {
+      console.log('[DashboardPage] Waiting for permissions to load (non-SuperAdmin user)...');
       setLoading(true);
       return;
     }
+    
+    // For SuperAdmin, proceed even if permissions haven't loaded
+    if (isSuperAdminUser && !permissionsLoaded) {
+      console.log('[DashboardPage] SuperAdmin user - proceeding without waiting for permissions');
+    }
 
     // If user has no permissions mapped, keep Dashboard shell but do not call widget APIs.
-    if (noAccessMode) {
+    // BUT: Allow SuperAdmin users to load widgets even if they have no explicit permissions
+    if (noAccessMode && !isSuperAdminUser) {
+      console.log('[DashboardPage] No access mode - user has no permissions and is not SuperAdmin');
       setWidgets([]);
       setWidgetPermissions({});
       setLoading(false);
@@ -497,10 +517,14 @@ const DashboardPage: React.FC = () => {
 
     // Skip loading if in preview mode (already loaded from sessionStorage)
     if (previewMode.enabled) {
+      console.log('[DashboardPage] Preview mode enabled, skipping API call');
       return;
     }
+    
+    console.log('[DashboardPage] Proceeding to load dashboard from API...');
 
     const loadDashboard = async () => {
+      console.log('[DashboardPage] loadDashboard function called');
       setLoading(true);
       try {
         console.log('[DashboardPage] Loading dashboard for role:', currentRole);
@@ -509,6 +533,9 @@ const DashboardPage: React.FC = () => {
           userName: user?.name,
           userRoles: user?.roles,
           currentRole,
+          isSuperAdminUser,
+          permissionsLoaded,
+          userPermissionsCount: userPermissions.length,
         });
         
         // Load role configuration from backend
@@ -544,28 +571,57 @@ const DashboardPage: React.FC = () => {
         // Normalize widgets array - handle cases where widgets might be nested or malformed
         let widgetsToProcess: any[] = [];
         
+        console.log('[DashboardPage] Raw computed.widgets:', {
+          type: typeof computed.widgets,
+          isArray: Array.isArray(computed.widgets),
+          value: computed.widgets,
+          length: Array.isArray(computed.widgets) ? computed.widgets.length : 'N/A',
+        });
+        
         if (Array.isArray(computed.widgets)) {
+          console.log('[DashboardPage] Processing array of widgets, count:', computed.widgets.length);
           // Flatten widgets if they're nested in arrays
-          computed.widgets.forEach((item: any) => {
+          computed.widgets.forEach((item: any, idx: number) => {
+            console.log(`[DashboardPage] Processing widget item ${idx}:`, {
+              type: typeof item,
+              isArray: Array.isArray(item),
+              isObject: item && typeof item === 'object',
+              keys: item && typeof item === 'object' ? Object.keys(item) : [],
+              item: item,
+            });
+            
             if (Array.isArray(item)) {
               // If item is an array, add each element that is a valid widget object
-              item.forEach((widget: any) => {
+              console.log(`[DashboardPage] Item ${idx} is an array, flattening...`);
+              item.forEach((widget: any, subIdx: number) => {
                 if (widget && typeof widget === 'object' && !Array.isArray(widget)) {
+                  console.log(`[DashboardPage] Adding widget from nested array [${idx}][${subIdx}]:`, widget);
                   widgetsToProcess.push(widget);
+                } else {
+                  console.warn(`[DashboardPage] Skipping invalid nested widget [${idx}][${subIdx}]:`, widget);
                 }
               });
             } else if (item && typeof item === 'object' && !Array.isArray(item)) {
               // If item is a valid widget object, add it directly
+              console.log(`[DashboardPage] Adding widget [${idx}]:`, item);
               widgetsToProcess.push(item);
+            } else {
+              console.warn(`[DashboardPage] Skipping invalid widget item [${idx}]:`, item);
             }
           });
         } else if (computed.widgets && typeof computed.widgets === 'object' && !Array.isArray(computed.widgets)) {
           // If widgets is a single object, wrap it in an array
+          console.log('[DashboardPage] Widgets is a single object, wrapping in array');
           widgetsToProcess = [computed.widgets];
+        } else {
+          console.warn('[DashboardPage] Widgets is not an array or object:', {
+            type: typeof computed.widgets,
+            value: computed.widgets,
+          });
         }
         
         console.log('[DashboardPage] Processed widgets:', {
-          originalCount: Array.isArray(computed.widgets) ? computed.widgets.length : 0,
+          originalCount: Array.isArray(computed.widgets) ? computed.widgets.length : (computed.widgets ? 1 : 0),
           processedCount: widgetsToProcess.length,
           widgets: widgetsToProcess,
         });
@@ -853,44 +909,88 @@ const DashboardPage: React.FC = () => {
           });
           
           return widget;
-        }).filter((widget) => {
-          // Filter out invalid widgets
-          // First check if widget is a valid object
+        })
+        .map((widget, index) => {
+          // Fix widget type if invalid instead of filtering out
           if (!widget || typeof widget !== 'object' || Array.isArray(widget)) {
-            console.warn('[DashboardPage] Filtering out invalid widget (not an object):', widget);
-            return false;
+            console.warn(`[DashboardPage] Widget [${index}] is invalid (not an object):`, widget);
+            return null;
           }
           
-          // Check if widget has required properties
-          if (!widget.id || !widget.type) {
-            console.warn('[DashboardPage] Filtering out invalid widget (missing id or type):', widget);
-            return false;
+          // Ensure widget has required properties
+          if (!widget.id) {
+            widget.id = `widget-${Date.now()}-${index}-${Math.random()}`;
+            console.log(`[DashboardPage] Generated ID for widget [${index}]:`, widget.id);
           }
           
-          // Check if widget has valid type
+          if (!widget.type) {
+            console.warn(`[DashboardPage] Widget [${index}] missing type, defaulting to "metric"`);
+            widget.type = 'metric';
+          }
+          
+          // Fix invalid widget type instead of filtering out
           const validTypes: WidgetType[] = ['metric', 'chart', 'table', 'task-list', 'approval-queue', 'alert', 'activity-timeline', 'custom'];
           if (!validTypes.includes(widget.type)) {
-            console.warn('[DashboardPage] Filtering out invalid widget (invalid type):', widget);
-            return false;
+            console.warn(`[DashboardPage] Widget [${index}] has invalid type "${widget.type}", attempting to fix...`);
+            const normalizedType = String(widget.type || '').toLowerCase().trim();
+            const typeMap: Record<string, WidgetType> = {
+              'kpi': 'metric',
+              'metric': 'metric',
+              'chart': 'chart',
+              'table': 'table',
+              'task-list': 'task-list',
+              'tasklist': 'task-list',
+              'tasks': 'task-list',
+              'approval-queue': 'approval-queue',
+              'approvalqueue': 'approval-queue',
+              'approvals': 'approval-queue',
+              'alert': 'alert',
+              'alerts': 'alert',
+              'activity-timeline': 'activity-timeline',
+              'activitytimeline': 'activity-timeline',
+              'timeline': 'activity-timeline',
+              'custom': 'custom',
+            };
+            if (typeMap[normalizedType]) {
+              console.log(`[DashboardPage] Fixed widget [${index}] type from "${widget.type}" to "${typeMap[normalizedType]}"`);
+              widget.type = typeMap[normalizedType];
+            } else {
+              console.warn(`[DashboardPage] Cannot fix widget [${index}] type "${widget.type}", defaulting to "metric"`);
+              widget.type = 'metric';
+            }
+          }
+          
+          // Ensure dataSource exists
+          if (!widget.dataSource) {
+            widget.dataSource = {};
           }
           
           // Check if widget has dataSource with endpoint
-          if (!widget.dataSource || !widget.dataSource.endpoint) {
-            console.warn('[DashboardPage] Widget missing dataSource.endpoint, using fallback:', {
-              widget,
+          if (!widget.dataSource.endpoint) {
+            console.warn(`[DashboardPage] Widget [${index}] missing dataSource.endpoint, using fallback:`, {
+              widgetId: widget.id,
               hasDataSource: !!widget.dataSource,
               endpoint: widget.dataSource?.endpoint,
             });
-            // Don't filter out - use emergency fallback instead
-            if (!widget.dataSource) {
-              widget.dataSource = {};
-            }
-            if (!widget.dataSource.endpoint) {
-              widget.dataSource.endpoint = '/dashboard/kpi/total-invoices'; // Emergency fallback
-              console.warn('[DashboardPage] Using emergency fallback endpoint for widget:', widget.id);
-            }
+            // Use emergency fallback
+            widget.dataSource.endpoint = '/dashboard/kpi/total-invoices';
+            console.warn(`[DashboardPage] Using emergency fallback endpoint for widget [${index}]:`, widget.id);
           }
           
+          console.log(`[DashboardPage] Widget [${index}] validated:`, {
+            id: widget.id,
+            type: widget.type,
+            title: widget.title,
+            endpoint: widget.dataSource?.endpoint,
+          });
+          
+          return widget;
+        })
+        .filter((widget) => {
+          // Final filter: only remove null values (invalid widgets that couldn't be fixed)
+          if (!widget) {
+            return false;
+          }
           return true;
         });
         
@@ -929,6 +1029,42 @@ const DashboardPage: React.FC = () => {
           });
         }
         
+        // Fallback: If no widgets were loaded and user is SuperAdmin, use default widgets
+        let finalWidgets = validatedWidgets;
+        if (finalWidgets.length === 0 && isSuperAdminUser && currentRole === 'superadmin') {
+          console.warn('[DashboardPage] No widgets loaded from API, using default SuperAdmin widgets as fallback');
+          try {
+            const defaultConfig = dashboardService.getDefaultDashboardConfig('superadmin');
+            console.log('[DashboardPage] Default config retrieved:', {
+              hasConfig: !!defaultConfig,
+              widgetsCount: Array.isArray(defaultConfig?.widgets) ? defaultConfig.widgets.length : 0,
+              widgets: defaultConfig?.widgets,
+            });
+            if (defaultConfig && Array.isArray(defaultConfig.widgets) && defaultConfig.widgets.length > 0) {
+              finalWidgets = defaultConfig.widgets.map((w: any, idx: number) => ({
+                ...w,
+                id: w.id || `widget-${Date.now()}-${idx}-${Math.random()}`,
+                type: (w.type || 'metric') as WidgetType,
+                dataSource: w.dataSource || { endpoint: '/dashboard/kpi/total-invoices' },
+                gridColumn: w.gridColumn || 1,
+              }));
+              console.log('[DashboardPage] Using default widgets fallback:', {
+                count: finalWidgets.length,
+                widgets: finalWidgets,
+              });
+            } else {
+              console.error('[DashboardPage] Default config returned empty widgets!', defaultConfig);
+            }
+          } catch (fallbackError) {
+            console.error('[DashboardPage] Error getting default config:', fallbackError);
+          }
+        }
+        
+        // If still no widgets and not in noAccessMode, log a warning
+        if (finalWidgets.length === 0 && !noAccessMode) {
+          console.warn('[DashboardPage] No widgets available for display. This may be expected if no dashboard configuration exists for this role.');
+        }
+        
         // Debug: Log if no widgets were loaded at all
         if (widgetsToProcess.length === 0) {
           console.error('[DashboardPage] ERROR: No widgets found in configuration!', {
@@ -949,22 +1085,85 @@ const DashboardPage: React.FC = () => {
         }
         
         console.log('[DashboardPage] Setting widgets state:', {
-          count: validatedWidgets.length,
-          willRender: validatedWidgets.length > 0,
+          count: finalWidgets.length,
+          willRender: finalWidgets.length > 0,
         });
         
-        setWidgets(validatedWidgets);
-        setWidgetPermissions(computed.permissions);
+        setWidgets(finalWidgets);
+        setWidgetPermissions(computed.permissions || {});
+        
+        console.log('[DashboardPage] Widgets state updated:', {
+          widgetsCount: finalWidgets.length,
+          widgets: finalWidgets,
+          permissions: computed.permissions || {},
+        });
+        
+        // Additional debug logging
+        if (validatedWidgets.length === 0) {
+          console.warn('[DashboardPage] WARNING: No widgets loaded after validation. Check backend configuration for role:', currentRole);
+          console.warn('[DashboardPage] Debug info:', {
+            currentRole,
+            roleConfigReceived: !!roleConfig,
+            roleConfigWidgetsCount: Array.isArray(roleConfig?.widgets) ? roleConfig.widgets.length : 0,
+            computedWidgetsCount: Array.isArray(computed?.widgets) ? computed.widgets.length : 0,
+            widgetsToProcessCount: widgetsToProcess.length,
+            validatedWidgetsCount: validatedWidgets.length,
+            isSuperAdminUser,
+            userPermissions,
+          });
+        }
       } catch (error) {
         console.error('[DashboardPage] Failed to load dashboard:', error);
-        setWidgets([]);
-        setWidgetPermissions({});
+        console.error('[DashboardPage] Error details:', {
+          error: error instanceof Error ? error.message : String(error),
+          currentRole,
+          userId: user?.id,
+          isSuperAdminUser,
+          permissionsLoaded,
+        });
+        
+        // For SuperAdmin users, try to load default widgets even if API fails
+        if (isSuperAdminUser && currentRole === 'superadmin') {
+          console.log('[DashboardPage] SuperAdmin user - attempting to load default widgets');
+          try {
+            // Try to get default config directly from service (it has fallback logic)
+            const defaultConfig = await dashboardService.getDashboardConfig('superadmin');
+            if (defaultConfig && Array.isArray(defaultConfig.widgets) && defaultConfig.widgets.length > 0) {
+              console.log('[DashboardPage] Loaded default SuperAdmin widgets:', defaultConfig.widgets.length);
+              // Process widgets the same way as normal flow
+              const processedWidgets = defaultConfig.widgets.map((widget: any, index: number) => {
+                if (!widget.id) widget.id = `widget-${Date.now()}-${index}`;
+                if (!widget.dataSource) widget.dataSource = {};
+                if (!widget.dataSource.endpoint && widget.dataSource?.endpoint) {
+                  widget.dataSource.endpoint = widget.dataSource.endpoint;
+                }
+                return widget;
+              });
+              setWidgets(processedWidgets as WidgetConfig[]);
+              setWidgetPermissions(defaultConfig.permissions || {});
+            } else {
+              console.warn('[DashboardPage] Default config returned empty widgets');
+              setWidgets([]);
+              setWidgetPermissions({});
+            }
+          } catch (fallbackError) {
+            console.error('[DashboardPage] Failed to load default widgets:', fallbackError);
+            setWidgets([]);
+            setWidgetPermissions({});
+          }
+        } else {
+          setWidgets([]);
+          setWidgetPermissions({});
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadDashboard();
+    console.log('[DashboardPage] About to call loadDashboard()');
+    loadDashboard().catch((error) => {
+      console.error('[DashboardPage] Unhandled error in loadDashboard:', error);
+    });
   }, [
     currentRole,
     user?.id,
@@ -972,6 +1171,7 @@ const DashboardPage: React.FC = () => {
     // Re-run when permissions arrive (fixes "SuperAdmin dashboard empty until clicking menu")
     permissionsLoaded,
     noAccessMode,
+    isSuperAdminUser,
     userPermissions.join('|'),
   ]);
 
@@ -1181,6 +1381,24 @@ const DashboardPage: React.FC = () => {
             <div className="dashboard-loading">
               <div className="dashboard-loading-spinner"></div>
               <p>Loading dashboard...</p>
+            </div>
+          )}
+
+          {/* Debug Info - Remove in production */}
+          {!loading && process.env.NODE_ENV === 'development' && (
+            <div style={{ 
+              padding: '12px 16px', 
+              marginBottom: '16px', 
+              background: '#f0f9ff', 
+              border: '1px solid #bae6fd', 
+              borderRadius: '6px',
+              fontSize: '12px',
+              color: '#0369a1'
+            }}>
+              <strong>Debug Info:</strong> Role: {currentRole} | Widgets: {widgets.length} | 
+              Permissions Loaded: {permissionsLoaded ? 'Yes' : 'No'} | 
+              No Access Mode: {noAccessMode ? 'Yes' : 'No'} | 
+              SuperAdmin: {isSuperAdminUser ? 'Yes' : 'No'}
             </div>
           )}
 

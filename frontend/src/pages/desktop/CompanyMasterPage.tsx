@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
-import { notifyError } from '../../utils/notify';
+import { clearFieldValidation, focusAndScrollToField, setFieldValidationError, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './companyMasterPage.css';
@@ -76,6 +76,14 @@ interface Company {
   qrCode?: string;
 }
 
+interface AdvancedFilters {
+  companyCode: string;
+  companyName: string;
+  gstin: string;
+  state: string;
+  pcbZone: string;
+}
+
 const CompanyMasterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
@@ -91,14 +99,6 @@ const CompanyMasterPage = () => {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  interface AdvancedFilters {
-    companyCode: string;
-    companyName: string;
-    gstin: string;
-    state: string;
-    pcbZone: string;
-  }
   
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     companyCode: '',
@@ -390,26 +390,6 @@ const CompanyMasterPage = () => {
     }
   };
 
-  // Define columns for the table
-  const columns: Column<Company>[] = [
-    { key: 'companyCode', label: 'Code', minWidth: 110 },
-    { key: 'companyName', label: 'Company Name', minWidth: 150, allowWrap: true },
-    { key: 'gstin', label: 'GSTIN', minWidth: 130 },
-    { key: 'state', label: 'State', minWidth: 120 },
-    { key: 'pcbZoneID', label: 'PCB Zone', minWidth: 110 },
-    { key: 'gstValidFrom', label: 'GST From', minWidth: 130 },
-    { key: 'gstRate', label: 'GST Rate', minWidth: 100 },
-    {
-      key: 'status',
-      label: 'Status',
-      minWidth: 90,
-      render: (company) => (
-        <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
-          {company.status}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="dashboard-page">
@@ -591,88 +571,93 @@ const CompanyMasterPage = () => {
           {/* Companies Table */}
           <div className="company-master-table-container">
             <table className="company-master-table">
-                <thead>
+              <thead>
+                <tr>
+                  <th>COMPANY CODE</th>
+                  <th>COMPANY NAME</th>
+                  <th>GSTIN</th>
+                  <th>STATE</th>
+                  <th>PCB ZONE</th>
+                  <th>GST FROM</th>
+                  <th>GST RATE</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && filteredCompanies.length === 0 ? (
                   <tr>
-                    <th>CODE</th>
-                    <th>COMPANY NAME</th>
-                    <th>GSTIN</th>
-                    <th>STATE</th>
-                    <th>PCB ZONE</th>
-                    <th>GST FROM</th>
-                    <th>GST RATE</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
+                    <td colSpan={9} className="empty-message">
+                      Loading...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredCompanies.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="empty-message">
-                        {loading ? 'Loading...' : 'No companies found'}
+                ) : filteredCompanies.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="empty-message">
+                      No companies found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCompanies.map((company) => (
+                    <tr key={company.id}>
+                      <td>{company.companyCode || '-'}</td>
+                      <td>{company.companyName || '-'}</td>
+                      <td>{company.gstin || '-'}</td>
+                      <td>{company.state || '-'}</td>
+                      <td>{company.pcbZoneID || '-'}</td>
+                      <td>{company.gstValidFrom || '-'}</td>
+                      <td>{company.gstRate || '-'}</td>
+                      <td>
+                        <div className="ra-cell-center">
+                          <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
+                            {company.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="action-buttons ra-actions">
+                          <button
+                            className="action-btn action-btn--view"
+                            onClick={() => handleEdit(company)}
+                            title="View"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--edit"
+                            onClick={() => handleEdit(company)}
+                            title="Edit"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => handleDelete(company.id)}
+                            title="Delete"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    filteredCompanies.map((company) => (
-                      <tr key={company.id}>
-                        <td>{company.companyCode || '-'}</td>
-                        <td>{company.companyName || '-'}</td>
-                        <td>{company.gstin || '-'}</td>
-                        <td>{company.state || '-'}</td>
-                        <td>{company.pcbZoneID || '-'}</td>
-                        <td>{company.gstValidFrom || '-'}</td>
-                        <td>{company.gstRate || '-'}</td>
-                        <td>
-                          <div className="ra-cell-center">
-                            <span className={`status-badge status-badge--${company.status.toLowerCase()}`}>
-                              {company.status}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="action-buttons ra-actions">
-                            <button
-                              className="action-btn action-btn--view"
-                              onClick={() => handleEdit(company)}
-                              title="View"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                              </svg>
-                            </button>
-                            <button
-                              className="action-btn action-btn--edit"
-                              onClick={() => handleEdit(company)}
-                              title="Edit"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="action-btn action-btn--delete"
-                              onClick={() => handleDelete(company.id)}
-                              title="Delete"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Info */}
-            <div className="cm-pagination-info">
-              Showing {filteredCompanies.length} of {companies.length} items
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Pagination Info */}
+          <div className="cm-pagination-info">
+            Showing {filteredCompanies.length} of {companies.length} items
+          </div>
         </div>
       </main>
 
@@ -799,16 +784,25 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
   // Define steps
   const steps = [
-    { number: 1, title: 'Basic Information', icon: 'building', key: 'basicInfo' },
-    { number: 2, title: 'Addresses', icon: 'map-pin', key: 'addresses' },
-    { number: 3, title: 'Authorized Person', icon: 'user', key: 'authorizedPerson' },
-    { number: 4, title: 'Consent To Operate', icon: 'water', key: 'cto' },
-    { number: 5, title: 'Consent To Establish', icon: 'water', key: 'cte' },
-    { number: 6, title: 'GST Details', icon: 'document', key: 'gstDetails' },
-    { number: 7, title: 'Bank Details', icon: 'phone', key: 'bankDetails' },
+    { number: 1, label: 'Basic Info', title: 'Basic Information', icon: 'building', key: 'basicInfo' },
+    { number: 2, label: 'Addresses', title: 'Addresses', icon: 'map-pin', key: 'addresses' },
+    { number: 3, label: 'Auth Person', title: 'Authorized Person', icon: 'user', key: 'authorizedPerson' },
+    { number: 4, label: 'CTO', title: 'Consent To Operate', icon: 'water', key: 'cto' },
+    { number: 5, label: 'CTE', title: 'Consent To Establish', icon: 'water', key: 'cte' },
+    { number: 6, label: 'GST', title: 'GST Details', icon: 'document', key: 'gstDetails' },
+    { number: 7, label: 'Bank', title: 'Bank Details', icon: 'phone', key: 'bankDetails' },
   ];
 
   const handleNext = () => {
+    const stepContainer = document.querySelector<HTMLElement>(`[data-company-step="${currentStep}"]`);
+    if (stepContainer) {
+      const invalidFields = validateRequiredFields(stepContainer);
+      if (invalidFields.length > 0) {
+        showValidationToast();
+        focusAndScrollToField(invalidFields[0]);
+        return;
+      }
+    }
     if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
     }
@@ -826,10 +820,32 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
     }
     // Only allow submit on last step
     if (currentStep === 7) {
+      const stepContainer = document.querySelector<HTMLElement>('[data-company-step="7"]');
+      if (stepContainer) {
+        const invalidFields = validateRequiredFields(stepContainer);
+        if (invalidFields.length > 0) {
+          showValidationToast();
+          focusAndScrollToField(invalidFields[0]);
+          return;
+        }
+      }
       // Validate bank details business rule
       const hasAnyBankDetail = !!(formData.bankAccountName || formData.bankIFSCode || formData.bankBranch || formData.bankName || formData.upiId || formData.qrCode || formData.bankAccountNum);
       if (hasAnyBankDetail && (!formData.bankName || !formData.bankAccountNum)) {
-        notifyError('Bank Name and Bank Account Number are required when any bank detail is entered.');
+        const bankNameField = document.getElementById('bank-name');
+        const bankAccField = document.getElementById('bank-account-num');
+        if (!formData.bankName && bankNameField) {
+          setFieldValidationError(bankNameField, 'Bank Name is required.');
+        }
+        if (!formData.bankAccountNum && bankAccField) {
+          setFieldValidationError(bankAccField, 'Bank Account Number is required.');
+        }
+        showValidationToast();
+        if (!formData.bankName && bankNameField) {
+          focusAndScrollToField(bankNameField);
+        } else if (!formData.bankAccountNum && bankAccField) {
+          focusAndScrollToField(bankAccField);
+        }
         return;
       }
       onSave(formData);
@@ -902,7 +918,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal wizard-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal wizard-modal company-wizard-modal-template" onClick={(e) => e.stopPropagation()}>
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
             <div className="ra-assignment-icon" aria-hidden="true">
@@ -938,35 +954,37 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
         </div>
 
         {/* Progress Steps */}
-        <div className="wizard-progress">
-          {steps.map((step) => {
-            const isActive = currentStep >= step.number;
+        <div className="company-wizard-steps">
+          {steps.map((step, index) => {
             const isCurrent = currentStep === step.number;
-            const showIcon = isCurrent;
+            const isCompleted = currentStep > step.number;
 
             return (
-              <div
-                key={step.number}
-                className={`wizard-step ${isActive ? 'wizard-step--active' : ''} ${isCurrent ? 'wizard-step--current' : ''}`}
-              >
-                <div className="wizard-step-icon-wrapper">
-                  {showIcon ? (
-                    <div className="wizard-step-icon">{getStepIcon(step.icon)}</div>
-                  ) : (
-                    <div className="wizard-step-number">{step.number}</div>
-                  )}
-                </div>
-                <div className="wizard-step-title">{step.title}</div>
+              <div key={step.number} className="company-wizard-step-item">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(step.number)}
+                  className={`company-wizard-step-btn ${isCurrent ? 'is-current' : ''} ${isCompleted ? 'is-complete' : ''}`}
+                  aria-label={step.title}
+                >
+                  <div className={`company-wizard-step-badge ${isCurrent ? 'is-current' : ''} ${isCompleted ? 'is-complete' : ''}`}>
+                    {isCurrent ? getStepIcon(step.icon) : <span>{step.number}</span>}
+                  </div>
+                  <span className="company-wizard-step-label">{step.label}</span>
+                </button>
+                {index < steps.length - 1 && (
+                  <div className={`company-wizard-step-connector ${isCompleted ? 'is-complete' : ''}`} />
+                )}
               </div>
             );
           })}
         </div>
 
-        <div className="wizard-content">
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+        <div className="wizard-content company-wizard-content">
+        <form className="ra-assignment-form" onSubmit={handleSubmit} onInput={(e) => clearFieldValidation(e.target as HTMLElement)}>
             {/* Step 1: Basic Information */}
             {currentStep === 1 && (
-              <div className="wizard-step-content" style={{ paddingBottom: '20px' }}>
+              <div className="wizard-step-content company-step-content-compact" data-company-step="1">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon">
                     {getStepIcon('building')}
@@ -1074,8 +1092,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 </div>
 
                 {/* Contact Information Section */}
-                <div style={{ marginTop: '32px', paddingTop: '24px', paddingBottom: '40px', borderTop: '1px solid #e2e8f0' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                <div className="company-section-block">
+                  <h4 className="company-section-title">
                     Contact Information
                   </h4>
                   <div className="ra-assignment-form-grid">
@@ -1109,7 +1127,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                         />
                       </div>
                     </div>
-                    <div className="ra-assignment-form-col" style={{ gridColumn: '1 / -1' }}>
+                    <div className="ra-assignment-form-col company-col-full">
                       <div className="ra-assignment-form-group">
                         <label htmlFor="company-email">Company Email</label>
                         <input
@@ -1129,7 +1147,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 2: Addresses */}
             {currentStep === 2 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="2">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-pink">
                     {getStepIcon('map-pin')}
@@ -1137,7 +1155,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                   <h3 className="wizard-step-header-title">Addresses</h3>
                 </div>
                 <div className="ra-assignment-form-grid">
-                  <div className="ra-assignment-form-col" style={{ gridColumn: '1 / -1' }}>
+                  <div className="ra-assignment-form-col company-col-full">
                     <div className="ra-assignment-form-group">
                       <label htmlFor="regd-office-address">Registered Office Address</label>
                       <textarea
@@ -1175,7 +1193,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 3: Authorized Person & PCB Compliance */}
             {currentStep === 3 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="3">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-green">
                     {getStepIcon('user')}
@@ -1220,8 +1238,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 </div>
 
                 {/* PCB & Compliance Section */}
-                <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e2e8f0' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                <div className="company-section-block">
+                  <h4 className="company-section-title">
                     PCB & Compliance
                   </h4>
                   <div className="ra-assignment-form-grid">
@@ -1256,7 +1274,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 4: Consent To Operate */}
             {currentStep === 4 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="4">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-orange">
                     {getStepIcon('water')}
@@ -1265,8 +1283,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 </div>
                 <div className="ra-assignment-form-grid">
                   <div className="ra-assignment-form-col">
-                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Water</h5>
+                    <div className="env-subsection-header">
+                      <h5 className="env-subsection-title">Water</h5>
                       {isExpiringSoon(formData.ctoWaterValidUpto || '') && (
                         <span className="env-clearance-warning-badge">Expiring Soon</span>
                       )}
@@ -1303,8 +1321,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                     </div>
                   </div>
                   <div className="ra-assignment-form-col">
-                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Air</h5>
+                    <div className="env-subsection-header">
+                      <h5 className="env-subsection-title">Air</h5>
                       {isExpiringSoon(formData.ctoAirValidUpto || '') && (
                         <span className="env-clearance-warning-badge">Expiring Soon</span>
                       )}
@@ -1346,7 +1364,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 5: Consent To Establish */}
             {currentStep === 5 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="5">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-orange">
                     {getStepIcon('water')}
@@ -1355,8 +1373,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 </div>
                 <div className="ra-assignment-form-grid">
                   <div className="ra-assignment-form-col">
-                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Water</h5>
+                    <div className="env-subsection-header">
+                      <h5 className="env-subsection-title">Water</h5>
                       {isExpiringSoon(formData.cteWaterValidUpto || '') && (
                         <span className="env-clearance-warning-badge">Expiring Soon</span>
                       )}
@@ -1393,8 +1411,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                     </div>
                   </div>
                   <div className="ra-assignment-form-col">
-                    <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 }}>Air</h5>
+                    <div className="env-subsection-header">
+                      <h5 className="env-subsection-title">Air</h5>
                       {isExpiringSoon(formData.cteAirValidUpto || '') && (
                         <span className="env-clearance-warning-badge">Expiring Soon</span>
                       )}
@@ -1436,7 +1454,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 5: GST Details */}
             {currentStep === 6 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="6">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-purple">
                     {getStepIcon('document')}
@@ -1491,7 +1509,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
 
             {/* Step 7: Bank Details */}
             {currentStep === 7 && (
-              <div className="wizard-step-content">
+              <div className="wizard-step-content" data-company-step="7">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-blue">
                     {getStepIcon('phone')}
@@ -1500,8 +1518,8 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                 </div>
                 
                 {/* Bank & Payment Information Section */}
-                <div style={{ paddingTop: '24px', borderTop: '1px solid #e2e8f0' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+                <div className="company-section-block company-section-block--tight">
+                  <h4 className="company-section-title">
                     Bank & Payment Information
                   </h4>
                   <div className="ra-assignment-form-grid">
@@ -1545,7 +1563,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                           maxLength={11}
                           className="ra-assignment-input"
                         />
-                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                        <small className="company-helper-text">
                           Format: HDFC0001234
                         </small>
                       </div>
@@ -1559,7 +1577,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                           placeholder="name@bank"
                           className="ra-assignment-input"
                         />
-                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                        <small className="company-helper-text">
                           Format: name@bank
                         </small>
                       </div>
@@ -1600,7 +1618,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                           rows={3}
                           className="ra-assignment-input"
                         />
-                        <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                        <small className="company-helper-text">
                           Enter QR code string value or image URL
                         </small>
                       </div>
@@ -1612,23 +1630,23 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
           </form>
         </div>
 
-        <div className="ra-assignment-modal-footer" style={{ justifyContent: 'space-between' }}>
-          <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
-            Cancel
-          </button>
-          <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="ra-assignment-modal-footer company-wizard-footer">
+          <div className="company-wizard-footer-actions">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
             {currentStep > 1 && (
-              <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={handleBack}>
+              <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={handleBack} disabled={loading}>
                 Back
               </button>
             )}
             {currentStep < 7 ? (
-              <button type="button" className="ra-assignment-btn ra-assignment-btn--primary" onClick={handleNext}>
-                Next
+              <button type="button" className="ra-assignment-btn ra-assignment-btn--primary" onClick={handleNext} disabled={loading}>
+                {loading ? 'Processing...' : 'Next'}
               </button>
             ) : (
               <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary" disabled={loading} onClick={handleSubmit}>
-                {loading ? 'Saving...' : 'Save Company'}
+                {loading ? 'Saving...' : company ? 'Update Company' : 'Save & Complete'}
               </button>
             )}
           </div>

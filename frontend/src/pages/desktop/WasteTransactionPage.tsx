@@ -226,7 +226,7 @@ const WasteTransactionPage = () => {
     e.preventDefault();
     
     if (!formData.companyId || !formData.hcfId || !formData.pickupDate) {
-      setError('Please fill in all required fields');
+      setError('Please complete the required fields.');
       return;
     }
 

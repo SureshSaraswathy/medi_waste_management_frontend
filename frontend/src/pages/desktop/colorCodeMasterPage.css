@@ -136,6 +136,209 @@
   background: #1e293b;
 }
 
+/* Assignment Form Modal - Match template */
+.ra-assignment-modal-overlay {
+  z-index: 1100;
+}
+
+.ra-assignment-modal {
+  max-width: 680px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.ra-assignment-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ra-assignment-modal-titlewrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ra-assignment-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ra-assignment-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.ra-assignment-modal-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.ra-assignment-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.ra-assignment-close:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.ra-assignment-form {
+  padding: 24px;
+}
+
+.ra-assignment-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+}
+
+.ra-assignment-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ra-assignment-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ra-assignment-form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #344054;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
+}
+
+.ra-required {
+  color: #ef4444;
+}
+
+.ra-assignment-input,
+.ra-assignment-select {
+  height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  outline: none;
+  color: #0f172a;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+
+.ra-assignment-input:focus,
+.ra-assignment-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.ra-assignment-input:disabled,
+.ra-assignment-select:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.ra-assignment-input::placeholder {
+  color: #94a3b8;
+}
+
+.ra-assignment-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23475569' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.ra-assignment-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.ra-assignment-btn {
+  height: 40px;
+  min-width: 140px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ra-assignment-btn--cancel {
+  background: transparent;
+  color: #334155;
+  border-color: transparent;
+}
+
+.ra-assignment-btn--cancel:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.ra-assignment-btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.ra-assignment-btn--primary:hover {
+  background: #111c33;
+  border-color: #111c33;
+}
+
+.ra-assignment-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Table - Match Route Assignment Template */
 .color-code-master-table-container {
   background: #ffffff;
@@ -703,6 +906,16 @@
   .color-code-master-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ra-assignment-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .ra-assignment-modal {
+    width: 95%;
+    max-width: 95%;
   }
 
   .color-code-search-box {

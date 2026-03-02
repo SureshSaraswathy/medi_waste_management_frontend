@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { 
@@ -41,7 +41,6 @@ interface AdvancedFilters {
 const ComplianceRegisterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -339,23 +338,6 @@ const ComplianceRegisterPage = () => {
         <PageHeader 
           title="Compliance Register"
           subtitle="Manage compliance records and regulatory documentation"
-          breadcrumbOnly
-          breadcrumbItems={[
-            {
-              label: 'Home',
-              onClick: () => navigate('/dashboard'),
-              isCurrent: false,
-            },
-            {
-              label: 'Transactions',
-              onClick: () => navigate('/transaction'),
-              isCurrent: false,
-            },
-            {
-              label: 'Compliance Register',
-              isCurrent: true,
-            },
-          ]}
         />
 
         {/* Error Message */}
@@ -754,7 +736,7 @@ const ComplianceFormModal = ({
     if (validateForm()) {
       onSave(formData);
     } else {
-      notifyWarning('Please fill in all required fields');
+      notifyWarning('Please complete the required fields.');
     }
   };
 

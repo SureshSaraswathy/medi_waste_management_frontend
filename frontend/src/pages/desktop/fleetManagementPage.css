@@ -583,3 +583,528 @@
     max-width: 100%;
   }
 }
+
+/* Template-aligned add/edit modal styling */
+.template-form-modal {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+}
+
+.ra-assignment-modal-overlay {
+  z-index: 1100;
+}
+
+.ra-assignment-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ra-assignment-modal-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ra-assignment-form {
+  padding: 20px 24px;
+}
+
+.ra-assignment-form .form-section {
+  margin-bottom: 16px;
+}
+
+.ra-assignment-form .form-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ra-assignment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 20px;
+}
+
+.ra-assignment-form .form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #344054;
+  margin-bottom: 6px;
+}
+
+.ra-assignment-form .form-group input,
+.ra-assignment-form .form-group select,
+.ra-assignment-form .form-group textarea {
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.ra-assignment-form .form-group textarea {
+  min-height: 84px;
+  height: auto;
+}
+
+.ra-assignment-form .form-group input:focus,
+.ra-assignment-form .form-group select:focus,
+.ra-assignment-form .form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.ra-assignment-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.ra-assignment-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ra-assignment-btn {
+  height: 40px;
+  min-width: 140px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ra-assignment-btn--cancel {
+  background: #ffffff;
+  color: #344054;
+  border: 1px solid #d0d5dd;
+}
+
+.ra-assignment-btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+}
+
+@media (max-width: 768px) {
+  .template-form-modal {
+    max-width: 95vw;
+  }
+
+  .ra-assignment-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Template-aligned advanced filter modal styling */
+.cm-filter-modal-overlay {
+  z-index: 1200;
+}
+
+.cm-filter-modal {
+  width: 100%;
+  max-width: 760px;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.cm-filter-modal-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e4e7ec;
+  background: #f9fafb;
+}
+
+.cm-filter-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.cm-filter-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.cm-filter-modal-body {
+  padding: 16px;
+}
+
+.cm-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+  row-gap: 10px;
+}
+
+.cm-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cm-filter-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475467;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.cm-filter-grid .cm-filter-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.cm-filter-input,
+.cm-filter-select {
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #344054;
+  background: #ffffff;
+}
+
+.cm-filter-input:focus,
+.cm-filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.cm-filter-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid #e4e7ec;
+  background: #ffffff;
+}
+
+.cm-link-btn,
+.cm-btn {
+  height: 40px;
+  min-width: 140px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cm-link-btn {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #344054;
+}
+
+.cm-btn.cm-btn--primary {
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .cm-filter-modal {
+    max-width: 95vw;
+  }
+
+  .cm-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cm-filter-grid .cm-filter-field:last-child {
+    grid-column: auto;
+  }
+}
+
+/* Fine-tuned filter modal spacing to match template screenshot */
+.cm-filter-modal {
+  max-width: 760px;
+}
+
+.cm-filter-modal-titlewrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cm-filter-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  background: #f2f4f7;
+  color: #475467;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cm-filter-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cm-filter-title {
+  font-size: 16px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.cm-filter-subtitle {
+  font-size: 14px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.cm-filter-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #98a2b3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.cm-filter-close:hover {
+  color: #475467;
+  border-color: #eaecf0;
+  background: #f9fafb;
+}
+
+.cm-filter-field label {
+  margin: 0;
+}
+
+.cm-link-btn,
+.cm-btn.cm-btn--primary {
+  min-width: 146px;
+}
+
+/* Modal title wrapper to match template */
+.ra-assignment-modal-titlewrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ra-assignment-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ra-assignment-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ra-assignment-modal-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: #667085;
+  line-height: 1.35;
+}
+
+/* Final normalized template layout for Add/Edit modals */
+.template-form-modal {
+  width: min(800px, 95vw) !important;
+  max-width: min(800px, 95vw) !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.template-form-modal .ra-assignment-modal-header {
+  flex-shrink: 0;
+  padding: 16px 18px !important;
+}
+
+.template-form-modal .ra-assignment-form {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 18px !important;
+}
+
+.template-form-modal .form-section {
+  margin-bottom: 12px !important;
+}
+
+.template-form-modal .form-section-title {
+  margin: 0 0 10px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.template-form-modal .ra-assignment-form-grid,
+.template-form-modal .form-grid.ra-assignment-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  column-gap: 18px !important;
+  row-gap: 12px !important;
+  align-items: start !important;
+}
+
+.template-form-modal .form-group,
+.template-form-modal .ra-assignment-form .form-group {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.template-form-modal .form-group label {
+  margin-bottom: 4px !important;
+}
+
+.template-form-modal .form-group input,
+.template-form-modal .form-group select,
+.template-form-modal .form-group textarea {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  height: 40px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+}
+
+.template-form-modal .form-group textarea {
+  min-height: 76px !important;
+  height: auto !important;
+}
+
+.template-form-modal .form-group--full,
+.template-form-modal .form-group.form-group--full,
+.template-form-modal .form-group.form-group--full-width {
+  grid-column: 1 / -1 !important;
+}
+
+.template-form-modal .ra-assignment-modal-footer,
+.template-form-modal .modal-footer.ra-assignment-modal-footer {
+  flex-shrink: 0;
+  margin-top: 0 !important;
+  padding: 10px 18px !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+}
+
+.template-form-modal .ra-assignment-btn {
+  height: 40px !important;
+  min-width: 146px !important;
+  padding: 0 18px !important;
+}
+
+/* Fleet 2-step wizard layout */
+.fleet-wizard-modal {
+  max-width: min(900px, 95vw) !important;
+}
+
+.fleet-wizard-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e4e7ec;
+  background: #f8fafc;
+}
+
+.fleet-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475467;
+  padding: 8px 10px;
+  cursor: default;
+}
+
+.fleet-wizard-step.is-current {
+  border-color: #0f172a;
+  box-shadow: inset 0 0 0 1px #0f172a;
+}
+
+.fleet-wizard-step.is-complete {
+  border-color: #98a2b3;
+}
+
+.fleet-wizard-step-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fleet-wizard-step.is-current .fleet-wizard-step-index {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.fleet-wizard-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fleet-wizard-form {
+  padding-top: 12px !important;
+}
+
+@media (max-width: 768px) {
+  .template-form-modal .ra-assignment-form-grid,
+  .template-form-modal .form-grid.ra-assignment-form-grid {
+    grid-template-columns: 1fr !important;
+    column-gap: 0 !important;
+    row-gap: 12px !important;
+  }
+
+  .template-form-modal .ra-assignment-form {
+    padding: 12px 14px !important;
+  }
+
+  .template-form-modal .ra-assignment-modal-header,
+  .template-form-modal .ra-assignment-modal-footer {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .fleet-wizard-steps {
+    grid-template-columns: 1fr;
+    padding: 10px 14px;
+  }
+}

@@ -3,6 +3,9 @@ import { canAccessDesktopModule } from './moduleAccess';
 import { getAdminNavItems, SidebarNavItem } from './adminNavItems';
 
 export function getDesktopSidebarNavItems(permissions: string[] | undefined, pathname: string): SidebarNavItem[] {
+  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  const isComplianceRegisterRoute = normalizedPath === '/transaction/compliance-register';
+
   const navItemsAll: SidebarNavItem[] = [
     {
       path: '/dashboard',
@@ -24,7 +27,9 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <line x1="1" y1="10" x2="23" y2="10"></line>
         </svg>
       ),
-      active: pathname === '/transaction' || pathname.startsWith('/transaction'),
+      active:
+        (normalizedPath === '/transaction' || normalizedPath.startsWith('/transaction/')) &&
+        !isComplianceRegisterRoute,
     },
     {
       path: '/finance',
@@ -60,7 +65,10 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <path d="M9 15l2 2 4-4"></path>
         </svg>
       ),
-      active: pathname === '/compliance-training' || pathname.startsWith('/compliance-training'),
+      active:
+        normalizedPath === '/compliance-training' ||
+        normalizedPath.startsWith('/compliance-training/') ||
+        isComplianceRegisterRoute,
     },
     {
       path: '/master',

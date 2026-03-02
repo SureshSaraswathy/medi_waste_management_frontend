@@ -6,6 +6,7 @@ import { areaService, AreaResponse } from '../../services/areaService';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './areaMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface Area {
   id: string;
@@ -17,6 +18,12 @@ interface Area {
   createdOn: string;
   modifiedBy: string;
   modifiedOn: string;
+}
+
+interface AdvancedFilters {
+  areaCode: string;
+  areaName: string;
+  areaPincode: string;
 }
 
 const AreaMasterPage = () => {
@@ -34,12 +41,6 @@ const AreaMasterPage = () => {
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  interface AdvancedFilters {
-    areaCode: string;
-    areaName: string;
-    areaPincode: string;
-  }
   
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     areaCode: '',
@@ -117,10 +118,10 @@ const AreaMasterPage = () => {
         setLoading(true);
         await areaService.deleteArea(id);
         await loadAreas(); // Reload areas after deletion
-        alert('Area deleted successfully');
+        toast.error('Area deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete area';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting area:', err);
       } finally {
         setLoading(false);
@@ -139,11 +140,11 @@ const AreaMasterPage = () => {
           areaPincode: formData.areaPincode,
           status: formData.status,
         });
-        alert('Area updated successfully');
+        toast.error('Area updated successfully');
       } else {
         // Add new
         if (!formData.areaCode || !formData.areaName || !formData.areaPincode) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await areaService.createArea({
@@ -151,7 +152,7 @@ const AreaMasterPage = () => {
           areaName: formData.areaName,
           areaPincode: formData.areaPincode,
         });
-        alert('Area created successfully');
+        toast.error('Area created successfully');
       }
       
       setShowModal(false);
@@ -160,7 +161,7 @@ const AreaMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save area';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving area:', err);
     } finally {
       setLoading(false);
@@ -589,11 +590,27 @@ const AreaFormModal = ({ area, onClose, onSave }: AreaFormModalProps) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{area ? 'Edit Area' : 'Add Area'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">
+                {area ? 'Edit Area Master' : 'Add Area Master'}
+              </h2>
+              <p className="ra-assignment-modal-subtitle">
+                {area ? 'Update area details' : 'Create a new area master.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -601,46 +618,67 @@ const AreaFormModal = ({ area, onClose, onSave }: AreaFormModalProps) => {
           </button>
         </div>
 
-        <form className="area-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Area Code *</label>
+        {/* Form */}
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            {/* Left Column */}
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="area-code">
+                  Area Code <span className="ra-required">*</span>
+                </label>
                 <input
+                  id="area-code"
                   type="text"
                   value={formData.areaCode || ''}
                   onChange={(e) => setFormData({ ...formData, areaCode: e.target.value })}
                   required
                   disabled={!!area} // Disable when editing (immutable field)
-                  style={area ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  className="ra-assignment-input"
+                  placeholder="Enter area code"
                 />
               </div>
-              <div className="form-group">
-                <label>Area Name *</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="area-pincode">
+                  Area Pincode <span className="ra-required">*</span>
+                </label>
                 <input
-                  type="text"
-                  value={formData.areaName || ''}
-                  onChange={(e) => setFormData({ ...formData, areaName: e.target.value })}
-                  required
-                  disabled={!!area} // Disable when editing (immutable field)
-                  style={area ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="form-group">
-                <label>Area Pincode *</label>
-                <input
+                  id="area-pincode"
                   type="text"
                   value={formData.areaPincode || ''}
                   onChange={(e) => setFormData({ ...formData, areaPincode: e.target.value })}
                   required
                   maxLength={10}
+                  className="ra-assignment-input"
+                  placeholder="Enter area pincode"
                 />
               </div>
-              <div className="form-group">
-                <label>Status</label>
+            </div>
+
+            {/* Right Column */}
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="area-name">
+                  Area Name <span className="ra-required">*</span>
+                </label>
+                <input
+                  id="area-name"
+                  type="text"
+                  value={formData.areaName || ''}
+                  onChange={(e) => setFormData({ ...formData, areaName: e.target.value })}
+                  required
+                  disabled={!!area} // Disable when editing (immutable field)
+                  className="ra-assignment-input"
+                  placeholder="Enter area name"
+                />
+              </div>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="status">Status</label>
                 <select
+                  id="status"
                   value={formData.status || 'Active'}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                  className="ra-assignment-select"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -649,12 +687,20 @@ const AreaFormModal = ({ area, onClose, onSave }: AreaFormModalProps) => {
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          {/* Footer */}
+          <div className="ra-assignment-modal-footer">
+            <button
+              type="button"
+              className="ra-assignment-btn ra-assignment-btn--cancel"
+              onClick={onClose}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              {area ? 'Update' : 'Save'}
+            <button
+              type="submit"
+              className="ra-assignment-btn ra-assignment-btn--primary"
+            >
+              {area ? 'Update Area' : 'Create Area'}
             </button>
           </div>
         </form>

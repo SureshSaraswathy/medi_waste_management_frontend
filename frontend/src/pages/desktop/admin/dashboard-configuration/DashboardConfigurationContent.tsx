@@ -17,6 +17,7 @@ import CatalogPanel, { CatalogItem } from './CatalogPanel';
 import DashboardCanvas from './DashboardCanvas';
 import WidgetSettingsPanel from './WidgetSettingsPanel';
 import './dashboardConfigurationContent.css';
+import toast from 'react-hot-toast';
 
 const DashboardConfigurationContent: React.FC = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const DashboardConfigurationContent: React.FC = () => {
 
   const handleAddWidget = (item: CatalogItem, type: 'kpi' | 'chart' | 'table' | 'task' | 'alert') => {
     if (!config) {
-      alert('Please select a role or department first');
+      toast.error('Please select a role or department first');
       return;
     }
 
@@ -159,7 +160,7 @@ const DashboardConfigurationContent: React.FC = () => {
 
   const handleSave = async () => {
     if (!config || !selectedTarget) {
-      alert('Please select a role or department and configure widgets');
+      toast.error('Please select a role or department and configure widgets');
       return;
     }
 
@@ -186,7 +187,7 @@ const DashboardConfigurationContent: React.FC = () => {
       });
       
       await dashboardService.saveDashboardConfig(normalizedConfig);
-      alert('Dashboard configuration saved successfully');
+      toast.error('Dashboard configuration saved successfully');
     } catch (err: any) {
       console.error('Failed to save configuration:', err);
       // Show more detailed error message
@@ -199,7 +200,7 @@ const DashboardConfigurationContent: React.FC = () => {
 
   const handlePreview = () => {
     if (!config || !selectedTarget) {
-      alert('Please select a role or department and configure widgets');
+      toast.error('Please select a role or department and configure widgets');
       return;
     }
 

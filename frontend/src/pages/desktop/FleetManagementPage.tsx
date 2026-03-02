@@ -6,8 +6,10 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { fleetService, FleetResponse } from '../../services/fleetService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
+import { clearFieldValidation, focusAndScrollToField, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
 import './fleetManagementPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface Fleet {
   id: string;
@@ -195,10 +197,10 @@ const FleetManagementPage = () => {
         setLoading(true);
         await fleetService.deleteFleet(id);
         await loadFleets();
-        alert('Fleet deleted successfully');
+        toast.error('Fleet deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete fleet';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting fleet:', err);
       } finally {
         setLoading(false);
@@ -214,7 +216,7 @@ const FleetManagementPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === data.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -242,11 +244,11 @@ const FleetManagementPage = () => {
           tdsExemption: data.tdsExemption,
           status: data.status,
         });
-        alert('Fleet updated successfully');
+        toast.error('Fleet updated successfully');
       } else {
         // Add new
         if (!data.vehicleNum || !data.companyName) {
-          alert('Please fill in Vehicle Number and Company Name');
+          toast.error('Please fill in Vehicle Number and Company Name');
           return;
         }
         await fleetService.createFleet({
@@ -272,7 +274,7 @@ const FleetManagementPage = () => {
           contractAmount: data.contractAmount,
           tdsExemption: data.tdsExemption,
         });
-        alert('Fleet created successfully');
+        toast.error('Fleet created successfully');
       }
       
       setShowModal(false);
@@ -281,7 +283,7 @@ const FleetManagementPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save fleet';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving fleet:', err);
     } finally {
       setLoading(false);
@@ -566,6 +568,7 @@ const FleetManagementPage = () => {
         <FleetFormModal
           fleet={editingFleet}
           companies={companies.filter(c => c.status === 'Active')}
+          saving={loading}
           onClose={() => {
             setShowModal(false);
             setEditingFleet(null);
@@ -700,11 +703,13 @@ const AdvancedFiltersModal = ({
 interface FleetFormModalProps {
   fleet: Fleet | null;
   companies: Company[];
+  saving?: boolean;
   onClose: () => void;
   onSave: (data: Partial<Fleet>) => void;
 }
 
-const FleetFormModal = ({ fleet, companies, onClose, onSave }: FleetFormModalProps) => {
+const FleetFormModal = ({ fleet, companies, saving = false, onClose, onSave }: FleetFormModalProps) => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Fleet>>(
     fleet || {
       companyName: '',
@@ -732,17 +737,56 @@ const FleetFormModal = ({ fleet, companies, onClose, onSave }: FleetFormModalPro
     }
   );
 
+  const steps = [
+    { id: 1, label: 'Vehicle & Compliance' },
+    { id: 2, label: 'Owner & Payment' },
+  ];
+
+  const validateStepOne = () => {
+    const stepContainer = document.querySelector<HTMLElement>('[data-fleet-step="1"]');
+    if (!stepContainer) return true;
+    const invalidFields = validateRequiredFields(stepContainer);
+    if (invalidFields.length > 0) {
+      showValidationToast();
+      focusAndScrollToField(invalidFields[0]);
+      return false;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (currentStep === 1 && !validateStepOne()) {
+      return;
+    }
+    setCurrentStep(2);
+  };
+
+  const handleBack = () => {
+    setCurrentStep(1);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{fleet ? 'Edit Vehicle' : 'Add Vehicle'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal fleet-wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"></path>
+                <polygon points="12 15 17 21 7 21 12 15"></polygon>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{fleet ? 'Edit Vehicle' : 'Add Vehicle'}</h2>
+              <p className="ra-assignment-modal-subtitle">{fleet ? 'Update vehicle record details.' : 'Create a new vehicle record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -750,248 +794,293 @@ const FleetFormModal = ({ fleet, companies, onClose, onSave }: FleetFormModalPro
           </button>
         </div>
 
-        <form className="fleet-form" onSubmit={handleSubmit}>
-          {/* Basic Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company Name *</label>
-                <select
-                  value={formData.companyName || ''}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                  required
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.companyName}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
+        <div className="fleet-wizard-steps">
+          {steps.map((step) => {
+            const isCurrent = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                className={`fleet-wizard-step ${isCurrent ? 'is-current' : ''} ${isCompleted ? 'is-complete' : ''}`}
+                onClick={() => {
+                  if (step.id < currentStep) setCurrentStep(step.id);
+                }}
+              >
+                <span className="fleet-wizard-step-index">{step.id}</span>
+                <span className="fleet-wizard-step-label">{step.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <form
+          id="fleet-wizard-form"
+          className="fleet-form ra-assignment-form fleet-wizard-form"
+          onSubmit={handleSubmit}
+          onInput={(e) => clearFieldValidation(e.target as HTMLElement)}
+        >
+          {currentStep === 1 && (
+            <div data-fleet-step="1">
+              <div className="form-section">
+                <h3 className="form-section-title">Vehicle Information</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group">
+                    <label>Company Name *</label>
+                    <select
+                      id="fleet-company-name"
+                      value={formData.companyName || ''}
+                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Company</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.companyName}>
+                          {company.companyName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Vehicle Number *</label>
+                    <input
+                      id="fleet-vehicle-num"
+                      type="text"
+                      value={formData.vehicleNum || ''}
+                      onChange={(e) => setFormData({ ...formData, vehicleNum: e.target.value })}
+                      required
+                      placeholder="e.g., MH-01-AB-1234"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Capacity *</label>
+                    <input
+                      id="fleet-capacity"
+                      type="text"
+                      value={formData.capacity || ''}
+                      onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                      required
+                      placeholder="Enter capacity in kg"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Vehicle Make *</label>
+                    <input
+                      id="fleet-veh-make"
+                      type="text"
+                      value={formData.vehMake || ''}
+                      onChange={(e) => setFormData({ ...formData, vehMake: e.target.value })}
+                      required
+                      placeholder="e.g., Tata, Mahindra"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Vehicle Model *</label>
+                    <input
+                      id="fleet-veh-model"
+                      type="text"
+                      value={formData.vehModel || ''}
+                      onChange={(e) => setFormData({ ...formData, vehModel: e.target.value })}
+                      required
+                      placeholder="e.g., 407, Bolero"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Manufacturing Year</label>
+                    <input
+                      type="text"
+                      value={formData.mfgYear || ''}
+                      onChange={(e) => setFormData({ ...formData, mfgYear: e.target.value })}
+                      placeholder="e.g., 2020"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Vehicle Number *</label>
-                <input
-                  type="text"
-                  value={formData.vehicleNum || ''}
-                  onChange={(e) => setFormData({ ...formData, vehicleNum: e.target.value })}
-                  required
-                  placeholder="e.g., MH-01-AB-1234"
-                />
-              </div>
-              <div className="form-group">
-                <label>Capacity *</label>
-                <input
-                  type="text"
-                  value={formData.capacity || ''}
-                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  required
-                  placeholder="Enter capacity in kg"
-                />
-              </div>
-              <div className="form-group">
-                <label>Vehicle Make *</label>
-                <input
-                  type="text"
-                  value={formData.vehMake || ''}
-                  onChange={(e) => setFormData({ ...formData, vehMake: e.target.value })}
-                  required
-                  placeholder="e.g., Tata, Mahindra"
-                />
-              </div>
-              <div className="form-group">
-                <label>Vehicle Model *</label>
-                <input
-                  type="text"
-                  value={formData.vehModel || ''}
-                  onChange={(e) => setFormData({ ...formData, vehModel: e.target.value })}
-                  required
-                  placeholder="e.g., 407, Bolero"
-                />
-              </div>
-              <div className="form-group">
-                <label>Manufacturing Year</label>
-                <input
-                  type="text"
-                  value={formData.mfgYear || ''}
-                  onChange={(e) => setFormData({ ...formData, mfgYear: e.target.value })}
-                  placeholder="e.g., 2020"
-                />
+
+              <div className="form-section">
+                <h3 className="form-section-title">Compliance Dates</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group">
+                    <label>Next FC Date</label>
+                    <input
+                      type="date"
+                      value={formData.nextFCDate || ''}
+                      onChange={(e) => setFormData({ ...formData, nextFCDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>PUC Date Valid Upto</label>
+                    <input
+                      type="date"
+                      value={formData.pucDateValidUpto || ''}
+                      onChange={(e) => setFormData({ ...formData, pucDateValidUpto: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Insurance Valid Upto</label>
+                    <input
+                      type="date"
+                      value={formData.insuranceValidUpto || ''}
+                      onChange={(e) => setFormData({ ...formData, insuranceValidUpto: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Compliance Dates */}
-          <div className="form-section">
-            <h3 className="form-section-title">Compliance Dates</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Next FC Date</label>
-                <input
-                  type="date"
-                  value={formData.nextFCDate || ''}
-                  onChange={(e) => setFormData({ ...formData, nextFCDate: e.target.value })}
-                />
+          {currentStep === 2 && (
+            <>
+              <div className="form-section">
+                <h3 className="form-section-title">Owner Information</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group">
+                    <label>Owner Name *</label>
+                    <input
+                      type="text"
+                      value={formData.ownerName || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Owner Contact *</label>
+                    <input
+                      type="tel"
+                      value={formData.ownerContact || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerContact: e.target.value })}
+                      required
+                      placeholder="+91-9876543210"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Owner Email</label>
+                    <input
+                      type="email"
+                      value={formData.ownerEmail || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
+                      placeholder="owner@example.com"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Owner PAN</label>
+                    <input
+                      type="text"
+                      value={formData.ownerPAN || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerPAN: e.target.value })}
+                      placeholder="ABCDE1234F"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Owner Aadhaar</label>
+                    <input
+                      type="text"
+                      value={formData.ownerAadhaar || ''}
+                      onChange={(e) => setFormData({ ...formData, ownerAadhaar: e.target.value })}
+                      placeholder="1234-5678-9012"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>PUC Date Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.pucDateValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, pucDateValidUpto: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Insurance Valid Upto</label>
-                <input
-                  type="date"
-                  value={formData.insuranceValidUpto || ''}
-                  onChange={(e) => setFormData({ ...formData, insuranceValidUpto: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Owner Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Owner Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Owner Name *</label>
-                <input
-                  type="text"
-                  value={formData.ownerName || ''}
-                  onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
-                  required
-                />
+              <div className="form-section">
+                <h3 className="form-section-title">Payment Information</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group">
+                    <label>Payment To Name</label>
+                    <input
+                      type="text"
+                      value={formData.pymtToName || ''}
+                      onChange={(e) => setFormData({ ...formData, pymtToName: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Bank Name</label>
+                    <input
+                      type="text"
+                      value={formData.pymtBankName || ''}
+                      onChange={(e) => setFormData({ ...formData, pymtBankName: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Account Number</label>
+                    <input
+                      type="text"
+                      value={formData.pymtAccNum || ''}
+                      onChange={(e) => setFormData({ ...formData, pymtAccNum: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>IFSC Code</label>
+                    <input
+                      type="text"
+                      value={formData.pymtIFSCode || ''}
+                      onChange={(e) => setFormData({ ...formData, pymtIFSCode: e.target.value })}
+                      placeholder="SBIN0001234"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Branch</label>
+                    <input
+                      type="text"
+                      value={formData.pymtBranch || ''}
+                      onChange={(e) => setFormData({ ...formData, pymtBranch: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Contract Amount</label>
+                    <input
+                      type="text"
+                      value={formData.contractAmount || ''}
+                      onChange={(e) => setFormData({ ...formData, contractAmount: e.target.value })}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>TDS Exemption</label>
+                    <select
+                      value={formData.tdsExemption ? 'true' : 'false'}
+                      onChange={(e) => setFormData({ ...formData, tdsExemption: e.target.value === 'true' })}
+                    >
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select
+                      value={formData.status || 'Active'}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Owner Contact *</label>
-                <input
-                  type="tel"
-                  value={formData.ownerContact || ''}
-                  onChange={(e) => setFormData({ ...formData, ownerContact: e.target.value })}
-                  required
-                  placeholder="+91-9876543210"
-                />
-              </div>
-              <div className="form-group">
-                <label>Owner Email</label>
-                <input
-                  type="email"
-                  value={formData.ownerEmail || ''}
-                  onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-                  placeholder="owner@example.com"
-                />
-              </div>
-              <div className="form-group">
-                <label>Owner PAN</label>
-                <input
-                  type="text"
-                  value={formData.ownerPAN || ''}
-                  onChange={(e) => setFormData({ ...formData, ownerPAN: e.target.value })}
-                  placeholder="ABCDE1234F"
-                />
-              </div>
-              <div className="form-group">
-                <label>Owner Aadhaar</label>
-                <input
-                  type="text"
-                  value={formData.ownerAadhaar || ''}
-                  onChange={(e) => setFormData({ ...formData, ownerAadhaar: e.target.value })}
-                  placeholder="1234-5678-9012"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Payment Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Payment To Name</label>
-                <input
-                  type="text"
-                  value={formData.pymtToName || ''}
-                  onChange={(e) => setFormData({ ...formData, pymtToName: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Bank Name</label>
-                <input
-                  type="text"
-                  value={formData.pymtBankName || ''}
-                  onChange={(e) => setFormData({ ...formData, pymtBankName: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Account Number</label>
-                <input
-                  type="text"
-                  value={formData.pymtAccNum || ''}
-                  onChange={(e) => setFormData({ ...formData, pymtAccNum: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>IFSC Code</label>
-                <input
-                  type="text"
-                  value={formData.pymtIFSCode || ''}
-                  onChange={(e) => setFormData({ ...formData, pymtIFSCode: e.target.value })}
-                  placeholder="SBIN0001234"
-                />
-              </div>
-              <div className="form-group">
-                <label>Branch</label>
-                <input
-                  type="text"
-                  value={formData.pymtBranch || ''}
-                  onChange={(e) => setFormData({ ...formData, pymtBranch: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Contract Amount</label>
-                <input
-                  type="text"
-                  value={formData.contractAmount || ''}
-                  onChange={(e) => setFormData({ ...formData, contractAmount: e.target.value })}
-                  placeholder="Enter amount"
-                />
-              </div>
-              <div className="form-group">
-                <label>TDS Exemption</label>
-                <select
-                  value={formData.tdsExemption ? 'true' : 'false'}
-                  onChange={(e) => setFormData({ ...formData, tdsExemption: e.target.value === 'true' })}
-                >
-                  <option value="false">No</option>
-                  <option value="true">Yes</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn--primary">
-              {fleet ? 'Update' : 'Save'}
-            </button>
-          </div>
+            </>
+          )}
         </form>
+
+        <div className="modal-footer ra-assignment-modal-footer">
+          <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          {currentStep > 1 && (
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={handleBack} disabled={saving}>
+              Back
+            </button>
+          )}
+          {currentStep < 2 ? (
+            <button type="button" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary" onClick={handleNext} disabled={saving}>
+              {saving ? 'Processing...' : 'Next'}
+            </button>
+          ) : (
+            <button type="submit" form="fleet-wizard-form" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary" disabled={saving}>
+              {saving ? 'Saving...' : fleet ? 'Update Vehicle' : 'Create Vehicle'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

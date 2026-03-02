@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import PageHeader from '../../components/layout/PageHeader';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface Company {
   id: string;
@@ -244,7 +245,7 @@ const RolesPermissionsPage = () => {
 
   const handleSave = () => {
     if (!formData.roleName || !formData.companyName || !formData.status) {
-      alert('Please fill in all required fields (Role Name, Company Name, and Status)');
+      toast.error('Please complete the required fields. (Role Name, Company Name, and Status)');
       return;
     }
 

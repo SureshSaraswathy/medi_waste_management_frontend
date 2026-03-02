@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import '../../pages/desktop/dashboardPage.css';
 import './reportDesignPage.css';
+import toast from 'react-hot-toast';
 
 interface ReportParameter {
   name: string;
@@ -53,7 +54,7 @@ const ReportDesignPage = ({
       await onGenerate(formData);
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
+      toast.error('Failed to generate report. Please try again.');
     } finally {
       setGenerating(false);
     }

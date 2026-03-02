@@ -16,6 +16,57 @@
   box-sizing: border-box;
 }
 
+/* Force header alignment to match Master pages on Reports landing */
+.reports-page .app-header--standard.app-header {
+  min-height: 64px !important;
+  max-height: 64px !important;
+  height: 64px !important;
+  padding: 0 24px 0 24px !important;
+  align-items: center !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  column-gap: 16px !important;
+  justify-content: initial !important;
+}
+
+.reports-page .app-header--standard .app-header-left {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex: 1 1 auto !important;
+  min-width: 0;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.reports-page .app-header--standard .app-title-group,
+.reports-page .app-header--standard .app-breadcrumb-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.reports-page .app-header--standard .app-breadcrumb {
+  margin: 0 !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  white-space: nowrap !important;
+}
+
+.reports-page .app-header--standard .app-header-actions {
+  height: 100%;
+  display: flex;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding-right: 16px !important;
+  margin-left: 0 !important;
+}
+
+.reports-page .app-header--standard .app-user-profile {
+  margin-right: 10px !important;
+}
+
 /* Header - Matches dashboard-header from Masters page */
 .reports-header {
   background: #ffffff;
@@ -88,6 +139,14 @@
   padding-bottom: 24px;
 }
 
+.reports-master-header {
+  margin-bottom: 0;
+}
+
+.reports-page .master-header-icon svg {
+  stroke: #ffffff !important;
+}
+
 .reports-title {
   font-size: 20px;
   font-weight: 700;
@@ -104,7 +163,7 @@
 
 /* Content wrapper - padding for content below header */
 .reports-content-wrapper {
-  padding: 0 24px 24px 24px;
+  padding: 24px 24px 24px 24px;
 }
 
 /* Search Section - Matches Masters page with filters and count */

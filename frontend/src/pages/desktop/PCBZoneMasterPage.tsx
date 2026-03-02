@@ -6,6 +6,7 @@ import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './pcbZoneMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface PCBZone {
   id: string;
@@ -117,10 +118,10 @@ const PCBZoneMasterPage = () => {
         setLoading(true);
         await pcbZoneService.deletePcbZone(id);
         await loadPcbZones(); // Reload zones after deletion
-        alert('PCB Zone deleted successfully');
+        toast.error('PCB Zone deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete PCB zone';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting PCB zone:', err);
       } finally {
         setLoading(false);
@@ -142,11 +143,11 @@ const PCBZoneMasterPage = () => {
           alertEmail: formData.alertEmail,
           status: formData.status,
         });
-        alert('PCB Zone updated successfully');
+        toast.error('PCB Zone updated successfully');
       } else {
         // Add new
         if (!formData.pcbZoneName) {
-          alert('Please fill in PCB Zone Name');
+          toast.error('Please fill in PCB Zone Name');
           return;
         }
         await pcbZoneService.createPcbZone({
@@ -156,7 +157,7 @@ const PCBZoneMasterPage = () => {
           contactEmail: formData.contactEmail,
           alertEmail: formData.alertEmail,
         });
-        alert('PCB Zone created successfully');
+        toast.error('PCB Zone created successfully');
       }
       
       setShowModal(false);
@@ -165,7 +166,7 @@ const PCBZoneMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save PCB zone';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving PCB zone:', err);
     } finally {
       setLoading(false);
@@ -590,11 +591,21 @@ const PCBZoneFormModal = ({ pcbZone, onClose, onSave }: PCBZoneFormModalProps) =
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{pcbZone ? 'Edit PCB Zone' : 'Add PCB Zone'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{pcbZone ? 'Edit PCB Zone' : 'Add PCB Zone'}</h2>
+              <p className="ra-assignment-modal-subtitle">{pcbZone ? 'Update PCB zone details.' : 'Create a new PCB zone record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -602,9 +613,9 @@ const PCBZoneFormModal = ({ pcbZone, onClose, onSave }: PCBZoneFormModalProps) =
           </button>
         </div>
 
-        <form className="pcb-zone-form" onSubmit={handleSubmit}>
+        <form className="pcb-zone-form ra-assignment-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>PCB Zone Name *</label>
                 <input
@@ -665,11 +676,11 @@ const PCBZoneFormModal = ({ pcbZone, onClose, onSave }: PCBZoneFormModalProps) =
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {pcbZone ? 'Update' : 'Save'}
             </button>
           </div>

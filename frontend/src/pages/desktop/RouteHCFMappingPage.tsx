@@ -295,7 +295,7 @@ const RouteHCFMappingPage = () => {
       } else if (errorMessage.includes('invalid')) {
         errorMessage = 'Invalid data provided. Please check your inputs and try again.';
       } else if (errorMessage.includes('required')) {
-        errorMessage = 'Please fill in all required fields.';
+        errorMessage = 'Please complete the required fields..';
       } else if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
         errorMessage = 'You do not have permission to perform this action.';
       } else if (errorMessage.includes('HTTP 409') || errorMessage.includes('Conflict')) {
@@ -852,11 +852,21 @@ const MappingFormModal = ({ mapping, companies, routes, hcfs, onClose, onSave }:
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{mapping ? 'Edit Mapping' : 'Add Mapping'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{mapping ? 'Edit Mapping' : 'Add Mapping'}</h2>
+              <p className="ra-assignment-modal-subtitle">{mapping ? 'Update mapping details.' : 'Create a new route-HCF mapping record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -864,11 +874,11 @@ const MappingFormModal = ({ mapping, companies, routes, hcfs, onClose, onSave }:
           </button>
         </div>
 
-        <form className="mapping-form" onSubmit={handleSubmit}>
+        <form className="mapping-form ra-assignment-form" onSubmit={handleSubmit}>
           {/* Basic Information */}
           <div className="form-section">
             <h3 className="form-section-title">Mapping Information</h3>
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>Company Name *</label>
                 <select
@@ -931,11 +941,11 @@ const MappingFormModal = ({ mapping, companies, routes, hcfs, onClose, onSave }:
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {mapping ? 'Update' : 'Save'}
             </button>
           </div>

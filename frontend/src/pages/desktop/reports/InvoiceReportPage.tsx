@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInvoiceReportFilters } from '../../../hooks/useInvoiceReportFilters';
+import toast from 'react-hot-toast';
 import { 
   getInvoiceReport,
   InvoiceReportItem,
@@ -687,12 +688,12 @@ const InvoiceReportPage = () => {
 
   const handleExport = async (format: 'pdf' | 'excel' | 'csv') => {
     if (filteredInvoices.length === 0) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 
     // TODO: Implement actual export functionality
-    alert(`Exporting ${filteredInvoices.length} invoices as ${format.toUpperCase()}`);
+    toast.error(`Exporting ${filteredInvoices.length} invoices as ${format.toUpperCase()}`);
   };
 
   const navItems = [

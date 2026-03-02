@@ -7,6 +7,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './colorCodeMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface Company {
   id: string;
@@ -150,10 +151,10 @@ const ColorCodeMasterPage = () => {
         setLoading(true);
         await colorService.deleteColor(id);
         await loadColors(); // Reload colors after deletion
-        alert('Color code deleted successfully');
+        toast.error('Color code deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete color code';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting color code:', err);
       } finally {
         setLoading(false);
@@ -169,7 +170,7 @@ const ColorCodeMasterPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === formData.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -178,18 +179,18 @@ const ColorCodeMasterPage = () => {
         await colorService.updateColor(editingColorCode.id, {
           status: formData.status,
         });
-        alert('Color code updated successfully');
+        toast.error('Color code updated successfully');
       } else {
         // Add new
         if (!formData.colorName || !formData.companyName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await colorService.createColor({
           colorName: formData.colorName,
           companyId: selectedCompany.id,
         });
-        alert('Color code created successfully');
+        toast.error('Color code created successfully');
       }
       
       setShowModal(false);
@@ -198,7 +199,7 @@ const ColorCodeMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save color code';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving color code:', err);
     } finally {
       setLoading(false);
@@ -630,11 +631,24 @@ const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCode
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{colorCode ? 'Edit Color Code' : 'Add Color Code'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">{colorCode ? 'Edit Color Code' : 'Add Color Code'}</h2>
+              <p className="ra-assignment-modal-subtitle">
+                {colorCode ? 'Update color code details' : 'Create a new color code record.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -642,28 +656,49 @@ const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCode
           </button>
         </div>
 
-        <form className="color-code-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Color Name *</label>
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="color-name">
+                  Color Name <span className="ra-required">*</span>
+                </label>
                 <input
+                  id="color-name"
                   type="text"
                   value={formData.colorName || ''}
                   onChange={(e) => setFormData({ ...formData, colorName: e.target.value })}
                   required
-                  disabled={!!colorCode} // Disable when editing (immutable field)
-                  style={colorCode ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  disabled={!!colorCode}
+                  className="ra-assignment-input"
+                  placeholder="Enter color name"
                 />
               </div>
-              <div className="form-group">
-                <label>Company Name *</label>
+              <div className="ra-assignment-form-group">
+                <label htmlFor="color-status">Status</label>
                 <select
+                  id="color-status"
+                  value={formData.status || 'Active'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                  className="ra-assignment-select"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="ra-assignment-form-col">
+              <div className="ra-assignment-form-group">
+                <label htmlFor="company-name">
+                  Company Name <span className="ra-required">*</span>
+                </label>
+                <select
+                  id="company-name"
                   value={formData.companyName || ''}
                   onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   required
-                  disabled={!!colorCode} // Disable when editing (immutable field)
-                  style={colorCode ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  disabled={!!colorCode}
+                  className="ra-assignment-select"
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
@@ -673,25 +708,15 @@ const ColorCodeFormModal = ({ colorCode, companies, onClose, onSave }: ColorCode
                   ))}
                 </select>
               </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
-              {colorCode ? 'Update' : 'Save'}
+            <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary">
+              {colorCode ? 'Update Color Code' : 'Create Color Code'}
             </button>
           </div>
         </form>

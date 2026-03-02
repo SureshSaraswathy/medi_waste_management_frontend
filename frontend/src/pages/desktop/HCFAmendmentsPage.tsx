@@ -7,8 +7,10 @@ import { hcfAmendmentService, HcfAmendmentResponse } from '../../services/hcfAme
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
+import { clearFieldValidation, focusAndScrollToField, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
 import './hcfAmendmentsPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface HCFAmendment {
   id: string;
@@ -230,7 +232,7 @@ const HCFAmendmentsPage = () => {
         await loadAmendments();
       } catch (err: any) {
         console.error('Failed to delete amendment:', err);
-        alert(err.message || 'Failed to delete amendment');
+        toast.error(err.message || 'Failed to delete amendment');
       } finally {
         setLoading(false);
       }
@@ -282,7 +284,7 @@ const HCFAmendmentsPage = () => {
     } catch (err: any) {
       console.error('Failed to save amendment:', err);
       setError(err.message || 'Failed to save amendment');
-      alert(err.message || 'Failed to save amendment');
+      toast.error(err.message || 'Failed to save amendment');
     } finally {
       setSaving(false);
     }
@@ -725,6 +727,7 @@ interface AmendmentFormModalProps {
 }
 
 const AmendmentFormModal = ({ amendment, companies, hcfs, onClose, onSave, saving = false }: AmendmentFormModalProps) => {
+  const [currentStep, setCurrentStep] = useState(1);
   // Initialize form data with hcfId if editing
   const getInitialFormData = (): Partial<HCFAmendment> => {
     if (amendment) {
@@ -779,29 +782,48 @@ const AmendmentFormModal = ({ amendment, companies, hcfs, onClose, onSave, savin
     ? hcfs.filter(hcf => hcf.companyId === selectedCompanyId && hcf.status === 'Active')
     : hcfs;
 
+  const validateStepOne = () => {
+    const stepContainer = document.querySelector<HTMLElement>('[data-amendment-step="1"]');
+    if (!stepContainer) return true;
+    const invalidFields = validateRequiredFields(stepContainer);
+    if (invalidFields.length > 0) {
+      showValidationToast();
+      focusAndScrollToField(invalidFields[0]);
+      return false;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (!validateStepOne()) return;
+    setCurrentStep(2);
+  };
+
+  const handleBack = () => setCurrentStep(1);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.hcfId) {
-      alert('Please select an HCF');
-      return;
-    }
-    if (!formData.amendmentType) {
-      alert('Amendment type is required');
-      return;
-    }
-    if (!formData.amendmentDate) {
-      alert('Amendment date is required');
-      return;
-    }
+    if (!validateStepOne()) return;
     onSave(formData);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{amendment ? 'Edit Amendment' : 'Add Amendment'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal amendment-wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{amendment ? 'Edit Amendment' : 'Add Amendment'}</h2>
+              <p className="ra-assignment-modal-subtitle">{amendment ? 'Update amendment details.' : 'Create a new amendment record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -809,134 +831,168 @@ const AmendmentFormModal = ({ amendment, companies, hcfs, onClose, onSave, savin
           </button>
         </div>
 
-        <form className="amendment-form" onSubmit={handleSubmit}>
-          {/* Basic Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Company *</label>
-                <select
-                  value={selectedCompanyId}
-                  onChange={(e) => {
-                    setSelectedCompanyId(e.target.value);
-                    setFormData({ ...formData, hcfId: '' });
-                  }}
-                  required
-                  disabled={!!amendment}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
+        <div className="amendment-wizard-steps">
+          <button type="button" className={`amendment-wizard-step ${currentStep === 1 ? 'is-current' : ''}`}>
+            <span className="amendment-wizard-step-index">1</span>
+            <span className="amendment-wizard-step-label">Basic & Description</span>
+          </button>
+          <button type="button" className={`amendment-wizard-step ${currentStep === 2 ? 'is-current' : ''}`}>
+            <span className="amendment-wizard-step-index">2</span>
+            <span className="amendment-wizard-step-label">Approval</span>
+          </button>
+        </div>
+
+        <form
+          id="amendment-wizard-form"
+          className="amendment-form ra-assignment-form amendment-wizard-form"
+          onSubmit={handleSubmit}
+          onInput={(e) => clearFieldValidation(e.target as HTMLElement)}
+        >
+          {currentStep === 1 && (
+            <div data-amendment-step="1">
+              <div className="form-section">
+                <h3 className="form-section-title">Basic Information</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group">
+                    <label>Company *</label>
+                    <select
+                      id="amendment-company"
+                      value={selectedCompanyId}
+                      onChange={(e) => {
+                        setSelectedCompanyId(e.target.value);
+                        setFormData({ ...formData, hcfId: '' });
+                      }}
+                      required
+                      disabled={!!amendment}
+                    >
+                      <option value="">Select Company</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.companyName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>HCF *</label>
+                    <select
+                      id="amendment-hcf"
+                      value={formData.hcfId || ''}
+                      onChange={(e) => setFormData({ ...formData, hcfId: e.target.value })}
+                      required
+                      disabled={!selectedCompanyId && !amendment}
+                    >
+                      <option value="">Select HCF</option>
+                      {filteredHCFs.length === 0 && (selectedCompanyId || amendment) ? (
+                        <option value="" disabled>No HCFs available for selected company</option>
+                      ) : (
+                        filteredHCFs.map((hcf) => (
+                          <option key={hcf.id} value={hcf.id}>
+                            {hcf.hcfCode} - {hcf.hcfName}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Amendment Type *</label>
+                    <input
+                      id="amendment-type"
+                      type="text"
+                      value={formData.amendmentType || ''}
+                      onChange={(e) => setFormData({ ...formData, amendmentType: e.target.value })}
+                      required
+                      placeholder="Enter amendment type"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Amendment Date *</label>
+                    <input
+                      id="amendment-date"
+                      type="date"
+                      value={formData.amendmentDate || ''}
+                      onChange={(e) => setFormData({ ...formData, amendmentDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>HCF *</label>
-                <select
-                  value={formData.hcfId || ''}
-                  onChange={(e) => setFormData({ ...formData, hcfId: e.target.value })}
-                  required
-                  disabled={!selectedCompanyId && !amendment}
-                >
-                  <option value="">Select HCF</option>
-                  {filteredHCFs.length === 0 && (selectedCompanyId || amendment) ? (
-                    <option value="" disabled>No HCFs available for selected company</option>
-                  ) : (
-                    filteredHCFs.map((hcf) => (
-                      <option key={hcf.id} value={hcf.id}>
-                        {hcf.hcfCode} - {hcf.hcfName}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Amendment Type *</label>
-                <input
-                  type="text"
-                  value={formData.amendmentType || ''}
-                  onChange={(e) => setFormData({ ...formData, amendmentType: e.target.value })}
-                  required
-                  placeholder="Enter amendment type"
-                />
-              </div>
-              <div className="form-group">
-                <label>Amendment Date *</label>
-                <input
-                  type="date"
-                  value={formData.amendmentDate || ''}
-                  onChange={(e) => setFormData({ ...formData, amendmentDate: e.target.value })}
-                  required
-                />
+
+              <div className="form-section">
+                <h3 className="form-section-title">Description</h3>
+                <div className="form-grid ra-assignment-form-grid">
+                  <div className="form-group form-group--full">
+                    <label>Description</label>
+                    <textarea
+                      value={formData.description || ''}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Enter amendment description"
+                      rows={4}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Description */}
-          <div className="form-section">
-            <h3 className="form-section-title">Description</h3>
-            <div className="form-grid">
-              <div className="form-group form-group--full">
-                <label>Description</label>
-                <textarea
-                  value={formData.description || ''}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Enter amendment description"
-                  rows={4}
-                />
+          {currentStep === 2 && (
+            <div className="form-section">
+              <h3 className="form-section-title">Approval Information</h3>
+              <div className="form-grid ra-assignment-form-grid">
+                <div className="form-group">
+                  <label>Status</label>
+                  <select
+                    value={formData.status || 'Pending'}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Approved By</label>
+                  <input
+                    type="text"
+                    value={formData.approvedBy || ''}
+                    onChange={(e) => setFormData({ ...formData, approvedBy: e.target.value })}
+                    placeholder="Enter approver name or ID"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Approved Date</label>
+                  <input
+                    type="date"
+                    value={formData.approvedDate || ''}
+                    onChange={(e) => setFormData({ ...formData, approvedDate: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Approval Information */}
-          <div className="form-section">
-            <h3 className="form-section-title">Approval Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={formData.status || 'Pending'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Approved By</label>
-                <input
-                  type="text"
-                  value={formData.approvedBy || ''}
-                  onChange={(e) => setFormData({ ...formData, approvedBy: e.target.value })}
-                  placeholder="Enter approver name or ID"
-                />
-              </div>
-              <div className="form-group">
-                <label>Approved Date</label>
-                <input
-                  type="date"
-                  value={formData.approvedDate || ''}
-                  onChange={(e) => setFormData({ ...formData, approvedDate: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? 'Saving...' : (amendment ? 'Update' : 'Save')}
-            </button>
-          </div>
+          )}
         </form>
+
+        <div className="modal-footer ra-assignment-modal-footer">
+          <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          {currentStep > 1 && (
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={handleBack} disabled={saving}>
+              Back
+            </button>
+          )}
+          {currentStep < 2 ? (
+            <button type="button" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary" onClick={handleNext} disabled={saving}>
+              {saving ? 'Processing...' : 'Next'}
+            </button>
+          ) : (
+            <button type="submit" form="amendment-wizard-form" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary" disabled={saving}>
+              {saving ? 'Saving...' : (amendment ? 'Update Amendment' : 'Create Amendment')}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

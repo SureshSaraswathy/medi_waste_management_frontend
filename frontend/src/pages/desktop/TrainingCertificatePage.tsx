@@ -8,6 +8,7 @@ import { hcfService, HcfResponse } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
 import './trainingCertificatePage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface TrainingCertificate {
   id: string;
@@ -223,7 +224,7 @@ const TrainingCertificatePage = () => {
       setEditingCertificate(certificate);
       setShowCreateModal(true);
     } else {
-      alert('Only Active certificates can be edited.');
+      toast.error('Only Active certificates can be edited.');
     }
   };
 
@@ -235,7 +236,7 @@ const TrainingCertificatePage = () => {
         await loadCertificates();
       } catch (err: any) {
         console.error('Failed to delete certificate:', err);
-        alert(err.message || 'Failed to delete certificate');
+        toast.error(err.message || 'Failed to delete certificate');
       } finally {
         setLoading(false);
       }
@@ -247,7 +248,7 @@ const TrainingCertificatePage = () => {
   };
 
   const handleExport = () => {
-    alert('Export functionality will be implemented');
+    toast.error('Export functionality will be implemented');
   };
 
   const handleSave = async (data: Partial<TrainingCertificate>) => {
@@ -298,7 +299,7 @@ const TrainingCertificatePage = () => {
     } catch (err: any) {
       console.error('Failed to save certificate:', err);
       setError(err.message || 'Failed to save certificate');
-      alert(err.message || 'Failed to save certificate');
+      toast.error(err.message || 'Failed to save certificate');
     } finally {
       setSaving(false);
     }
@@ -736,7 +737,7 @@ const CertificateFormModal = ({ certificate, companies, hcfs, onClose, onSave, g
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.companyName || !formData.hcfCode || !formData.staffName || !formData.staffCode || !formData.trainingDate) {
-      alert('Please fill in all required fields');
+      toast.error('Please complete the required fields.');
       return;
     }
     onSave(formData);

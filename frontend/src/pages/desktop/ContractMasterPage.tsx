@@ -9,6 +9,7 @@ import { hcfService } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
 import './contractMasterPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface Company {
   id: string;
@@ -236,7 +237,7 @@ const ContractMasterPage = () => {
     } catch (err: any) {
       console.error('Failed to save contract:', err);
       setError(err.message || 'Failed to save contract');
-      alert(err.message || 'Failed to save contract');
+      toast.error(err.message || 'Failed to save contract');
     } finally {
       setSaving(false);
     }
@@ -561,12 +562,12 @@ const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave 
     e.preventDefault();
     
     if (!formData.contractNum || !formData.companyID || !formData.hcfID || !formData.startDate || !formData.endDate) {
-      alert('Please fill in all required fields');
+      toast.error('Please complete the required fields.');
       return;
     }
 
     if (new Date(formData.startDate!) > new Date(formData.endDate!)) {
-      alert('End date must be after start date');
+      toast.error('End date must be after start date');
       return;
     }
 

@@ -8,6 +8,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import './hcfTypeMasterPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface HCFType {
   id: string;
@@ -157,10 +158,10 @@ const HCFTypeMasterPage = () => {
         setLoading(true);
         await hcfTypeService.deleteHcfType(id);
         await loadHcfTypes();
-        alert('HCF Type deleted successfully');
+        toast.error('HCF Type deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete HCF type';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting HCF type:', err);
       } finally {
         setLoading(false);
@@ -176,7 +177,7 @@ const HCFTypeMasterPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === data.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -185,11 +186,11 @@ const HCFTypeMasterPage = () => {
         await hcfTypeService.updateHcfType(editingHCFType.id, {
           status: data.status,
         });
-        alert('HCF Type updated successfully');
+        toast.error('HCF Type updated successfully');
       } else {
         // Add new
         if (!data.hcfTypeCode || !data.hcfTypeName || !data.companyName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await hcfTypeService.createHcfType({
@@ -197,7 +198,7 @@ const HCFTypeMasterPage = () => {
           hcfTypeName: data.hcfTypeName,
           companyId: selectedCompany.id,
         });
-        alert('HCF Type created successfully');
+        toast.error('HCF Type created successfully');
       }
       
       setShowModal(false);
@@ -206,7 +207,7 @@ const HCFTypeMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save HCF type';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving HCF type:', err);
     } finally {
       setLoading(false);
@@ -639,11 +640,22 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{hcfType ? 'Edit HCF Type' : 'Add HCF Type'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{hcfType ? 'Edit HCF Type' : 'Add HCF Type'}</h2>
+              <p className="ra-assignment-modal-subtitle">{hcfType ? 'Update HCF type details.' : 'Create a new HCF type record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -651,11 +663,11 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
           </button>
         </div>
 
-        <form className="hcf-type-form" onSubmit={handleSubmit}>
+        <form className="hcf-type-form ra-assignment-form" onSubmit={handleSubmit}>
           {/* Basic Information */}
           <div className="form-section">
             <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>Company Name *</label>
                 <select
@@ -710,11 +722,11 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {hcfType ? 'Update' : 'Save'}
             </button>
           </div>

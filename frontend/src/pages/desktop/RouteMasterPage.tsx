@@ -8,6 +8,7 @@ import { frequencyService, FrequencyResponse } from '../../services/frequencySer
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './routeMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface Route {
   id: string;
@@ -195,10 +196,10 @@ const RouteMasterPage = () => {
         setLoading(true);
         await routeService.deleteRoute(id);
         await loadRoutes();
-        alert('Route deleted successfully');
+        toast.error('Route deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete route';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting route:', err);
       } finally {
         setLoading(false);
@@ -214,7 +215,7 @@ const RouteMasterPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === formData.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -227,11 +228,11 @@ const RouteMasterPage = () => {
           frequencyId: selectedFrequency?.id,
           status: formData.status,
         });
-        alert('Route updated successfully');
+        toast.error('Route updated successfully');
       } else {
         // Add new
         if (!formData.routeCode || !formData.routeName || !formData.companyName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await routeService.createRoute({
@@ -240,7 +241,7 @@ const RouteMasterPage = () => {
           companyId: selectedCompany.id,
           frequencyId: selectedFrequency?.id,
         });
-        alert('Route created successfully');
+        toast.error('Route created successfully');
       }
       
       setShowModal(false);
@@ -249,7 +250,7 @@ const RouteMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save route';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving route:', err);
     } finally {
       setLoading(false);
@@ -672,11 +673,21 @@ const RouteFormModal = ({ route, companies, frequencies, onClose, onSave }: Rout
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{route ? 'Edit Route' : 'Add Route'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{route ? 'Edit Route' : 'Add Route'}</h2>
+              <p className="ra-assignment-modal-subtitle">{route ? 'Update route details.' : 'Create a new route record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -684,9 +695,9 @@ const RouteFormModal = ({ route, companies, frequencies, onClose, onSave }: Rout
           </button>
         </div>
 
-        <form className="route-form" onSubmit={handleSubmit}>
+        <form className="route-form ra-assignment-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>Company Name *</label>
                 <select
@@ -755,11 +766,11 @@ const RouteFormModal = ({ route, companies, frequencies, onClose, onSave }: Rout
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {route ? 'Update' : 'Save'}
             </button>
           </div>

@@ -8,6 +8,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import './frequencyMasterPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface Frequency {
   id: string;
@@ -157,10 +158,10 @@ const FrequencyMasterPage = () => {
         setLoading(true);
         await frequencyService.deleteFrequency(id);
         await loadFrequencies();
-        alert('Frequency deleted successfully');
+        toast.error('Frequency deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete frequency';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting frequency:', err);
       } finally {
         setLoading(false);
@@ -176,7 +177,7 @@ const FrequencyMasterPage = () => {
       // Find company ID from company name
       const selectedCompany = companies.find(c => c.companyName === data.companyName);
       if (!selectedCompany) {
-        alert('Please select a valid company');
+        toast.error('Please select a valid company');
         return;
       }
 
@@ -185,11 +186,11 @@ const FrequencyMasterPage = () => {
         await frequencyService.updateFrequency(editingFrequency.id, {
           status: data.status,
         });
-        alert('Frequency updated successfully');
+        toast.error('Frequency updated successfully');
       } else {
         // Add new
         if (!data.frequencyCode || !data.frequencyName || !data.companyName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await frequencyService.createFrequency({
@@ -197,7 +198,7 @@ const FrequencyMasterPage = () => {
           frequencyName: data.frequencyName,
           companyId: selectedCompany.id,
         });
-        alert('Frequency created successfully');
+        toast.error('Frequency created successfully');
       }
       
       setShowModal(false);
@@ -206,7 +207,7 @@ const FrequencyMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save frequency';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving frequency:', err);
     } finally {
       setLoading(false);
@@ -637,11 +638,22 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{frequency ? 'Edit Frequency' : 'Add Frequency'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{frequency ? 'Edit Frequency' : 'Add Frequency'}</h2>
+              <p className="ra-assignment-modal-subtitle">{frequency ? 'Update frequency record details.' : 'Create a new frequency record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -649,11 +661,11 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
           </button>
         </div>
 
-        <form className="frequency-form" onSubmit={handleSubmit}>
+        <form className="frequency-form ra-assignment-form" onSubmit={handleSubmit}>
           {/* Basic Information */}
           <div className="form-section">
             <h3 className="form-section-title">Basic Information</h3>
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>Company Name *</label>
                 <select
@@ -708,11 +720,11 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {frequency ? 'Update' : 'Save'}
             </button>
           </div>

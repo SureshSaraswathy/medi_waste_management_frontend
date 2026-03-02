@@ -8,6 +8,7 @@ import { activateUserWithPassword, resetPassword } from '../../services/password
 import PageHeader from '../../components/layout/PageHeader';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -794,7 +795,7 @@ const UserManagementPage = () => {
           console.log('[handleSaveUser] UPDATE API call successful. Result:', result);
           
           // Show success
-          alert('User updated successfully!');
+          toast.error('User updated successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
@@ -956,7 +957,7 @@ const UserManagementPage = () => {
           }
           
           // Show success
-          alert('User created successfully!');
+          toast.error('User created successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
@@ -1019,7 +1020,7 @@ const UserManagementPage = () => {
       setError(displayMessage);
       
       // Show alert for user visibility with clear message
-      alert(`❌ Error Saving User\n\n${displayMessage}\n\nPlease check the browser console (F12) for more details.`);
+      toast.error(`❌ Error Saving User\n\n${displayMessage}\n\nPlease check the browser console (F12) for more details.`);
       
       // Keep modal open so user can fix errors
       // Don't close modal on error
@@ -1117,12 +1118,12 @@ const UserManagementPage = () => {
     try {
       await roleService.deleteRole(id);
       await loadRoles(); // Reload roles after deletion
-      alert('Role deleted successfully!');
+      toast.error('Role deleted successfully!');
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to delete role');
       console.error('Error deleting role:', err);
-      alert(`❌ Error Deleting Role\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
+      toast.error(`❌ Error Deleting Role\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
     } finally {
       setLoading(false);
     }
@@ -1150,7 +1151,7 @@ const UserManagementPage = () => {
         console.log('[handleSaveRole] Updating role:', editingRole.id, updateData);
         await roleService.updateRole(editingRole.id, updateData);
         console.log('[handleSaveRole] Role updated successfully');
-        alert('Role updated successfully!');
+        toast.error('Role updated successfully!');
     } else {
         // Create new role
         const createData = {
@@ -1163,7 +1164,7 @@ const UserManagementPage = () => {
         console.log('[handleSaveRole] Creating role:', createData);
         await roleService.createRole(createData);
         console.log('[handleSaveRole] Role created successfully');
-        alert('Role created successfully!');
+        toast.error('Role created successfully!');
       }
       
     setShowRoleModal(false);
@@ -1173,7 +1174,7 @@ const UserManagementPage = () => {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to save role');
       console.error('[handleSaveRole] Error saving role:', err);
-      alert(`❌ Error Saving Role\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
+      toast.error(`❌ Error Saving Role\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
     } finally {
       setLoading(false);
     }
@@ -1254,7 +1255,7 @@ const UserManagementPage = () => {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to reset password');
       console.error('Error resetting password:', err);
-      alert(`❌ Error Resetting Password\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
+      toast.error(`❌ Error Resetting Password\n\n${errorMessage}\n\nPlease check the browser console (F12) for more details.`);
     } finally {
       setLoading(false);
     }
@@ -1784,7 +1785,7 @@ const UserManagementPage = () => {
                     className="temp-password-copy-btn"
                     onClick={() => {
                       navigator.clipboard.writeText(temporaryPasswordData.temporaryPassword);
-                      alert('Password copied to clipboard!');
+                      toast.error('Password copied to clipboard!');
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2108,7 +2109,7 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
     const validation = validateStep(currentStep);
     
     if (!validation.isValid) {
-      alert(validation.message);
+      toast.error(validation.message);
       console.error(`Step ${currentStep} validation failed - Missing fields:`, validation.missingFields);
       return;
     }
@@ -2147,7 +2148,7 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
           `Step ${step}:\n${fields.map((f, i) => `  ${i + 1}. ${f}`).join('\n')}`
         ).join('\n\n');
         
-        alert(`Please fill in all required fields before saving:\n\n${missingSteps}\n\nPlease go back and complete these fields.`);
+        toast.error(`Please complete the required fields. before saving:\n\n${missingSteps}\n\nPlease go back and complete these fields.`);
         console.error('Final save validation failed - Missing fields:', allMissingFields);
         return;
       }

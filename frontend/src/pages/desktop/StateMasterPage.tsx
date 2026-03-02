@@ -6,6 +6,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './stateMasterPage.css';
+import toast from 'react-hot-toast';
 
 interface State {
   id: string;
@@ -110,10 +111,10 @@ const StateMasterPage = () => {
         setLoading(true);
         await stateService.deleteState(id);
         await loadStates(); // Reload states after deletion
-        alert('State deleted successfully');
+        toast.error('State deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete state';
-        alert(`Error: ${errorMessage}`);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting state:', err);
       } finally {
         setLoading(false);
@@ -131,18 +132,18 @@ const StateMasterPage = () => {
         await stateService.updateState(editingState.id, {
           status: formData.status,
         });
-        alert('State updated successfully');
+        toast.error('State updated successfully');
       } else {
         // Add new
         if (!formData.stateCode || !formData.stateName) {
-          alert('Please fill in all required fields');
+          toast.error('Please complete the required fields.');
           return;
         }
         await stateService.createState({
           stateCode: formData.stateCode,
           stateName: formData.stateName,
         });
-        alert('State created successfully');
+        toast.error('State created successfully');
       }
       
       setShowModal(false);
@@ -151,7 +152,7 @@ const StateMasterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save state';
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving state:', err);
     } finally {
       setLoading(false);
@@ -566,11 +567,22 @@ const StateFormModal = ({ state, onClose, onSave }: StateFormModalProps) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{state ? 'Edit State' : 'Add State'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal template-form-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                <path d="M2 17l10 5 10-5"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="modal-title ra-assignment-modal-title">{state ? 'Edit State' : 'Add State'}</h2>
+              <p className="ra-assignment-modal-subtitle">{state ? 'Update state details.' : 'Create a new state record.'}</p>
+            </div>
+          </div>
+          <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -578,9 +590,9 @@ const StateFormModal = ({ state, onClose, onSave }: StateFormModalProps) => {
           </button>
         </div>
 
-        <form className="state-form" onSubmit={handleSubmit}>
+        <form className="state-form ra-assignment-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <div className="form-grid">
+            <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
                 <label>State Code *</label>
                 <input
@@ -617,11 +629,11 @@ const StateFormModal = ({ state, onClose, onSave }: StateFormModalProps) => {
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <div className="modal-footer ra-assignment-modal-footer">
+            <button type="button" className="btn btn--secondary ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary">
+            <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
               {state ? 'Update' : 'Save'}
             </button>
           </div>
