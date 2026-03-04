@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../services/permissionService';
+import { districtService, DistrictResponse } from '../../services/districtService';
+import { stateService, StateResponse } from '../../services/stateService';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
-import { frequencyService, FrequencyResponse } from '../../services/frequencyService';
-import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
-import './frequencyMasterPage.css';
 import '../desktop/dashboardPage.css';
+import './districtMasterPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
 
-interface Frequency {
+interface District {
   id: string;
-  frequencyCode: string;
-  frequencyName: string;
-  companyName: string;
+  districtCode: string;
+  districtName: string;
+  stateId?: string;
+  stateName?: string;
   status: 'Active' | 'Inactive';
   createdBy: string;
   createdOn: string;
@@ -23,212 +23,245 @@ interface Frequency {
   modifiedOn: string;
 }
 
-interface Company {
-  id: string;
-  companyCode: string;
-  companyName: string;
-  status: 'Active' | 'Inactive';
-}
-
-const FrequencyMasterPage = () => {
+const DistrictMasterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
-  const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'FREQUENCY_CREATE');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingFrequency, setEditingFrequency] = useState<Frequency | null>(null);
-  const [frequencies, setFrequencies] = useState<Frequency[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  
-  interface AdvancedFilters {
-    frequencyCode: string;
-    frequencyName: string;
-    companyName: string;
-  }
-  
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
-    frequencyCode: '',
-    frequencyName: '',
-    companyName: '',
-  });
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [states, setStates] = useState<StateResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  interface AdvancedFilters {
+    districtCode: string;
+    districtName: string;
+    stateName: string;
+  }
+  
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
+    districtCode: '',
+    districtName: '',
+    stateName: '',
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // Load companies from API
-  const loadCompanies = async () => {
+  // Load states from API
+  const loadStates = async () => {
     try {
-      const apiCompanies = await companyService.getAllCompanies(true);
-      const mappedCompanies: Company[] = apiCompanies.map((apiCompany: CompanyResponse) => ({
-        id: apiCompany.id,
-        companyCode: apiCompany.companyCode,
-        companyName: apiCompany.companyName,
-        status: apiCompany.status,
-      }));
-      setCompanies(mappedCompanies);
+      const apiStates = await stateService.getAllStates(true);
+      setStates(apiStates);
     } catch (err) {
-      console.error('Error loading companies:', err);
+      console.error('Error loading states:', err);
     }
   };
 
-  // Load frequencies from API
-  const loadFrequencies = async () => {
+  // Load districts from API
+  const loadDistricts = async () => {
     setLoading(true);
     setError(null);
     try {
-      const apiFrequencies = await frequencyService.getAllFrequencies(undefined, true);
-      const mappedFrequencies: Frequency[] = apiFrequencies.map((apiFrequency: FrequencyResponse) => {
-        const company = companies.find(c => c.id === apiFrequency.companyId);
+      const apiDistricts = await districtService.getAllDistricts(true);
+      const mappedDistricts: District[] = apiDistricts.map((apiDistrict: DistrictResponse) => {
+        let stateName = '';
+        if (apiDistrict.stateId) {
+          const state = states.find(s => s.id === apiDistrict.stateId);
+          stateName = state?.stateName || '';
+        }
         return {
-          id: apiFrequency.id,
-          frequencyCode: apiFrequency.frequencyCode,
-          frequencyName: apiFrequency.frequencyName,
-          companyName: company?.companyName || 'Unknown Company',
-          status: apiFrequency.status,
-          createdBy: apiFrequency.createdBy || '',
-          createdOn: apiFrequency.createdOn,
-          modifiedBy: apiFrequency.modifiedBy || '',
-          modifiedOn: apiFrequency.modifiedOn,
+          id: apiDistrict.id,
+          districtCode: apiDistrict.districtCode,
+          districtName: apiDistrict.districtName,
+          stateId: apiDistrict.stateId,
+          stateName: stateName,
+          status: apiDistrict.status,
+          createdBy: apiDistrict.createdBy || '',
+          createdOn: apiDistrict.createdOn,
+          modifiedBy: apiDistrict.modifiedBy || '',
+          modifiedOn: apiDistrict.modifiedOn,
         };
       });
-      setFrequencies(mappedFrequencies);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load frequencies';
-      setError(errorMessage);
-      console.error('Error loading frequencies:', err);
-      setFrequencies([]);
+      setDistricts(mappedDistricts);
+    } catch (err: any) {
+      // Handle endpoint not found gracefully
+      if (err?.isEndpointMissing || err?.status === 404) {
+        // Only show error in console for missing endpoints (backend not implemented yet)
+        console.warn('⚠️ District API endpoint not found. Backend needs to implement: GET /api/v1/districts');
+        console.info('📋 Implementation checklist:', {
+          endpoint: 'GET /api/v1/districts',
+          queryParams: ['activeOnly (optional)'],
+          responseFormat: '{ success: boolean, data: DistrictResponse[], message: string }'
+        });
+        setDistricts([]); // Set empty array instead of crashing
+        // Don't show error banner for missing endpoints - backend will be implemented later
+        // setError('The District API endpoint is not available. Please contact your administrator to implement the backend API endpoint: GET /api/v1/districts');
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load districts';
+        setError(errorMessage);
+        console.error('Error loading districts:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Load companies first, then frequencies
+  // Load states first, then districts
   useEffect(() => {
     const initializeData = async () => {
-      await loadCompanies();
+      await loadStates();
     };
     initializeData();
   }, []);
 
-  // Load frequencies when companies are loaded
+  // Load districts when states are loaded
   useEffect(() => {
-    if (companies.length > 0) {
-      loadFrequencies();
+    if (states.length > 0) {
+      loadDistricts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies.length]);
+  }, [states]);
 
-  const filteredFrequencies = frequencies.filter(frequency => {
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
+
+  const filteredDistricts = districts.filter(district => {
     const query = searchQuery.trim().toLowerCase();
-    const codeQuery = advancedFilters.frequencyCode.trim().toLowerCase();
-    const nameQuery = advancedFilters.frequencyName.trim().toLowerCase();
-    const companyQuery = advancedFilters.companyName.trim().toLowerCase();
+    const codeQuery = advancedFilters.districtCode.trim().toLowerCase();
+    const nameQuery = advancedFilters.districtName.trim().toLowerCase();
+    const stateQuery = advancedFilters.stateName.trim().toLowerCase();
     
     const matchesSearch = !query ||
-      frequency.companyName.toLowerCase().includes(query) ||
-      frequency.frequencyCode.toLowerCase().includes(query) ||
-      frequency.frequencyName.toLowerCase().includes(query);
+      district.districtName.toLowerCase().includes(query) ||
+      district.districtCode.toLowerCase().includes(query) ||
+      (district.stateName || '').toLowerCase().includes(query);
     
-    const matchesCode = !codeQuery || frequency.frequencyCode.toLowerCase().includes(codeQuery);
-    const matchesName = !nameQuery || frequency.frequencyName.toLowerCase().includes(nameQuery);
-    const matchesCompany = !companyQuery || frequency.companyName.toLowerCase().includes(companyQuery);
-    const matchesStatus = statusFilter === 'all' || frequency.status === statusFilter;
+    const matchesCode = !codeQuery || district.districtCode.toLowerCase().includes(codeQuery);
+    const matchesName = !nameQuery || district.districtName.toLowerCase().includes(nameQuery);
+    const matchesState = !stateQuery || (district.stateName || '').toLowerCase().includes(stateQuery);
+    const matchesStatus = statusFilter === 'all' || district.status === statusFilter;
     
-    return matchesSearch && matchesCode && matchesName && matchesCompany && matchesStatus;
+    return matchesSearch && matchesCode && matchesName && matchesState && matchesStatus;
   });
 
   const handleAdd = () => {
-    setEditingFrequency(null);
+    setEditingDistrict(null);
     setShowModal(true);
   };
 
-  const handleEdit = (frequency: Frequency) => {
-    setEditingFrequency(frequency);
+  const handleEdit = (district: District) => {
+    setEditingDistrict(district);
     setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this frequency?')) {
+    if (window.confirm('Are you sure you want to delete this district?')) {
       try {
         setLoading(true);
         
         // Validate deletion using validation service
-        const { validateFrequencyDelete } = await import('../../utils/deleteValidationService');
-        const validation = await validateFrequencyDelete(id);
+        const { validateDistrictDelete } = await import('../../utils/deleteValidationService');
+        const validation = await validateDistrictDelete(id);
         if (!validation.canDelete) {
           toast.error(validation.message);
           setLoading(false);
           return;
         }
         
-        await frequencyService.deleteFrequency(id);
-        await loadFrequencies();
-        toast.success('Frequency deleted successfully');
+        await districtService.deleteDistrict(id);
+        await loadDistricts(); // Reload districts after deletion
+        toast.success('District deleted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to delete frequency';
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete district';
         toast.error(`Error: ${errorMessage}`);
-        console.error('Error deleting frequency:', err);
+        console.error('Error deleting district:', err);
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleSave = async (data: Partial<Frequency>) => {
+  const handleSave = async (formData: Partial<District>) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Find company ID from company name
-      const selectedCompany = companies.find(c => c.companyName === data.companyName);
-      if (!selectedCompany) {
-        toast.error('Please select a valid company');
-        return;
-      }
-
-      if (editingFrequency) {
-        // Update existing - only status can be updated (frequencyCode, frequencyName, companyId are immutable)
-        await frequencyService.updateFrequency(editingFrequency.id, {
-          status: data.status,
+      if (editingDistrict) {
+        // Update existing - only status can be updated (districtCode and districtName are immutable)
+        await districtService.updateDistrict(editingDistrict.id, {
+          status: formData.status,
+          stateId: formData.stateId,
         });
-        toast.error('Frequency updated successfully');
+        toast.success('District updated successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         // Add new
-        if (!data.frequencyCode || !data.frequencyName || !data.companyName) {
+        if (!formData.districtCode || !formData.districtName) {
           toast.error('Please complete the required fields.');
           return;
         }
-        await frequencyService.createFrequency({
-          frequencyCode: data.frequencyCode,
-          frequencyName: data.frequencyName,
-          companyId: selectedCompany.id,
+        await districtService.createDistrict({
+          districtCode: formData.districtCode,
+          districtName: formData.districtName,
+          stateId: formData.stateId,
         });
-        toast.error('Frequency created successfully');
+        toast.success('District created successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
       
       setShowModal(false);
-      setEditingFrequency(null);
-      await loadFrequencies();
+      setEditingDistrict(null);
+      await loadDistricts(); // Reload districts after save
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save frequency';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save district';
       setError(errorMessage);
       toast.error(`Error: ${errorMessage}`);
-      console.error('Error saving frequency:', err);
+      console.error('Error saving district:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
     <div className="dashboard-page">
+      {/* Left Sidebar */}
       <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="brand">
@@ -301,60 +334,98 @@ const FrequencyMasterPage = () => {
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className="dashboard-main">
         <PageHeader 
-          title="Frequency Master"
-          subtitle="Manage frequency master data"
+          title="District Master"
+          subtitle="Manage district master data"
         />
 
         {/* Error Message */}
         {error && (
           <div style={{ 
-            padding: '12px 16px', 
-            background: '#fee', 
-            color: '#c33', 
-            marginBottom: '16px', 
-            borderRadius: '4px',
+            padding: '16px 20px', 
+            background: '#fff3cd', 
+            color: '#856404', 
+            marginBottom: '20px', 
+            borderRadius: '8px',
+            border: '1px solid #ffc107',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            flexDirection: 'column',
+            gap: '8px'
           }}>
-            <span>{error}</span>
-            <button 
-              onClick={() => setError(null)} 
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: '#c33', 
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px'
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '2px' }}>
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div>
+                  <strong style={{ fontSize: '14px', fontWeight: 600 }}>API Endpoint Not Found</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '13px', lineHeight: '1.5' }}>
+                    {error.includes('endpoint') ? error : `The District API endpoint is not available. Please ensure the backend API is running and implements: GET /api/v1/districts`}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setError(null)} 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: '#856404', 
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '0',
+                  lineHeight: '1',
+                  flexShrink: 0
+                }}
+                aria-label="Close error message"
+              >
+                ×
+              </button>
+            </div>
+            {error.includes('endpoint') && (
+              <div style={{ 
+                marginTop: '8px', 
+                padding: '12px', 
+                background: '#fff', 
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: '#495057',
+                border: '1px solid #dee2e6'
+              }}>
+                <strong>Backend Implementation Required:</strong>
+                <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
+                  <li>Create a District controller in the backend</li>
+                  <li>Implement GET /api/v1/districts endpoint</li>
+                  <li>Support optional query parameter: activeOnly</li>
+                  <li>Return districts in the format: {'{'} id, districtCode, districtName, stateId, status {'}'}</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
         {/* Loading Indicator */}
-        {loading && !frequencies.length && (
+        {loading && !districts.length && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-            Loading frequencies...
+            Loading districts...
           </div>
         )}
 
-        <div className="frequency-master-page">
+        <div className="district-master-page">
           {/* Page Header */}
           <div className="ra-page-header">
             <div className="ra-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
               </svg>
             </div>
             <div className="ra-header-text">
-              <h1 className="ra-page-title">Frequency Master</h1>
-              <p className="ra-page-subtitle">Manage frequency information and details</p>
+              <h1 className="ra-page-title">District Master</h1>
+              <p className="ra-page-subtitle">Manage district information and details</p>
             </div>
           </div>
 
@@ -367,7 +438,7 @@ const FrequencyMasterPage = () => {
               </svg>
               <input
                 type="text"
-                placeholder="Search by frequency code, name, company..."
+                placeholder="Search by district code, name, state..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="ra-search-input"
@@ -380,47 +451,45 @@ const FrequencyMasterPage = () => {
                 </svg>
                 Advanced Filter
               </button>
-              {canCreate && (
-                <button className="ra-add-btn" onClick={handleAdd}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Add Frequency
-                </button>
-              )}
+              <button className="ra-add-btn" onClick={handleAdd}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add District
+              </button>
             </div>
           </div>
 
-          {/* Frequencies Table */}
-          <div className="frequency-master-table-container">
-            <table className="frequency-master-table">
+          {/* Districts Table */}
+          <div className="district-master-table-container">
+            <table className="district-master-table">
               <thead>
                 <tr>
-                  <th>COMPANY NAME</th>
-                  <th>FREQUENCY CODE</th>
-                  <th>FREQUENCY NAME</th>
+                  <th>DISTRICT CODE</th>
+                  <th>DISTRICT NAME</th>
+                  <th>STATE</th>
                   <th>STATUS</th>
                   <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredFrequencies.length === 0 ? (
+                {filteredDistricts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="empty-message">
-                      {loading ? 'Loading...' : 'No frequency records found'}
+                      {loading ? 'Loading...' : 'No districts found'}
                     </td>
                   </tr>
                 ) : (
-                  filteredFrequencies.map((frequency) => (
-                    <tr key={frequency.id}>
-                      <td>{frequency.companyName || '-'}</td>
-                      <td>{frequency.frequencyCode || '-'}</td>
-                      <td>{frequency.frequencyName || '-'}</td>
+                  filteredDistricts.map((district) => (
+                    <tr key={district.id}>
+                      <td>{district.districtCode || '-'}</td>
+                      <td>{district.districtName || '-'}</td>
+                      <td>{district.stateName || '-'}</td>
                       <td>
                         <div className="ra-cell-center">
-                          <span className={`status-badge status-badge--${frequency.status.toLowerCase()}`}>
-                            {frequency.status}
+                          <span className={`status-badge status-badge--${district.status.toLowerCase()}`}>
+                            {district.status}
                           </span>
                         </div>
                       </td>
@@ -428,7 +497,7 @@ const FrequencyMasterPage = () => {
                         <div className="action-buttons ra-actions">
                           <button
                             className="action-btn action-btn--view"
-                            onClick={() => handleEdit(frequency)}
+                            onClick={() => handleEdit(district)}
                             title="View"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -438,7 +507,7 @@ const FrequencyMasterPage = () => {
                           </button>
                           <button
                             className="action-btn action-btn--edit"
-                            onClick={() => handleEdit(frequency)}
+                            onClick={() => handleEdit(district)}
                             title="Edit"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -448,7 +517,7 @@ const FrequencyMasterPage = () => {
                           </button>
                           <button
                             className="action-btn action-btn--delete"
-                            onClick={() => handleDelete(frequency.id)}
+                            onClick={() => handleDelete(district.id)}
                             title="Delete"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -467,7 +536,7 @@ const FrequencyMasterPage = () => {
 
           {/* Pagination Info */}
           <div className="cm-pagination-info">
-            Showing {filteredFrequencies.length} of {frequencies.length} items
+            Showing {filteredDistricts.length} of {districts.length} items
           </div>
         </div>
       </main>
@@ -479,7 +548,7 @@ const FrequencyMasterPage = () => {
           advancedFilters={advancedFilters}
           onClose={() => setShowAdvancedFilters(false)}
           onClear={() => {
-            setAdvancedFilters({ frequencyCode: '', frequencyName: '', companyName: '' });
+            setAdvancedFilters({ districtCode: '', districtName: '', stateName: '' });
             setStatusFilter('all');
             setSearchQuery('');
           }}
@@ -491,14 +560,14 @@ const FrequencyMasterPage = () => {
         />
       )}
 
-      {/* Frequency Add/Edit Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
-        <FrequencyFormModal
-          frequency={editingFrequency}
-          companies={companies.filter(c => c.status === 'Active')}
+        <DistrictFormModal
+          district={editingDistrict}
+          states={states.filter(s => s.status === 'Active')}
           onClose={() => {
             setShowModal(false);
-            setEditingFrequency(null);
+            setEditingDistrict(null);
           }}
           onSave={handleSave}
         />
@@ -538,7 +607,7 @@ const AdvancedFiltersModal = ({
             </div>
             <div>
               <div className="cm-filter-title">Advanced Filters</div>
-              <div className="cm-filter-subtitle">Filter frequencies by multiple criteria</div>
+              <div className="cm-filter-subtitle">Filter districts by multiple criteria</div>
             </div>
           </div>
           <button className="cm-filter-close" onClick={onClose} aria-label="Close filters">
@@ -549,35 +618,35 @@ const AdvancedFiltersModal = ({
         <div className="cm-filter-modal-body">
           <div className="cm-filter-grid">
             <div className="cm-filter-field">
-              <label>Frequency Code</label>
+              <label>District Code</label>
               <input
                 type="text"
-                value={draft.frequencyCode}
-                onChange={(e) => setDraft({ ...draft, frequencyCode: e.target.value })}
+                value={draft.districtCode}
+                onChange={(e) => setDraft({ ...draft, districtCode: e.target.value })}
                 className="cm-filter-input"
-                placeholder="Enter frequency code"
+                placeholder="Enter district code"
               />
             </div>
 
             <div className="cm-filter-field">
-              <label>Frequency Name</label>
+              <label>District Name</label>
               <input
                 type="text"
-                value={draft.frequencyName}
-                onChange={(e) => setDraft({ ...draft, frequencyName: e.target.value })}
+                value={draft.districtName}
+                onChange={(e) => setDraft({ ...draft, districtName: e.target.value })}
                 className="cm-filter-input"
-                placeholder="Enter frequency name"
+                placeholder="Enter district name"
               />
             </div>
 
             <div className="cm-filter-field">
-              <label>Company Name</label>
+              <label>State Name</label>
               <input
                 type="text"
-                value={draft.companyName}
-                onChange={(e) => setDraft({ ...draft, companyName: e.target.value })}
+                value={draft.stateName}
+                onChange={(e) => setDraft({ ...draft, stateName: e.target.value })}
                 className="cm-filter-input"
-                placeholder="Enter company name"
+                placeholder="Enter state name"
               />
             </div>
 
@@ -602,7 +671,7 @@ const AdvancedFiltersModal = ({
             className="cm-link-btn"
             onClick={() => {
               setDraftStatus('all');
-              setDraft({ frequencyCode: '', frequencyName: '', companyName: '' });
+              setDraft({ districtCode: '', districtName: '', stateName: '' });
               onClear();
             }}
           >
@@ -626,20 +695,20 @@ const AdvancedFiltersModal = ({
   );
 };
 
-// Frequency Form Modal Component
-interface FrequencyFormModalProps {
-  frequency: Frequency | null;
-  companies: Company[];
+// District Form Modal Component
+interface DistrictFormModalProps {
+  district: District | null;
+  states: StateResponse[];
   onClose: () => void;
-  onSave: (data: Partial<Frequency>) => void;
+  onSave: (data: Partial<District>) => void;
 }
 
-const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: FrequencyFormModalProps) => {
-  const [formData, setFormData] = useState<Partial<Frequency>>(
-    frequency || {
-      companyName: '',
-      frequencyCode: '',
-      frequencyName: '',
+const DistrictFormModal = ({ district, states, onClose, onSave }: DistrictFormModalProps) => {
+  const [formData, setFormData] = useState<Partial<District>>(
+    district || {
+      districtCode: '',
+      districtName: '',
+      stateId: '',
       status: 'Active',
     }
   );
@@ -656,13 +725,13 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
           <div className="ra-assignment-modal-titlewrap">
             <div className="ra-assignment-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
               </svg>
             </div>
             <div>
-              <h2 className="modal-title ra-assignment-modal-title">{frequency ? 'Edit Frequency' : 'Add Frequency'}</h2>
-              <p className="ra-assignment-modal-subtitle">{frequency ? 'Update frequency record details.' : 'Create a new frequency record.'}</p>
+              <h2 className="modal-title ra-assignment-modal-title">{district ? 'Edit District' : 'Add District'}</h2>
+              <p className="ra-assignment-modal-subtitle">{district ? 'Update district details.' : 'Create a new district record.'}</p>
             </div>
           </div>
           <button className="modal-close-btn ra-assignment-close" onClick={onClose}>
@@ -673,51 +742,45 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
           </button>
         </div>
 
-        <form className="frequency-form ra-assignment-form" onSubmit={handleSubmit}>
-          {/* Basic Information */}
+        <form className="district-form ra-assignment-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <h3 className="form-section-title">Basic Information</h3>
             <div className="form-grid ra-assignment-form-grid">
               <div className="form-group">
-                <label>Company Name *</label>
-                <select
-                  value={formData.companyName || ''}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                <label>District Code *</label>
+                <input
+                  type="text"
+                  value={formData.districtCode || ''}
+                  onChange={(e) => setFormData({ ...formData, districtCode: e.target.value })}
                   required
-                  disabled={!!frequency} // Disable when editing (immutable field)
-                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  maxLength={10}
+                  disabled={!!district} // Disable when editing (immutable field)
+                  style={district ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                />
+              </div>
+              <div className="form-group">
+                <label>District Name *</label>
+                <input
+                  type="text"
+                  value={formData.districtName || ''}
+                  onChange={(e) => setFormData({ ...formData, districtName: e.target.value })}
+                  required
+                  disabled={!!district} // Disable when editing (immutable field)
+                  style={district ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                />
+              </div>
+              <div className="form-group">
+                <label>State</label>
+                <select
+                  value={formData.stateId || ''}
+                  onChange={(e) => setFormData({ ...formData, stateId: e.target.value })}
                 >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.companyName}>
-                      {company.companyName}
+                  <option value="">Select State</option>
+                  {states.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.stateCode} - {state.stateName}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="form-group">
-                <label>Frequency Code *</label>
-                <input
-                  type="text"
-                  value={formData.frequencyCode || ''}
-                  onChange={(e) => setFormData({ ...formData, frequencyCode: e.target.value })}
-                  required
-                  placeholder="Enter Frequency Code"
-                  disabled={!!frequency} // Disable when editing (immutable field)
-                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
-                />
-              </div>
-              <div className="form-group">
-                <label>Frequency Name *</label>
-                <input
-                  type="text"
-                  value={formData.frequencyName || ''}
-                  onChange={(e) => setFormData({ ...formData, frequencyName: e.target.value })}
-                  required
-                  placeholder="Enter Frequency Name"
-                  disabled={!!frequency} // Disable when editing (immutable field)
-                  style={frequency ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
-                />
               </div>
               <div className="form-group">
                 <label>Status</label>
@@ -737,7 +800,7 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
               Cancel
             </button>
             <button type="submit" className="btn btn--primary ra-assignment-btn ra-assignment-btn--primary">
-              {frequency ? 'Update' : 'Save'}
+              {district ? 'Update' : 'Save'}
             </button>
           </div>
         </form>
@@ -746,4 +809,4 @@ const FrequencyFormModal = ({ frequency, companies, onClose, onSave }: Frequency
   );
 };
 
-export default FrequencyMasterPage;
+export default DistrictMasterPage;

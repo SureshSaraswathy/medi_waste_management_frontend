@@ -397,7 +397,8 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -413,23 +414,33 @@
 }
 
 .company-form-modal {
-  max-width: 800px !important;
-  width: 800px !important;
-  max-height: 90vh !important;
+  width: min(800px, 96vw) !important;
+  max-width: min(800px, 96vw) !important;
+  max-height: calc(100vh - 32px) !important;
   height: auto;
 }
 
 /* Override ra-assignment-modal styles for wizard */
 .ra-assignment-modal.wizard-modal {
-  max-width: 800px !important;
   width: 800px !important;
+  max-width: 95% !important;
+  height: 700px !important; /* Fixed height for all steps */
+  min-height: 700px !important;
+  max-height: 700px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .ra-assignment-modal.wizard-modal.company-wizard-modal-template {
   width: 800px !important;
-  max-width: 800px !important;
-  height: 750px;
-  max-height: 92vh !important;
+  max-width: 95% !important;
+  height: 700px !important; /* Fixed height for all steps */
+  min-height: 700px !important;
+  max-height: 700px !important;
+  display: flex !important;
+  flex-direction: column !important;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -740,6 +751,9 @@
   background: rgba(248, 250, 252, 0.6);
   flex-shrink: 0;
   overflow-x: auto;
+  height: auto;
+  min-height: 60px;
+  box-sizing: border-box;
 }
 
 .company-wizard-step-item {
@@ -820,8 +834,8 @@
 
 .wizard-content {
   padding: 24px;
-  min-height: 400px;
-  max-height: calc(90vh - 200px);
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -836,18 +850,47 @@
 }
 
 .company-wizard-content {
-  height: auto;
+  height: 100%;
   min-height: 0;
-  max-height: none;
+  max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px 24px;
-  flex: 1;
+  flex: 1 1 0;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.company-wizard-content::-webkit-scrollbar {
+  width: 8px;
+  display: block !important;
+}
+
+.company-wizard-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.company-wizard-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.company-wizard-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .company-wizard-modal-template .ra-assignment-modal-header {
   padding: 14px 24px;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  height: auto;
+  min-height: 70px;
+  box-sizing: border-box;
 }
 
 .company-wizard-modal-template .ra-assignment-icon {
@@ -876,11 +919,18 @@
 
 .company-wizard-modal-template .ra-assignment-form {
   padding: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: visible;
 }
 
 .company-wizard-modal-template .wizard-step-header {
   margin: 0 0 14px 0;
   padding-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .company-wizard-modal-template .wizard-step-header-title {
@@ -889,13 +939,25 @@
   color: #0f172a;
 }
 
-.company-wizard-modal-template .company-step-content-compact {
+.company-wizard-modal-template .company-step-content-compact,
+.company-wizard-modal-template .company-step-content-standard {
   padding-bottom: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .company-wizard-modal-template .wizard-step-content {
   min-height: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 .company-wizard-modal-template .company-col-full {
@@ -907,6 +969,7 @@
   padding-top: 12px;
   margin-bottom: 14px;
   border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .company-wizard-modal-template .company-section-block--tight {
@@ -922,15 +985,32 @@
 }
 
 .company-wizard-modal-template .ra-assignment-form-grid {
-  gap: 12px 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .company-wizard-modal-template .ra-assignment-form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .company-wizard-modal-template .ra-assignment-form-col {
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .company-wizard-modal-template .ra-assignment-form-group {
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
 }
 
 .company-wizard-modal-template .ra-assignment-form-group label {
@@ -993,17 +1073,34 @@
 .company-wizard-footer {
   justify-content: flex-end;
   flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .company-wizard-footer-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .company-wizard-modal-template .ra-assignment-modal-footer {
   padding: 14px 24px;
   border-top: 1px solid #e2e8f0;
+  position: relative;
+  bottom: 0;
+  z-index: 6;
+  background: #ffffff;
+  flex-shrink: 0;
+  margin-top: auto;
+  height: auto;
+  min-height: 70px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .company-wizard-modal-template .ra-assignment-modal-footer .ra-assignment-btn {
@@ -1031,10 +1128,12 @@
 
 .wizard-step-content {
   animation: fadeIn 0.3s ease;
-  min-height: 300px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  overflow: visible;
 }
 
 @keyframes fadeIn {
@@ -1523,16 +1622,19 @@
   }
 
   .company-wizard-modal-template {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    height: auto;
-    max-height: 95vh !important;
+    width: 95% !important;
+    max-width: 95% !important;
+    height: 700px !important;
+    min-height: 700px !important;
+    max-height: 700px !important;
   }
 
   .company-wizard-content {
-    height: auto;
-    max-height: calc(95vh - 210px);
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
     padding: 16px 20px;
+    overflow-y: auto;
   }
 
   .wizard-step-title {
@@ -1546,7 +1648,10 @@
   .wizard-modal {
     width: 95% !important;
     max-width: 95% !important;
-    min-width: 95% !important;
+    min-width: 0 !important;
+    height: 600px !important;
+    min-height: 600px !important;
+    max-height: 600px !important;
   }
 
   .env-clearance-grid {

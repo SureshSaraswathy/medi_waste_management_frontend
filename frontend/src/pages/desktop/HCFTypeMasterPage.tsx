@@ -157,9 +157,19 @@ const HCFTypeMasterPage = () => {
     if (window.confirm('Are you sure you want to delete this HCF Type?')) {
       try {
         setLoading(true);
+        
+        // Validate deletion using validation service
+        const { validateHcfTypeDelete } = await import('../../utils/deleteValidationService');
+        const validation = await validateHcfTypeDelete(id);
+        if (!validation.canDelete) {
+          toast.error(validation.message);
+          setLoading(false);
+          return;
+        }
+        
         await hcfTypeService.deleteHcfType(id);
         await loadHcfTypes();
-        toast.error('HCF Type deleted successfully');
+        toast.success('HCF Type deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete HCF type';
         toast.error(`Error: ${errorMessage}`);
@@ -219,30 +229,37 @@ const HCFTypeMasterPage = () => {
 
   return (
     <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -685,11 +702,22 @@ const HCFTypeFormModal = ({ hcfType, companies, onClose, onSave }: HCFTypeFormMo
                 <input
                   type="text"
                   value={formData.hcfTypeCode || ''}
-                  onChange={(e) => setFormData({ ...formData, hcfTypeCode: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+                    setFormData({ ...formData, hcfTypeCode: value });
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value.trim();
+                    if (value && !/^[A-Z]{2}$/.test(value)) {
+                      toast.error('HCF Type Code must be exactly 2 uppercase letters');
+                    }
+                  }}
                   required
-                  placeholder="Enter HCF Type Code"
+                  placeholder="Enter 2 uppercase letters (e.g., AB)"
                   disabled={!!hcfType} // Disable when editing (immutable field)
                   style={hcfType ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                  pattern="^[A-Z]{2}$"
+                  maxLength={2}
                 />
               </div>
               <div className="form-group">

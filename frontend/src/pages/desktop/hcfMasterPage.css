@@ -293,8 +293,10 @@
 .ra-filter-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 10px 16px;
+  height: 40px;
   background: #ffffff;
   color: #1e293b;
   border: 1px solid #cbd5e1;
@@ -630,15 +632,16 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 0;
+  padding: 16px;
+  overflow-y: auto;
 }
 
 .modal-content {
   background: #ffffff;
   border-radius: 8px;
-  width: 100%;
-  max-width: 1000px;
-  max-height: 95vh;
+  width: min(1000px, 96vw);
+  max-width: min(1000px, 96vw);
+  max-height: calc(100vh - 32px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -647,10 +650,15 @@
   margin: 0;
 }
 
-/* Wizard: stable height + single scroll container (avoid nested scrollbars) */
+/* Wizard: fixed dimensions for all steps */
 .modal-content.wizard-modal {
-  height: auto;
-  max-height: 95vh;
+  width: 800px !important;
+  max-width: 95% !important;
+  height: 700px !important;
+  min-height: 700px !important;
+  max-height: 700px !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .modal-header {
@@ -662,6 +670,9 @@
   background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
   flex-shrink: 0;
   margin: 0;
+  height: auto;
+  min-height: 70px;
+  box-sizing: border-box;
 }
 
 .modal-content.wizard-modal .modal-header {
@@ -674,23 +685,61 @@
 
 /* Step content spacing (compact) */
 .modal-content.wizard-modal .wizard-content {
-  /* Keep padding consistent; scrolling is handled by .modal-content-area */
   overflow: hidden;
   padding: 12px 14px;
   background: #ffffff;
+  min-height: 0;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 /* Fixed scroll area for wizard content */
 .modal-content-area {
-  height: 420px;
+  height: 100%;
+  max-height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.modal-content.wizard-modal .wizard-step-content {
+.modal-content-area::-webkit-scrollbar {
+  width: 8px;
+  display: block !important;
+}
+
+.modal-content-area::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.modal-content-area::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.modal-content-area::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.modal-content.wizard-modal .wizard-step-content,
+.modal-content.wizard-modal .hcf-step-content-standard {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0;
+  margin: 0;
 }
 
 .modal-content.wizard-modal .wizard-step-header {
@@ -709,12 +758,86 @@
 /* Sticky footer */
 .modal-content.wizard-modal .wizard-footer {
   flex-shrink: 0;
-  position: sticky;
+  position: relative;
   bottom: 0;
   z-index: 10;
   background: #ffffff;
   border-top: 1px solid #e2e8f0;
   padding: 10px 14px;
+  height: auto;
+  min-height: 70px;
+  box-sizing: border-box;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-content.wizard-modal .wizard-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+/* Wizard Footer Buttons - Match Filter Button Size */
+.wp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  height: 40px;
+  min-width: 120px;
+  width: 120px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.wp-btn--cancel {
+  background: transparent;
+  color: #334155;
+  border-color: transparent;
+}
+
+.wp-btn--cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.wp-btn--secondary {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.wp-btn--secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.wp-btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.wp-btn--primary:hover:not(:disabled) {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+.wp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Compact field sizing inside wizard */
@@ -912,6 +1035,9 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 1;
 }
 
 .wizard-modal .hcf-select-arrow-icon {
@@ -976,11 +1102,15 @@
 /* Billing option radios (horizontal) */
 .wizard-modal .hcf-billing-options {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 24px;
   flex-wrap: nowrap;
-  align-items: center;
   justify-content: flex-start;
-  padding: 6px 0 4px 0;
+  padding: 0;
+  margin: 0;
+  height: 40px;
+  min-height: 40px;
 }
 
 .wizard-modal .hcf-radio-option {
@@ -988,18 +1118,32 @@
   align-items: center;
   gap: 8px;
   user-select: none;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 14px;
   color: #334155;
   width: auto !important;
   margin: 0 !important;
   padding: 0 !important;
   text-transform: none;
   letter-spacing: 0;
+  height: 40px;
+  min-height: 40px;
+  vertical-align: middle;
 }
 
 .wizard-modal .hcf-radio-option input[type="radio"] {
   margin: 0;
   accent-color: #3b82f6;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wizard-modal .hcf-radio-option span {
+  display: inline-block;
+  line-height: 1.5;
+  vertical-align: middle;
 }
 
 /* Auto generate toggle */
@@ -1132,6 +1276,21 @@
   color: #334155;
 }
 
+/* Wizard Progress - Fixed Height */
+.wizard-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(248, 250, 252, 0.6);
+  flex-shrink: 0;
+  overflow-x: auto;
+  height: auto;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hcf-master-page {
@@ -1146,6 +1305,14 @@
     grid-template-columns: 1fr;
   }
 
+  .modal-content.wizard-modal {
+    width: 95% !important;
+    max-width: 95% !important;
+    height: 700px !important;
+    min-height: 700px !important;
+    max-height: 700px !important;
+  }
+
   .wizard-modal .hcf-billing-options {
     gap: 14px;
     flex-wrap: wrap;
@@ -1158,5 +1325,12 @@
 
   .hcf-search-box {
     max-width: 100%;
+  }
+
+  .modal-content,
+  .modal-content.wizard-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
   }
 }

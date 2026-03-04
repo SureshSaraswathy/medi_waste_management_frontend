@@ -40,7 +40,7 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
       ),
-      active: pathname === '/finance' || pathname.startsWith('/finance'),
+      active: normalizedPath === '/finance' || normalizedPath.startsWith('/finance/'),
     },
     {
       path: '/commercial-agreements',
@@ -53,7 +53,7 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <line x1="16" y1="17" x2="8" y2="17"></line>
         </svg>
       ),
-      active: pathname === '/commercial-agreements' || pathname.startsWith('/commercial-agreements'),
+      active: normalizedPath === '/commercial-agreements' || normalizedPath.startsWith('/commercial-agreements/'),
     },
     {
       path: '/compliance-training',
@@ -79,7 +79,7 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
         </svg>
       ),
-      active: pathname === '/master' || pathname.startsWith('/master'),
+      active: normalizedPath === '/master' || normalizedPath.startsWith('/master/'),
     },
     {
       path: '/report',
@@ -92,7 +92,7 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
           <line x1="16" y1="17" x2="8" y2="17"></line>
         </svg>
       ),
-      active: pathname.startsWith('/report'),
+      active: normalizedPath === '/report' || normalizedPath.startsWith('/report/'),
     },
     ...getAdminNavItems(permissions, pathname),
   ];

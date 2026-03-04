@@ -12,6 +12,10 @@ import { categoryService, CategoryResponse } from '../../services/categoryServic
 import { routeService, RouteResponse } from '../../services/routeService';
 import { pcbZoneService, PcbZoneResponse } from '../../services/pcbZoneService';
 import { hcfTypeService, HcfTypeResponse } from '../../services/hcfTypeService';
+import { agreementService, AgreementResponse } from '../../services/agreementService';
+import { userService, UserResponse } from '../../services/userService';
+import { roleService, RoleResponse } from '../../services/roleService';
+import { districtService, DistrictResponse } from '../../services/districtService';
 import PageHeader from '../../components/layout/PageHeader';
 import { clearFieldValidation, focusAndScrollToField, showValidationToast, validateRequiredFields } from '../../utils/formValidation';
 import './hcfMasterPage.css';
@@ -168,6 +172,10 @@ const HCFMasterPage = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [hcfTypes, setHcfTypes] = useState<HcfTypeResponse[]>([]);
   const [hcfs, setHcfs] = useState<HCF[]>([]);
+  const [agreements, setAgreements] = useState<AgreementResponse[]>([]);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [districts, setDistricts] = useState<DistrictResponse[]>([]);
 
   // Load master data functions
   const loadCompanies = useCallback(async () => {
@@ -256,6 +264,51 @@ const HCFMasterPage = () => {
       setHcfTypes(data);
     } catch (err: any) {
       console.error('Failed to load HCF types:', err);
+    }
+  }, []);
+
+  const loadAgreements = useCallback(async () => {
+    try {
+      const data = await agreementService.getAllAgreements();
+      setAgreements(data);
+    } catch (err: any) {
+      console.error('Failed to load agreements:', err);
+    }
+  }, []);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      // Load users for all companies
+      const allUsers: UserResponse[] = [];
+      for (const company of companies) {
+        try {
+          const companyUsers = await userService.getUsersByCompany(company.id);
+          allUsers.push(...companyUsers);
+        } catch (err: any) {
+          console.error(`Failed to load users for company ${company.id}:`, err);
+        }
+      }
+      setUsers(allUsers);
+    } catch (err: any) {
+      console.error('Failed to load users:', err);
+    }
+  }, [companies]);
+
+  const loadRoles = useCallback(async () => {
+    try {
+      const data = await roleService.getAllRoles(undefined, true);
+      setRoles(data);
+    } catch (err: any) {
+      console.error('Failed to load roles:', err);
+    }
+  }, []);
+
+  const loadDistricts = useCallback(async () => {
+    try {
+      const data = await districtService.getAllDistricts(true);
+      setDistricts(data);
+    } catch (err: any) {
+      console.error('Failed to load districts:', err);
     }
   }, []);
 
@@ -356,10 +409,20 @@ const HCFMasterPage = () => {
         loadCategories(),
         loadRoutes(),
         loadHcfTypes(),
+        loadAgreements(),
+        loadRoles(),
+        loadDistricts(),
       ]);
     };
     initialize();
-  }, [loadCompanies, loadAreas, loadStates, loadPcbZones, loadCategories, loadRoutes, loadHcfTypes]);
+  }, [loadCompanies, loadAreas, loadStates, loadPcbZones, loadCategories, loadRoutes, loadHcfTypes, loadAgreements, loadRoles, loadDistricts]);
+
+  // Load users when companies are loaded
+  useEffect(() => {
+    if (companies.length > 0) {
+      loadUsers();
+    }
+  }, [companies, loadUsers]);
 
   // Reload HCFs when master data is loaded
   useEffect(() => {
@@ -455,8 +518,19 @@ const HCFMasterPage = () => {
     if (window.confirm('Are you sure you want to delete this HCF?')) {
       try {
         setLoading(true);
+        
+        // Validate deletion using validation service
+        const { validateHcfDelete } = await import('../../utils/deleteValidationService');
+        const validation = await validateHcfDelete(id);
+        if (!validation.canDelete) {
+          toast.error(validation.message);
+          setLoading(false);
+          return;
+        }
+        
         await hcfService.deleteHcf(id);
         await loadHcfs();
+        toast.success('HCF deleted successfully');
       } catch (err: any) {
         console.error('Failed to delete HCF:', err);
         setError(err.message || 'Failed to delete HCF');
@@ -605,30 +679,37 @@ const HCFMasterPage = () => {
 
   return (
     <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -879,6 +960,10 @@ const HCFMasterPage = () => {
           categories={categories.filter(c => c.status === 'Active')}
           routes={routes.filter(r => r.status === 'Active')}
           hcfTypes={hcfTypes.filter(t => t.status === 'Active')}
+          agreements={agreements}
+          users={users}
+          roles={roles}
+          districts={districts.filter(d => d.status === 'Active')}
           saving={saving}
           onClose={() => {
             setShowModal(false);
@@ -1020,12 +1105,31 @@ interface HCFFormModalProps {
   categories: Category[];
   routes: Route[];
   hcfTypes: HcfTypeResponse[];
+  agreements: AgreementResponse[];
+  users: UserResponse[];
+  roles: RoleResponse[];
+  districts: DistrictResponse[];
   saving: boolean;
   onClose: () => void;
   onSave: (data: Partial<HCF>) => void;
 }
 
-const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, routes, hcfTypes, saving, onClose, onSave }: HCFFormModalProps) => {
+const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, routes, hcfTypes, agreements, users, roles, districts, saving, onClose, onSave }: HCFFormModalProps) => {
+  // Get Executive role IDs
+  const executiveRoleIds = roles
+    .filter(role => role.roleName.toLowerCase().includes('executive'))
+    .map(role => role.roleId);
+
+  // Filter users with Executive role
+  const executiveUsers = users.filter(user => 
+    user.userRoleId && executiveRoleIds.includes(user.userRoleId) && user.status === 'Active'
+  );
+
+  // Get company name for users
+  const getUserDisplayName = (user: UserResponse): string => {
+    const company = companies.find(c => c.id === user.companyId);
+    return `${user.userName}${company ? ` (${company.companyName})` : ''}`;
+  };
   const getInitialFormData = useCallback(() => {
     if (hcf) {
       return { ...hcf };
@@ -1086,13 +1190,34 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
   }, [hcf]);
 
   const [formData, setFormData] = useState<Partial<HCF>>(getInitialFormData);
-  // UI-only field for Billing Configuration (not persisted in backend)
-  const [billingWeightKg, setBillingWeightKg] = useState<string>('');
+
+  // Handle billing option change - clear old data when switching
+  const handleBillingOptionChange = (newOption: string) => {
+    const currentOption = formData.billingOption;
+    
+    // If switching to a different option, clear the old option's data
+    if (currentOption && currentOption !== newOption) {
+      const updatedData = { ...formData, billingOption: newOption };
+      
+      // Clear data for the old option
+      if (currentOption === 'Per Bed') {
+        updatedData.bedRate = '';
+      } else if (currentOption === 'Per Kg') {
+        updatedData.kgRate = '';
+      } else if (currentOption === 'Lumpsum') {
+        updatedData.lumpsum = '';
+      }
+      
+      setFormData(updatedData);
+    } else {
+      // Just update the option if no previous option was set
+      setFormData({ ...formData, billingOption: newOption });
+    }
+  };
 
   // Update formData when hcf prop changes
   useEffect(() => {
     setFormData(getInitialFormData());
-    setBillingWeightKg('');
   }, [hcf, getInitialFormData]);
 
   // Step-based navigation state
@@ -1279,7 +1404,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
           <form className="company-form" onSubmit={handleSubmit} onInput={(e) => clearFieldValidation(e.target as HTMLElement)}>
             {/* Step 1: Basic Information */}
             {currentStep === 1 && (
-              <div className="wizard-step-content" data-hcf-step="1">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="1">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon">
                     {getStepIcon('building')}
@@ -1323,25 +1448,6 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Company ID</label>
-                    <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M4 7h16"></path>
-                          <path d="M4 12h16"></path>
-                          <path d="M4 17h16"></path>
-                        </svg>
-                      </span>
-                      <input
-                        type="text"
-                        value={formData.companyID || ''}
-                        readOnly
-                        className="form-input"
-                        style={{ backgroundColor: '#f1f5f9' }}
-                      />
-                    </div>
-                  </div>
-                  <div className="form-group">
                     <label className="form-label">
                       HCF Code <span className="required-asterisk">*</span>
                     </label>
@@ -1358,32 +1464,60 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                       <input
                         type="text"
                         value={formData.hcfCode || ''}
-                        onChange={(e) => setFormData({ ...formData, hcfCode: e.target.value })}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                          // First 5 chars: alphabets only, rest: numeric
+                          let formatted = '';
+                          for (let i = 0; i < value.length; i++) {
+                            if (i < 5) {
+                              // First 5 chars: only alphabets
+                              if (/[A-Z]/.test(value[i])) {
+                                formatted += value[i];
+                              }
+                            } else {
+                              // Remaining: only numeric
+                              if (/[0-9]/.test(value[i])) {
+                                formatted += value[i];
+                              }
+                            }
+                          }
+                          setFormData({ ...formData, hcfCode: formatted });
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value.trim();
+                          if (value && !/^[A-Z]{5}[0-9]+$/.test(value)) {
+                            toast.error('HCF Code must start with 5 uppercase letters followed by numbers (e.g., ABCDE0001)');
+                          }
+                        }}
                         required
                         className="form-input"
+                        placeholder="ABCDE0001"
+                        pattern="^[A-Z]{5}[0-9]+$"
                       />
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      Password <span className="required-asterisk">*</span>
-                    </label>
-                    <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                      </span>
-                      <input
-                        type="password"
-                        value={formData.password || ''}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        required
-                        className="form-input"
-                      />
+                  {!hcf && (
+                    <div className="form-group">
+                      <label className="form-label">
+                        Password <span className="required-asterisk">*</span>
+                      </label>
+                      <div className="hcf-input-wrapper">
+                        <span className="hcf-input-icon" aria-hidden="true">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                          </svg>
+                        </span>
+                        <input
+                          type="password"
+                          value={formData.password || ''}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          required
+                          className="form-input"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="form-group">
                     <label className="form-label">HCF Type Code</label>
                     <div className="hcf-input-wrapper">
@@ -1477,7 +1611,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 2: Location Information */}
             {currentStep === 2 && (
-              <div className="wizard-step-content" data-hcf-step="2">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="2">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-pink">
                     {getStepIcon('map-pin')}
@@ -1559,13 +1693,24 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                           <circle cx="12" cy="10" r="3"></circle>
                         </svg>
                       </span>
-                      <input
-                        type="text"
+                      <select
                         value={formData.district || ''}
                         onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                         required
-                        className="form-input"
-                      />
+                        className="form-select"
+                      >
+                        <option value="">Select District</option>
+                        {districts.map((district) => (
+                          <option key={district.id} value={district.districtCode}>
+                            {district.districtCode} - {district.districtName}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="hcf-select-arrow-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </span>
                     </div>
                   </div>
                   <div className="form-group">
@@ -1624,7 +1769,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 3: Addresses */}
             {currentStep === 3 && (
-              <div className="wizard-step-content" data-hcf-step="3">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="3">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-green">
                     {getStepIcon('address')}
@@ -1689,7 +1834,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 4: Registration & GST */}
             {currentStep === 4 && (
-              <div className="wizard-step-content" data-hcf-step="4">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="4">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-purple">
                     {getStepIcon('shield')}
@@ -1738,7 +1883,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Hospital Registration Date</label>
+                      <label className="form-label">Expiry Date</label>
                       <div className="hcf-input-wrapper">
                         <span className="hcf-input-icon" aria-hidden="true">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1838,12 +1983,23 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                             <line x1="16" y1="17" x2="8" y2="17"></line>
                           </svg>
                         </span>
-                        <input
-                          type="text"
+                        <select
                           value={formData.agrID || ''}
                           onChange={(e) => setFormData({ ...formData, agrID: e.target.value })}
-                          className="form-input"
-                        />
+                          className="form-select"
+                        >
+                          <option value="">Select Agreement</option>
+                          {agreements.map((agreement) => (
+                            <option key={agreement.id} value={agreement.agreementID}>
+                              {agreement.agreementID} - {agreement.agreementNum || 'N/A'}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="hcf-select-arrow-icon" aria-hidden="true">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </span>
                       </div>
                     </div>
                     <div className="form-group form-group--full">
@@ -1870,7 +2026,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 5: Billing Configuration */}
             {currentStep === 5 && (
-              <div className="wizard-step-content" data-hcf-step="5">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="5">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-blue">
                     {getStepIcon('billing')}
@@ -1879,7 +2035,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                 </div>
                 <div className="form-grid-two-col">
                   <div className="form-group">
-                    <label className="form-label">Billing Type</label>
+                    <label className="form-label">Billing Cycle</label>
                     <div className="hcf-input-wrapper">
                       <span className="hcf-input-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1893,7 +2049,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                         onChange={(e) => setFormData({ ...formData, billingType: e.target.value })}
                         className="form-select"
                       >
-                        <option value="">Select Billing Type</option>
+                        <option value="">Select Billing Cycle</option>
                         <option value="Monthly">Monthly</option>
                         <option value="Yearly">Yearly</option>
                         <option value="Occasionally">Occasionally</option>
@@ -1906,7 +2062,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                     </div>
                   </div>
 
-                  <div className="form-group form-group--full">
+                  <div className="form-group">
                     <label className="form-label">Billing Option</label>
                     <div className="hcf-billing-options" role="radiogroup" aria-label="Billing Option">
                       <label className="hcf-radio-option">
@@ -1915,7 +2071,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                           name="billingOption"
                           value="Per Bed"
                           checked={formData.billingOption === 'Per Bed'}
-                          onChange={(e) => setFormData({ ...formData, billingOption: e.target.value })}
+                          onChange={(e) => handleBillingOptionChange(e.target.value)}
                         />
                         <span>Bed</span>
                       </label>
@@ -1925,7 +2081,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                           name="billingOption"
                           value="Per Kg"
                           checked={formData.billingOption === 'Per Kg'}
-                          onChange={(e) => setFormData({ ...formData, billingOption: e.target.value })}
+                          onChange={(e) => handleBillingOptionChange(e.target.value)}
                         />
                         <span>Weight</span>
                       </label>
@@ -1935,14 +2091,14 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                           name="billingOption"
                           value="Lumpsum"
                           checked={formData.billingOption === 'Lumpsum'}
-                          onChange={(e) => setFormData({ ...formData, billingOption: e.target.value })}
+                          onChange={(e) => handleBillingOptionChange(e.target.value)}
                         />
                         <span>Lumpsum</span>
                       </label>
                     </div>
                   </div>
 
-                  <div className="form-group form-group--full">
+                  <div className="form-group">
                     <label className="form-label">Auto Generate Invoice</label>
                     <div className="hcf-toggle" role="group" aria-label="Auto Generate Invoice">
                       <button
@@ -1965,12 +2121,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                   <div className="form-group">
                     <label className="form-label">Advance Amount</label>
                     <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="1" x2="12" y2="23"></line>
-                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                      </span>
+                      <span className="hcf-input-icon" aria-hidden="true">₹</span>
                       <input
                         type="text"
                         value={formData.advAmount || ''}
@@ -2002,12 +2153,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                   <div className={`form-group ${formData.billingOption !== 'Per Bed' ? 'billing-field--inactive' : ''}`}>
                     <label className="form-label">Bed Rate</label>
                     <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="1" x2="12" y2="23"></line>
-                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                      </span>
+                      <span className="hcf-input-icon" aria-hidden="true">₹</span>
                       <input
                         type="text"
                         value={formData.bedRate || ''}
@@ -2018,32 +2164,9 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                     </div>
                   </div>
                   <div className={`form-group ${formData.billingOption !== 'Per Kg' ? 'billing-field--inactive' : ''}`}>
-                    <label className="form-label">Weight KG</label>
-                    <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                          <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                      </span>
-                      <input
-                        type="text"
-                        value={billingWeightKg}
-                        onChange={(e) => setBillingWeightKg(e.target.value)}
-                        className="form-input"
-                        disabled={formData.billingOption !== 'Per Kg'}
-                      />
-                    </div>
-                  </div>
-                  <div className={`form-group ${formData.billingOption !== 'Per Kg' ? 'billing-field--inactive' : ''}`}>
                     <label className="form-label">Rate per KG</label>
                     <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="1" x2="12" y2="23"></line>
-                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                      </span>
+                      <span className="hcf-input-icon" aria-hidden="true">₹</span>
                       <input
                         type="text"
                         value={formData.kgRate || ''}
@@ -2056,12 +2179,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                   <div className={`form-group ${formData.billingOption !== 'Lumpsum' ? 'billing-field--inactive' : ''}`}>
                     <label className="form-label">Lumpsum Amount</label>
                     <div className="hcf-input-wrapper">
-                      <span className="hcf-input-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="1" x2="12" y2="23"></line>
-                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                      </span>
+                      <span className="hcf-input-icon" aria-hidden="true">₹</span>
                       <input
                         type="text"
                         value={formData.lumpsum || ''}
@@ -2077,7 +2195,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 6: Contact Information */}
             {currentStep === 6 && (
-              <div className="wizard-step-content" data-hcf-step="6">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="6">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-orange">
                     {getStepIcon('contacts')}
@@ -2219,7 +2337,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
 
             {/* Step 7: Service & Configuration */}
             {currentStep === 7 && (
-              <div className="wizard-step-content" data-hcf-step="7">
+              <div className="wizard-step-content hcf-step-content-standard" data-hcf-step="7">
                 <div className="wizard-step-header">
                   <div className="wizard-step-header-icon icon-purple">
                     {getStepIcon('settings')}
@@ -2335,12 +2453,23 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                             <circle cx="12" cy="7" r="4"></circle>
                           </svg>
                         </span>
-                        <input
-                          type="text"
+                        <select
                           value={formData.executive_Assigned || ''}
                           onChange={(e) => setFormData({ ...formData, executive_Assigned: e.target.value })}
-                          className="form-input"
-                        />
+                          className="form-select"
+                        >
+                          <option value="">Select Executive</option>
+                          {executiveUsers.map((user) => (
+                            <option key={user.userId} value={user.userId}>
+                              {getUserDisplayName(user)}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="hcf-select-arrow-icon" aria-hidden="true">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2414,12 +2543,23 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                             <circle cx="12" cy="7" r="4"></circle>
                           </svg>
                         </span>
-                        <input
-                          type="text"
+                        <select
                           value={formData.submitBy || ''}
                           onChange={(e) => setFormData({ ...formData, submitBy: e.target.value })}
-                          className="form-input"
-                        />
+                          className="form-select"
+                        >
+                          <option value="">Select User</option>
+                          {users.filter(u => u.status === 'Active').map((user) => (
+                            <option key={user.userId} value={user.userId}>
+                              {getUserDisplayName(user)}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="hcf-select-arrow-icon" aria-hidden="true">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -2430,10 +2570,10 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
         </div>
 
         <div className="wizard-footer">
-          <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="wizard-footer-actions">
+            <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={saving}>
+              Cancel
+            </button>
             {currentStep > 1 && (
               <button type="button" className="wp-btn wp-btn--secondary" onClick={handleBack} disabled={saving}>
                 Back

@@ -178,7 +178,11 @@ export const incinerationRegisterService = {
     const response = await apiRequest<ApiResponse<IncinerationRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data;
+    // Safety check: ensure data is an array
+    if (!response || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   updateIncinerationRegister: async (

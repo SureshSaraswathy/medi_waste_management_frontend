@@ -52,6 +52,11 @@ const DowntimeRegisterPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingDowntime, setEditingDowntime] = useState<DowntimeRegister | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,7 +78,13 @@ const DowntimeRegisterPage = () => {
   const loadCompanies = useCallback(async () => {
     try {
       const apiCompanies = await companyService.getAllCompanies(true);
-      const mappedCompanies: Company[] = (apiCompanies || []).map((c: CompanyResponse) => ({
+      // Safety check: ensure apiCompanies is an array
+      if (!apiCompanies || !Array.isArray(apiCompanies)) {
+        console.warn('Companies API returned non-array response:', apiCompanies);
+        setCompanies([]);
+        return;
+      }
+      const mappedCompanies: Company[] = apiCompanies.map((c: CompanyResponse) => ({
         id: c.id,
         companyCode: c.companyCode,
         companyName: c.companyName,
@@ -82,7 +93,7 @@ const DowntimeRegisterPage = () => {
       setCompanies(mappedCompanies);
     } catch (err) {
       console.error('Error loading companies:', err);
-      setCompanies([]);
+      setCompanies([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -96,9 +107,16 @@ const DowntimeRegisterPage = () => {
         statusFilter !== 'all' ? statusFilter : undefined
       );
 
+      // Safety check: ensure apiDowntimes is an array
+      if (!apiDowntimes || !Array.isArray(apiDowntimes)) {
+        console.warn('Downtime registers API returned non-array response:', apiDowntimes);
+        setDowntimes([]);
+        return;
+      }
+
       // Map backend response to frontend format with names
       const mappedDowntimes: DowntimeRegister[] = await Promise.all(
-        (apiDowntimes || []).map(async (apiDowntime: DowntimeRegisterResponse) => {
+        apiDowntimes.map(async (apiDowntime: DowntimeRegisterResponse) => {
           const company = companies.find(c => c.id === apiDowntime.companyId);
 
           return {
@@ -111,7 +129,8 @@ const DowntimeRegisterPage = () => {
             breakdownType: apiDowntime.breakdownType,
             startTime: apiDowntime.startTime,
             endTime: apiDowntime.endTime,
-            downtimeHours: apiDowntime.downtimeHours,
+            // Convert decimal strings to numbers
+            downtimeHours: typeof apiDowntime.downtimeHours === 'string' ? parseFloat(apiDowntime.downtimeHours) : Number(apiDowntime.downtimeHours) || 0,
             cause: apiDowntime.cause,
             actionTaken: apiDowntime.actionTaken,
             sparesUsed: apiDowntime.sparesUsed,
@@ -129,7 +148,7 @@ const DowntimeRegisterPage = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load downtime registers';
       setError(errorMessage);
       console.error('Error loading downtime registers:', err);
-      setDowntimes([]);
+      setDowntimes([]); // Set empty array on error to prevent crashes
     } finally {
       setLoading(false);
     }
@@ -285,15 +304,36 @@ const DowntimeRegisterPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -305,7 +345,7 @@ const DowntimeRegisterPage = () => {
                   className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -313,7 +353,7 @@ const DowntimeRegisterPage = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <NotificationBell variant="sidebar" />
+          <NotificationBell variant="sidebar" isSidebarCollapsed={isSidebarCollapsed} />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -323,7 +363,7 @@ const DowntimeRegisterPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -331,7 +371,7 @@ const DowntimeRegisterPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -464,7 +504,7 @@ const DowntimeRegisterPage = () => {
                         <td>{downtime.breakdownType}</td>
                         <td>{downtime.startTime}</td>
                         <td>{downtime.endTime}</td>
-                        <td>{downtime.downtimeHours.toFixed(2)}</td>
+                        <td>{Number(downtime.downtimeHours || 0).toFixed(2)}</td>
                         <td>{downtime.cause}</td>
                         <td>
                           <div className="ra-cell-center">

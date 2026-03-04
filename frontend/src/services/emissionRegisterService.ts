@@ -169,7 +169,11 @@ export const emissionRegisterService = {
     const response = await apiRequest<ApiResponse<EmissionRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data;
+    // Safety check: ensure data is an array
+    if (!response || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   updateEmissionRegister: async (

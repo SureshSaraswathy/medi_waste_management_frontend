@@ -6,8 +6,10 @@
 .dashboard-configuration-content-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0; /* Allow content to define height */
+  height: auto; /* Allow wrapper to grow beyond viewport height */
   background: #f9fafb;
+  box-sizing: border-box;
 }
 
 .dashboard-configuration-toolbar {
@@ -147,7 +149,9 @@
 .dashboard-configuration-panels {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  min-height: 0; /* Allow panels to shrink */
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 .dashboard-configuration-panel-left {
@@ -156,6 +160,9 @@
   min-width: 380px;
   border-right: 1px solid #e5e7eb;
   background: #ffffff;
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  min-height: 0; /* Allow panel to shrink */
 }
 
 .dashboard-configuration-panel-center {
@@ -163,12 +170,18 @@
   min-width: 0;
   border-right: 1px solid #e5e7eb;
   background: #ffffff;
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  min-height: 0; /* Allow panel to shrink */
 }
 
 .dashboard-configuration-panel-right {
   width: 320px;
   min-width: 320px;
   background: #ffffff;
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  min-height: 0; /* Allow panel to shrink */
 }
 
 .dashboard-configuration-loading {

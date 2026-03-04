@@ -135,9 +135,14 @@ class ComplianceRegisterService {
     const queryString = params.toString();
     const url = queryString ? `${this.baseUrl}?${queryString}` : this.baseUrl;
 
-    return await apiRequest<ComplianceRegisterResponse[]>(url, {
+    const response = await apiRequest<ComplianceRegisterResponse[]>(url, {
       method: 'GET',
     });
+    // Safety check: ensure response is an array
+    if (!response || !Array.isArray(response)) {
+      return [];
+    }
+    return response;
   }
 
   /**

@@ -172,7 +172,11 @@ export const downtimeRegisterService = {
     const response = await apiRequest<ApiResponse<DowntimeRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data || [];
+    // Safety check: ensure data is an array
+    if (!response || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   updateDowntimeRegister: async (

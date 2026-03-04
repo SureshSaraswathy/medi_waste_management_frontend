@@ -62,6 +62,11 @@ const ShredderRegisterPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingShredder, setEditingShredder] = useState<ShredderRegister | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,6 +89,12 @@ const ShredderRegisterPage = () => {
   const loadCompanies = useCallback(async () => {
     try {
       const apiCompanies = await companyService.getAllCompanies(true);
+      // Safety check: ensure apiCompanies is an array
+      if (!apiCompanies || !Array.isArray(apiCompanies)) {
+        console.warn('Companies API returned non-array response:', apiCompanies);
+        setCompanies([]);
+        return;
+      }
       const mappedCompanies: Company[] = apiCompanies.map((c: CompanyResponse) => ({
         id: c.id,
         companyCode: c.companyCode,
@@ -93,6 +104,7 @@ const ShredderRegisterPage = () => {
       setCompanies(mappedCompanies);
     } catch (err) {
       console.error('Error loading companies:', err);
+      setCompanies([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -100,6 +112,12 @@ const ShredderRegisterPage = () => {
   const loadCategories = useCallback(async () => {
     try {
       const apiCategories = await categoryService.getAllCategories(undefined, true);
+      // Safety check: ensure apiCategories is an array
+      if (!apiCategories || !Array.isArray(apiCategories)) {
+        console.warn('Categories API returned non-array response:', apiCategories);
+        setCategories([]);
+        return;
+      }
       const mappedCategories: Category[] = apiCategories.map((cat: CategoryResponse) => ({
         id: cat.id,
         categoryCode: cat.categoryCode,
@@ -109,6 +127,7 @@ const ShredderRegisterPage = () => {
       setCategories(mappedCategories);
     } catch (err) {
       console.error('Error loading categories:', err);
+      setCategories([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -121,6 +140,13 @@ const ShredderRegisterPage = () => {
         undefined,
         statusFilter !== 'all' ? statusFilter : undefined
       );
+
+      // Safety check: ensure apiShredders is an array
+      if (!apiShredders || !Array.isArray(apiShredders)) {
+        console.warn('Shredder registers API returned non-array response:', apiShredders);
+        setShredders([]);
+        return;
+      }
 
       // Map backend response to frontend format with names
       const mappedShredders: ShredderRegister[] = await Promise.all(
@@ -136,12 +162,13 @@ const ShredderRegisterPage = () => {
             equipmentId: apiShredder.equipmentId,
             batchNo: apiShredder.batchNo,
             wasteCategory: apiShredder.wasteCategory,
-            wasteQtyKg: apiShredder.wasteQtyKg,
+            // Convert decimal strings to numbers
+            wasteQtyKg: typeof apiShredder.wasteQtyKg === 'string' ? parseFloat(apiShredder.wasteQtyKg) : Number(apiShredder.wasteQtyKg) || 0,
             startTime: apiShredder.startTime,
             endTime: apiShredder.endTime,
-            temperatureC: apiShredder.temperatureC,
-            pressureBar: apiShredder.pressureBar,
-            cycleTimeMin: apiShredder.cycleTimeMin,
+            temperatureC: typeof apiShredder.temperatureC === 'string' ? parseFloat(apiShredder.temperatureC) : Number(apiShredder.temperatureC) || 0,
+            pressureBar: typeof apiShredder.pressureBar === 'string' ? parseFloat(apiShredder.pressureBar) : Number(apiShredder.pressureBar) || 0,
+            cycleTimeMin: typeof apiShredder.cycleTimeMin === 'string' ? parseFloat(apiShredder.cycleTimeMin) : Number(apiShredder.cycleTimeMin) || 0,
             indicatorResult: apiShredder.indicatorResult,
             complianceStatus: apiShredder.complianceStatus,
             status: apiShredder.status,
@@ -157,6 +184,7 @@ const ShredderRegisterPage = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load shredder registers';
       setError(errorMessage);
       console.error('Error loading shredder registers:', err);
+      setShredders([]); // Set empty array on error to prevent crashes
     } finally {
       setLoading(false);
     }
@@ -329,15 +357,36 @@ const ShredderRegisterPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -349,7 +398,7 @@ const ShredderRegisterPage = () => {
                   className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -357,7 +406,7 @@ const ShredderRegisterPage = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <NotificationBell variant="sidebar" />
+          <NotificationBell variant="sidebar" isSidebarCollapsed={isSidebarCollapsed} />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -367,7 +416,7 @@ const ShredderRegisterPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -375,7 +424,7 @@ const ShredderRegisterPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -505,7 +554,7 @@ const ShredderRegisterPage = () => {
                         <td>{shredder.equipmentId}</td>
                         <td>{shredder.batchNo}</td>
                         <td>{shredder.wasteCategory}</td>
-                        <td>{shredder.wasteQtyKg.toFixed(2)}</td>
+                        <td>{Number(shredder.wasteQtyKg || 0).toFixed(2)}</td>
                         <td>
                           <div className="ra-cell-center">
                             <span className={`status-badge ${getIndicatorBadgeClass(shredder.indicatorResult)}`}>

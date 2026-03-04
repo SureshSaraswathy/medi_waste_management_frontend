@@ -18,6 +18,7 @@ import ComplianceTrainingPage from './pages/desktop/ComplianceTrainingPage';
 import MasterPage from './pages/desktop/MasterPage';
 import CompanyMasterPage from './pages/desktop/CompanyMasterPage';
 import StateMasterPage from './pages/desktop/StateMasterPage';
+import DistrictMasterPage from './pages/desktop/DistrictMasterPage';
 import AreaMasterPage from './pages/desktop/AreaMasterPage';
 import CategoryMasterPage from './pages/desktop/CategoryMasterPage';
 import PCBZoneMasterPage from './pages/desktop/PCBZoneMasterPage';
@@ -560,6 +561,16 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['STATE_VIEW', 'STATE_CREATE', 'STATE_EDIT', 'STATE_DELETE']}>
               <StateMasterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/district"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['DISTRICT_VIEW', 'DISTRICT_CREATE', 'DISTRICT_EDIT', 'DISTRICT_DELETE']}>
+              <DistrictMasterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }

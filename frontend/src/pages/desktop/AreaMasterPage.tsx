@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { areaService, AreaResponse } from '../../services/areaService';
+import { hcfService } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
 import '../desktop/dashboardPage.css';
 import './areaMasterPage.css';
@@ -117,9 +118,30 @@ const AreaMasterPage = () => {
     if (window.confirm('Are you sure you want to delete this area?')) {
       try {
         setLoading(true);
+        
+        // Validate deletion using validation service
+        const { validateAreaDelete } = await import('../../utils/deleteValidationService');
+        const validation = await validateAreaDelete(id);
+        if (!validation.canDelete) {
+          toast.error(validation.message);
+          setLoading(false);
+          return;
+        }
+        
         await areaService.deleteArea(id);
         await loadAreas(); // Reload areas after deletion
-        toast.error('Area deleted successfully');
+        toast.success('Area deleted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete area';
         toast.error(`Error: ${errorMessage}`);
@@ -173,30 +195,37 @@ const AreaMasterPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">

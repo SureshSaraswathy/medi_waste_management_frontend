@@ -42,9 +42,14 @@ interface Frequency {
 const RouteMasterPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   
   interface AdvancedFilters {
     routeCode: string;
@@ -195,9 +200,19 @@ const RouteMasterPage = () => {
     if (window.confirm('Are you sure you want to delete this route?')) {
       try {
         setLoading(true);
+        
+        // Validate deletion using validation service
+        const { validateRouteDelete } = await import('../../utils/deleteValidationService');
+        const validation = await validateRouteDelete(id);
+        if (!validation.canDelete) {
+          toast.error(validation.message);
+          setLoading(false);
+          return;
+        }
+        
         await routeService.deleteRoute(id);
         await loadRoutes();
-        toast.error('Route deleted successfully');
+        toast.success('Route deleted successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete route';
         toast.error(`Error: ${errorMessage}`);
@@ -262,15 +277,36 @@ const RouteMasterPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -282,7 +318,7 @@ const RouteMasterPage = () => {
                   className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -300,7 +336,7 @@ const RouteMasterPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -308,7 +344,7 @@ const RouteMasterPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>

@@ -175,10 +175,13 @@
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
+  overflow-y: visible;
+  width: 100%;
 }
 
 .route-assignment-table {
   width: 100%;
+  min-width: 1200px; /* Ensure table doesn't collapse */
   border-collapse: collapse;
   table-layout: auto;
 }

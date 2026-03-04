@@ -7,6 +7,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import './emissionRegisterPage.css';
 import '../desktop/dashboardPage.css';
+import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
 
 interface EmissionRegister {
@@ -51,11 +52,15 @@ const EmissionRegisterPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingEmission, setEditingEmission] = useState<EmissionRegister | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     emisRegNum: '',
     companyName: '',
@@ -72,6 +77,12 @@ const EmissionRegisterPage = () => {
   const loadCompanies = useCallback(async () => {
     try {
       const apiCompanies = await companyService.getAllCompanies(true);
+      // Safety check: ensure apiCompanies is an array
+      if (!apiCompanies || !Array.isArray(apiCompanies)) {
+        console.warn('Companies API returned non-array response:', apiCompanies);
+        setCompanies([]);
+        return;
+      }
       const mappedCompanies: Company[] = apiCompanies.map((c: CompanyResponse) => ({
         id: c.id,
         companyCode: c.companyCode,
@@ -81,6 +92,7 @@ const EmissionRegisterPage = () => {
       setCompanies(mappedCompanies);
     } catch (err) {
       console.error('Error loading companies:', err);
+      setCompanies([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -94,7 +106,15 @@ const EmissionRegisterPage = () => {
         statusFilter !== 'all' ? statusFilter : undefined
       );
 
+      // Safety check: ensure apiEmissions is an array
+      if (!apiEmissions || !Array.isArray(apiEmissions)) {
+        console.warn('Emission registers API returned non-array response:', apiEmissions);
+        setEmissions([]);
+        return;
+      }
+
       // Map backend response to frontend format with names
+      // Use current companies state from closure
       const mappedEmissions: EmissionRegister[] = await Promise.all(
         apiEmissions.map(async (apiEmission: EmissionRegisterResponse) => {
           const company = companies.find(c => c.id === apiEmission.companyId);
@@ -107,11 +127,12 @@ const EmissionRegisterPage = () => {
             emissionDate: apiEmission.emissionDate,
             equipmentId: apiEmission.equipmentId,
             stackId: apiEmission.stackId,
-            pm: apiEmission.pm,
-            co: apiEmission.co,
-            hci: apiEmission.hci,
-            temp: apiEmission.temp,
-            oxygen: apiEmission.oxygen,
+            // Convert decimal strings to numbers
+            pm: typeof apiEmission.pm === 'string' ? parseFloat(apiEmission.pm) : Number(apiEmission.pm) || 0,
+            co: typeof apiEmission.co === 'string' ? parseFloat(apiEmission.co) : Number(apiEmission.co) || 0,
+            hci: typeof apiEmission.hci === 'string' ? parseFloat(apiEmission.hci) : Number(apiEmission.hci) || 0,
+            temp: typeof apiEmission.temp === 'string' ? parseFloat(apiEmission.temp) : Number(apiEmission.temp) || 0,
+            oxygen: typeof apiEmission.oxygen === 'string' ? parseFloat(apiEmission.oxygen) : Number(apiEmission.oxygen) || 0,
             complianceStatus: apiEmission.complianceStatus,
             status: apiEmission.status,
             createdBy: apiEmission.createdBy,
@@ -126,6 +147,7 @@ const EmissionRegisterPage = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load emission registers';
       setError(errorMessage);
       console.error('Error loading emission registers:', err);
+      setEmissions([]); // Set empty array on error to prevent crashes
     } finally {
       setLoading(false);
     }
@@ -191,12 +213,22 @@ const EmissionRegisterPage = () => {
         setLoading(true);
         setError(null);
         await emissionRegisterService.deleteEmissionRegister(id);
-        setSuccessMessage('Emission register deleted successfully');
+        toast.success('Emission register deleted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
         await loadEmissions();
-        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete emission register';
-        setError(errorMessage);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting emission register:', err);
       } finally {
         setLoading(false);
@@ -223,12 +255,23 @@ const EmissionRegisterPage = () => {
           complianceStatus: data.complianceStatus,
           status: data.status,
         });
-        setSuccessMessage('Emission register updated successfully');
+        toast.success('Emission register updated successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         // Create new emission
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
-          setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -245,16 +288,28 @@ const EmissionRegisterPage = () => {
           complianceStatus: data.complianceStatus || 'Compliant',
           status: data.status || 'Active',
         });
-        setSuccessMessage('Emission register created successfully');
+        toast.success('Created Successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
 
       setShowModal(false);
       setEditingEmission(null);
+      // Reload emissions after save - ensure companies are loaded first
+      // Use a fresh call to loadEmissions that will use the current companies state
       await loadEmissions();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save emission register';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving emission register:', err);
     } finally {
       setLoading(false);
@@ -279,15 +334,36 @@ const EmissionRegisterPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -299,7 +375,7 @@ const EmissionRegisterPage = () => {
                   className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -307,7 +383,7 @@ const EmissionRegisterPage = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <NotificationBell variant="sidebar" />
+          <NotificationBell variant="sidebar" isSidebarCollapsed={isSidebarCollapsed} />
           <Link
             to="/profile"
             className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
@@ -317,7 +393,7 @@ const EmissionRegisterPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -325,7 +401,7 @@ const EmissionRegisterPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -337,16 +413,6 @@ const EmissionRegisterPage = () => {
           title="Emission Register"
           subtitle="Manage emission monitoring records"
         />
-
-        {/* Success Message */}
-        {successMessage && (
-          <div className="ra-alert ra-alert--success" role="status" aria-live="polite">
-            <span>{successMessage}</span>
-            <button onClick={() => setSuccessMessage(null)} className="ra-alert-close" aria-label="Close success message">
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Error Message */}
         {error && (
@@ -464,11 +530,11 @@ const EmissionRegisterPage = () => {
                         <td>{formatDate(emission.emissionDate)}</td>
                         <td>{emission.equipmentId}</td>
                         <td>{emission.stackId}</td>
-                        <td>{emission.pm.toFixed(2)}</td>
-                        <td>{emission.co.toFixed(2)}</td>
-                        <td>{emission.hci.toFixed(2)}</td>
-                        <td>{emission.temp.toFixed(2)}</td>
-                        <td>{emission.oxygen.toFixed(2)}</td>
+                        <td>{Number(emission.pm || 0).toFixed(2)}</td>
+                        <td>{Number(emission.co || 0).toFixed(2)}</td>
+                        <td>{Number(emission.hci || 0).toFixed(2)}</td>
+                        <td>{Number(emission.temp || 0).toFixed(2)}</td>
+                        <td>{Number(emission.oxygen || 0).toFixed(2)}</td>
                         <td>
                           <div className="ra-cell-center">
                             <span className={`status-badge ${getComplianceBadgeClass(emission.complianceStatus)}`}>
@@ -654,11 +720,13 @@ const EmissionFormModal = ({
                   className="ra-assignment-select"
                 >
                   <option value="">Select Company</option>
-                  {companies.map((company) => (
+                  {companies && companies.length > 0 ? companies.map((company) => (
                     <option key={company.id} value={company.id}>
                       {company.companyName}
                     </option>
-                  ))}
+                  )) : (
+                    <option value="" disabled>No companies available</option>
+                  )}
                 </select>
               </div>
               <div className="ra-assignment-form-group">

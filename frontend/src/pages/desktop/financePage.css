@@ -24,3 +24,12 @@
 .finance-page .master-header {
   gap: 12px; /* Consistent spacing between icon and title */
 }
+
+/* Ensure Finance page is responsive */
+.finance-page {
+  min-height: calc(100vh - 64px);
+  height: auto; /* Allow page to grow beyond viewport height */
+  overflow-x: hidden; /* Prevent horizontal page scroll */
+  overflow-y: visible; /* Allow vertical scrolling for page content */
+  box-sizing: border-box;
+}

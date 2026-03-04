@@ -3,6 +3,10 @@
   padding: 24px;
   background: #ffffff;
   min-height: calc(100vh - 100px);
+  height: auto; /* Allow page to grow beyond viewport height */
+  overflow-x: hidden; /* Prevent horizontal page scroll */
+  overflow-y: visible; /* Allow vertical scrolling for page content */
+  box-sizing: border-box;
 }
 
 /* Page Header */
@@ -179,11 +183,41 @@
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-x: auto;
+  overflow-x: auto; /* Allow horizontal scrolling when table is wide */
+  overflow-y: visible; /* Allow vertical scrolling for table content */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Ensure scrollbars are visible */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  -ms-overflow-style: auto;
+}
+
+/* Webkit scrollbar styling for better visibility */
+.route-assignment-table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  display: block; /* Always show scrollbar track */
+}
+
+.route-assignment-table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.route-assignment-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.route-assignment-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .route-assignment-table {
   width: 100%;
+  min-width: max-content; /* Allow table to expand beyond container width if needed */
   border-collapse: collapse;
   table-layout: auto;
 }
@@ -217,6 +251,8 @@
   font-size: 14px;
   color: #1e293b;
   vertical-align: middle;
+  white-space: nowrap; /* Prevent text wrapping in cells to ensure proper table width */
+  box-sizing: border-box;
 }
 
 .route-assignment-table td:last-child {

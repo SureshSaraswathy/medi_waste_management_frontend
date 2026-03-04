@@ -385,30 +385,37 @@ const RouteHCFMappingPage = () => {
 
   return (
     <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
             )}
-          </svg>
-        </button>
+          </div>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
+        </div>
 
         <nav className="sidebar-nav">
           <ul className="nav-list">
@@ -682,6 +689,7 @@ const RouteHCFMappingPage = () => {
           companies={companies.filter(c => c.status === 'Active')}
           routes={routes.filter(r => r.status === 'Active')}
           hcfs={hcfs.filter(h => h.status === 'Active')}
+          mappings={mappings}
           onClose={() => {
             setShowModal(false);
             setEditingMapping(null);
@@ -818,11 +826,12 @@ interface MappingFormModalProps {
   companies: Company[];
   routes: Route[];
   hcfs: HCF[];
+  mappings: RouteHCFMapping[];
   onClose: () => void;
   onSave: (data: Partial<RouteHCFMapping>) => void;
 }
 
-const MappingFormModal = ({ mapping, companies, routes, hcfs, onClose, onSave }: MappingFormModalProps) => {
+const MappingFormModal = ({ mapping, companies, routes, hcfs, mappings, onClose, onSave }: MappingFormModalProps) => {
   const [formData, setFormData] = useState<Partial<RouteHCFMapping>>(
     mapping || {
       companyName: '',
@@ -837,9 +846,21 @@ const MappingFormModal = ({ mapping, companies, routes, hcfs, onClose, onSave }:
     ? routes.filter(route => route.companyName === formData.companyName)
     : routes;
 
+  // Get selected route ID
+  const selectedRoute = filteredRoutes.find(r => r.routeCode === formData.routeCode);
+  
+  // Get HCFs already assigned to the selected route (excluding current mapping if editing)
+  const assignedHcfIds = mappings
+    .filter(m => m.routeId === selectedRoute?.id && m.id !== mapping?.id)
+    .map(m => m.hcfId);
+
+  // Filter HCFs: exclude already assigned ones
   const filteredHCFs = formData.companyName
-    ? hcfs.filter(hcf => hcf.companyName === formData.companyName)
-    : hcfs;
+    ? hcfs.filter(hcf => 
+        hcf.companyName === formData.companyName && 
+        !assignedHcfIds.includes(hcf.id)
+      )
+    : hcfs.filter(hcf => !assignedHcfIds.includes(hcf.id));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

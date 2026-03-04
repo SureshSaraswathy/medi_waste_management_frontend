@@ -10,6 +10,16 @@ import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import {
+  validateAadhaar,
+  validatePAN,
+  validateDrivingLicense,
+  validatePFNumber,
+  validateUAN,
+  validateESINumber,
+  checkEmployeeCodeUniqueness,
+  validateAllIdentityFields,
+} from '../../utils/userValidationService';
 
 interface User {
   id: string;
@@ -72,11 +82,16 @@ const UserManagementPage = () => {
   const { user: authUser, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -672,11 +687,22 @@ const UserManagementPage = () => {
     setLoading(true);
     setError(null);
     try {
+      // Validate deletion using validation service
+      const { validateUserDelete } = await import('../../utils/deleteValidationService');
+      const validation = await validateUserDelete(id);
+      if (!validation.canDelete) {
+        toast.error(validation.message);
+        setLoading(false);
+        return;
+      }
+      
       await userService.deleteUser(id);
       await loadUsers(); // Reload users after deletion
+      toast.success('User deleted successfully!');
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to delete user');
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error deleting user:', err);
     } finally {
       setLoading(false);
@@ -796,7 +822,7 @@ const UserManagementPage = () => {
           console.log('[handleSaveUser] UPDATE API call successful. Result:', result);
           
           // Show success
-          toast.error('User updated successfully!');
+          toast.success('User updated successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
@@ -958,7 +984,7 @@ const UserManagementPage = () => {
           }
           
           // Show success
-          toast.error('User created successfully!');
+          toast.success('User created successfully!');
           
           // Close modal - MUST close even if reload fails
           console.log('[handleSaveUser] Closing modal...');
@@ -1119,7 +1145,7 @@ const UserManagementPage = () => {
     try {
       await roleService.deleteRole(id);
       await loadRoles(); // Reload roles after deletion
-      toast.error('Role deleted successfully!');
+      toast.success('Role deleted successfully!');
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage || 'Failed to delete role');
@@ -1152,7 +1178,7 @@ const UserManagementPage = () => {
         console.log('[handleSaveRole] Updating role:', editingRole.id, updateData);
         await roleService.updateRole(editingRole.id, updateData);
         console.log('[handleSaveRole] Role updated successfully');
-        toast.error('Role updated successfully!');
+        toast.success('Role updated successfully!');
     } else {
         // Create new role
         const createData = {
@@ -1165,7 +1191,7 @@ const UserManagementPage = () => {
         console.log('[handleSaveRole] Creating role:', createData);
         await roleService.createRole(createData);
         console.log('[handleSaveRole] Role created successfully');
-        toast.error('Role created successfully!');
+        toast.success('Role created successfully!');
       }
       
     setShowRoleModal(false);
@@ -1285,15 +1311,36 @@ const UserManagementPage = () => {
   return (
     <div className="dashboard-page">
       {/* Left Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+      <aside className={`dashboard-sidebar sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <div className="logo-container">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="brand-text">
+                <span className="brand-title">MEDI-WASTE</span>
+                <span className="brand-subtitle">Enterprise Platform</span>
+              </div>
+            )}
           </div>
-          <span className="brand-name">MEDI-WASTE</span>
+
+          <button
+            className="toggle-button"
+            onClick={toggleSidebar}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarCollapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+            </svg>
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -1305,7 +1352,7 @@ const UserManagementPage = () => {
                   className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -1323,7 +1370,7 @@ const UserManagementPage = () => {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
-            <span>Profile</span>
+            {!isSidebarCollapsed && <span>Profile</span>}
           </Link>
           <button onClick={logout} className="sidebar-logout-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1331,7 +1378,7 @@ const UserManagementPage = () => {
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            <span>Logout</span>
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
@@ -1645,6 +1692,7 @@ const UserManagementPage = () => {
           user={editingUser}
           roles={roles.filter(r => r.status === 'Active')} // Pass full role objects
           companies={companies.filter(c => c.status === 'Active')}
+          users={users} // Pass all users for employee code uniqueness check
           viewMode={viewMode}
           onClose={() => {
             setShowUserModal(false);
@@ -1780,7 +1828,7 @@ const UserManagementPage = () => {
                     className="temp-password-copy-btn"
                     onClick={() => {
                       navigator.clipboard.writeText(temporaryPasswordData.temporaryPassword);
-                      toast.error('Password copied to clipboard!');
+                      toast.success('Password copied to clipboard!');
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1888,6 +1936,7 @@ interface UserFormModalProps {
   user: User | null;
   roles: Role[]; // Pass full role objects to allow filtering by company
   companies: Company[];
+  users: User[]; // Pass all users for employee code uniqueness check
   viewMode?: boolean;
   onClose: () => void;
   onSave: (data: Partial<User>) => void;
@@ -1902,7 +1951,7 @@ interface UserFormModalProps {
   loading?: boolean;
 }
 
-const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSave, onActivate, onDeactivate, loading }: UserFormModalProps) => {
+const UserFormModal = ({ user, roles, companies, users, viewMode = false, onClose, onSave, onActivate, onDeactivate, loading }: UserFormModalProps) => {
   // Helper function to convert role name to role ID for dropdown
   const getRoleIdFromNameOrId = (roleNameOrId: string | undefined): string => {
     if (!roleNameOrId) return '';
@@ -1954,6 +2003,17 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
     }
   );
 
+  // Validation errors state
+  const [validationErrors, setValidationErrors] = useState<{
+    empCode?: string;
+    aadhaar?: string;
+    pan?: string;
+    dlNum?: string;
+    pfNum?: string;
+    uan?: string;
+    esiNum?: string;
+  }>({});
+
   // Update formData when user changes, converting role name to ID for dropdown
   useEffect(() => {
     if (user) {
@@ -1963,11 +2023,17 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
           ...user,
           userRoleID: roleId || user.userRoleID || '',
         }));
+        // Clear validation errors when loading user data
+        setValidationErrors({});
       } catch (err) {
         console.error('[UserFormModal] Error converting role:', err);
         // Fallback: use user data as-is
         setFormData(user);
+        setValidationErrors({});
       }
+    } else {
+      // Clear validation errors when creating new user
+      setValidationErrors({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
@@ -2001,6 +2067,63 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
       setFormData({ ...formData, [field]: value, userRoleID: '' });
     } else {
       setFormData({ ...formData, [field]: value });
+    }
+
+    // Validate identity fields on change
+    if (!viewMode) {
+      let validationResult: { isValid: boolean; message: string } | null = null;
+      
+      switch (field) {
+        case 'aadhaar':
+          validationResult = validateAadhaar(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            aadhaar: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'pan':
+          validationResult = validatePAN(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            pan: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'dlNum':
+          validationResult = validateDrivingLicense(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            dlNum: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'pfNum':
+          validationResult = validatePFNumber(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            pfNum: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'uan':
+          validationResult = validateUAN(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            uan: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'esiNum':
+          validationResult = validateESINumber(value || '');
+          setValidationErrors(prev => ({
+            ...prev,
+            esiNum: validationResult?.isValid ? '' : validationResult?.message
+          }));
+          break;
+        case 'empCode':
+          // Clear employee code error when user types (will validate on save)
+          setValidationErrors(prev => ({
+            ...prev,
+            empCode: ''
+          }));
+          break;
+      }
     }
   };
 
@@ -2118,7 +2241,7 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
     }
   };
 
-  const handleFinalSave = (e?: React.MouseEvent) => {
+  const handleFinalSave = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -2145,6 +2268,55 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
         
         toast.error(`Please complete the required fields. before saving:\n\n${missingSteps}\n\nPlease go back and complete these fields.`);
         console.error('Final save validation failed - Missing fields:', allMissingFields);
+        return;
+      }
+
+      // Validate Employee Code uniqueness
+      if (formData.empCode) {
+        const empCodeValidation = await checkEmployeeCodeUniqueness(
+          formData.empCode,
+          user?.id || null,
+          users.map(u => ({ id: u.id, empCode: u.empCode }))
+        );
+        
+        if (!empCodeValidation.isValid) {
+          setValidationErrors(prev => ({
+            ...prev,
+            empCode: empCodeValidation.message
+          }));
+          toast.error(empCodeValidation.message);
+          // Navigate to Step 1 to show the error
+          setCurrentStep(1);
+          return;
+        }
+      }
+
+      // Validate all identity fields
+      const identityValidation = validateAllIdentityFields({
+        aadhaar: formData.aadhaar,
+        pan: formData.pan,
+        dlNum: formData.dlNum,
+        pfNum: formData.pfNum,
+        uan: formData.uan,
+        esiNum: formData.esiNum,
+      });
+
+      // Check if any identity validation failed
+      const identityErrors: string[] = [];
+      const newValidationErrors: typeof validationErrors = {};
+      
+      Object.entries(identityValidation).forEach(([field, result]) => {
+        if (!result.isValid) {
+          identityErrors.push(result.message);
+          newValidationErrors[field as keyof typeof newValidationErrors] = result.message;
+        }
+      });
+
+      if (identityErrors.length > 0) {
+        setValidationErrors(newValidationErrors);
+        toast.error(`Please fix the following validation errors:\n\n${identityErrors.join('\n')}`);
+        // Navigate to Step 3 (Identity & Compliance) to show errors
+        setCurrentStep(3);
         return;
       }
       
@@ -2175,6 +2347,8 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
 
   const handleCancel = () => {
     if (window.confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
+      // Clear validation errors when canceling
+      setValidationErrors({});
       onClose();
     }
   };
@@ -2427,10 +2601,17 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                   required
                     maxLength={50}
                     disabled={viewMode}
+                    className={validationErrors.empCode ? 'input-error' : ''}
                 />
-                  <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
-                    Maximum 50 characters (e.g., EMP001, E12345)
-                  </small>
+                  {validationErrors.empCode ? (
+                    <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                      {validationErrors.empCode}
+                    </small>
+                  ) : (
+                    <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                      Maximum 50 characters (e.g., EMP001, E12345)
+                    </small>
+                  )}
               </div>
               <div className="form-group">
                 <label className="form-label-with-icon">
@@ -2624,9 +2805,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                 <input
                   type="text"
                   value={formData.aadhaar || ''}
-                    onChange={(e) => handleFieldChange('aadhaar', e.target.value)}
+                    onChange={(e) => handleFieldChange('aadhaar', e.target.value.replace(/\D/g, '').slice(0, 12))}
                   disabled={viewMode}
+                  maxLength={12}
+                  className={validationErrors.aadhaar ? 'input-error' : ''}
                 />
+                {validationErrors.aadhaar && (
+                  <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                    {validationErrors.aadhaar}
+                  </small>
+                )}
               </div>
                 <div className="form-group field-pan">
                 <label className="form-label-with-icon">
@@ -2641,9 +2829,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                 <input
                   type="text"
                   value={formData.pan || ''}
-                    onChange={(e) => handleFieldChange('pan', e.target.value)}
+                    onChange={(e) => handleFieldChange('pan', e.target.value.toUpperCase().slice(0, 10))}
                   disabled={viewMode}
+                  maxLength={10}
+                  className={validationErrors.pan ? 'input-error' : ''}
                 />
+                {validationErrors.pan && (
+                  <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                    {validationErrors.pan}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label-with-icon">
@@ -2658,9 +2853,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                 <input
                   type="text"
                     value={formData.dlNum || ''}
-                    onChange={(e) => handleFieldChange('dlNum', e.target.value)}
+                    onChange={(e) => handleFieldChange('dlNum', e.target.value.toUpperCase().slice(0, 16))}
                   disabled={viewMode}
+                  maxLength={16}
+                  className={validationErrors.dlNum ? 'input-error' : ''}
                 />
+                {validationErrors.dlNum && (
+                  <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                    {validationErrors.dlNum}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label-with-icon">
@@ -2675,9 +2877,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                 <input
                   type="text"
                   value={formData.pfNum || ''}
-                    onChange={(e) => handleFieldChange('pfNum', e.target.value)}
+                    onChange={(e) => handleFieldChange('pfNum', e.target.value.toUpperCase().slice(0, 22))}
                   disabled={viewMode}
+                  maxLength={22}
+                  className={validationErrors.pfNum ? 'input-error' : ''}
                 />
+                {validationErrors.pfNum && (
+                  <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                    {validationErrors.pfNum}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label-with-icon">
@@ -2692,9 +2901,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                   <input
                     type="text"
                     value={formData.uan || ''}
-                    onChange={(e) => handleFieldChange('uan', e.target.value)}
+                    onChange={(e) => handleFieldChange('uan', e.target.value.replace(/\D/g, '').slice(0, 12))}
                     disabled={viewMode}
+                    maxLength={12}
+                    className={validationErrors.uan ? 'input-error' : ''}
                   />
+                  {validationErrors.uan && (
+                    <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                      {validationErrors.uan}
+                    </small>
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label-with-icon">
@@ -2709,9 +2925,16 @@ const UserFormModal = ({ user, roles, companies, viewMode = false, onClose, onSa
                 <input
                   type="text"
                   value={formData.esiNum || ''}
-                    onChange={(e) => handleFieldChange('esiNum', e.target.value)}
+                    onChange={(e) => handleFieldChange('esiNum', e.target.value.replace(/\D/g, '').slice(0, 10))}
                   disabled={viewMode}
+                  maxLength={10}
+                  className={validationErrors.esiNum ? 'input-error' : ''}
                 />
+                {validationErrors.esiNum && (
+                  <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                    {validationErrors.esiNum}
+                  </small>
+                )}
               </div>
             </div>
           </div>

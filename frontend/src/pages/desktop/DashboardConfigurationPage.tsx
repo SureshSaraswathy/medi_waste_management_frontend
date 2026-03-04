@@ -243,7 +243,7 @@ const DashboardConfigurationPage: React.FC = () => {
           subtitle="Configure dashboard settings for different roles"
         />
 
-        <div className="dashboard-page-content" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
+        <div className="dashboard-page-content" style={{ padding: 0, overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
           <div className="master-page dashboard-configuration-page">
             <div className="master-header">
               <div className="master-header-icon">

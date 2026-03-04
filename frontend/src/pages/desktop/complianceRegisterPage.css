@@ -138,13 +138,16 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   margin-bottom: 16px;
 }
 
 .route-assignment-table {
   width: 100%;
+  min-width: 1200px; /* Ensure table doesn't collapse */
   border-collapse: collapse;
+  table-layout: auto;
 }
 
 .route-assignment-table thead {

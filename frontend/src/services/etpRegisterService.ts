@@ -172,7 +172,11 @@ export const etpRegisterService = {
     const response = await apiRequest<ApiResponse<ETPRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    return response.data;
+    // Safety check: ensure data is an array
+    if (!response || !response.data) {
+      return [];
+    }
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   updateETPRegister: async (
