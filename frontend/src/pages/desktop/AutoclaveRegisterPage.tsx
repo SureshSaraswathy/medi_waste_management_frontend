@@ -5,10 +5,12 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { autoclaveRegisterService, AutoclaveRegisterResponse } from '../../services/autoclaveRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { categoryService, CategoryResponse } from '../../services/categoryService';
+import { equipmentService, EquipmentResponse } from '../../services/equipmentService';
 import PageHeader from '../../components/layout/PageHeader';
 import './autoclaveRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface AutoclaveRegister {
   id: string;
@@ -17,6 +19,7 @@ interface AutoclaveRegister {
   companyName: string;
   autoclaveDate: string;
   equipmentId: string;
+  equipmentDisplay: string;
   batchNo: string;
   wasteCategory: string;
   wasteQtyKg: number;
@@ -48,6 +51,14 @@ interface Category {
   status: 'Active' | 'Inactive';
 }
 
+interface Equipment {
+  id: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType?: string | null;
+  status: 'Active' | 'Inactive';
+}
+
 interface AdvancedFilters {
   autoclRegNum: string;
   companyName: string;
@@ -70,8 +81,6 @@ const AutoclaveRegisterPage = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [editingAutoclave, setEditingAutoclave] = useState<AutoclaveRegister | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     autoclRegNum: '',
     companyName: '',
@@ -83,6 +92,7 @@ const AutoclaveRegisterPage = () => {
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [autoclaves, setAutoclaves] = useState<AutoclaveRegister[]>([]);
 
   // Load companies
@@ -131,10 +141,33 @@ const AutoclaveRegisterPage = () => {
     }
   }, []);
 
+  // Load equipment
+  const loadEquipment = useCallback(async () => {
+    try {
+      const apiEquipment = await equipmentService.getAllEquipment(true);
+      // Safety check: ensure apiEquipment is an array
+      if (!apiEquipment || !Array.isArray(apiEquipment)) {
+        console.warn('Equipment API returned non-array response:', apiEquipment);
+        setEquipment([]);
+        return;
+      }
+      const mappedEquipment: Equipment[] = apiEquipment.map((eq: EquipmentResponse) => ({
+        id: eq.id,
+        equipmentCode: eq.equipmentCode,
+        equipmentName: eq.equipmentName,
+        equipmentType: eq.equipmentType,
+        status: eq.status,
+      }));
+      setEquipment(mappedEquipment);
+    } catch (err) {
+      console.error('Error loading equipment:', err);
+      setEquipment([]); // Set empty array on error to prevent crashes
+    }
+  }, []);
+
   // Load autoclaves
   const loadAutoclaves = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const apiResponse = await autoclaveRegisterService.getAllAutoclaveRegisters(
         undefined,
@@ -145,66 +178,115 @@ const AutoclaveRegisterPage = () => {
       if (!apiResponse || !Array.isArray(apiResponse)) {
         console.warn('Autoclave registers API returned non-array response:', apiResponse);
         setAutoclaves([]);
+        setLoading(false);
         return;
       }
 
       // Map backend response to frontend format with names
-      const mappedAutoclaves: AutoclaveRegister[] = await Promise.all(
-        apiResponse.map(async (apiAutoclave: AutoclaveRegisterResponse) => {
-          const company = companies.find(c => c.id === apiAutoclave.companyId);
+      // Use current companies and equipment state from closure
+      const mappedAutoclaves: AutoclaveRegister[] = apiResponse.map((apiAutoclave: AutoclaveRegisterResponse) => {
+        const company = companies.find(c => c.id === apiAutoclave.companyId);
+        
+        // Handle equipment display - check if equipmentId is empty/null/undefined first
+        let equipmentDisplay = '-';
+        if (apiAutoclave.equipmentId && apiAutoclave.equipmentId.trim() !== '') {
+          // Find equipment by ID first (most common case), then by code as fallback
+          let equipmentItem = equipment.find((eq) => eq.id === apiAutoclave.equipmentId);
+          if (!equipmentItem) {
+            // Fallback: try matching by equipmentCode if ID match fails
+            equipmentItem = equipment.find((eq) => eq.equipmentCode === apiAutoclave.equipmentId);
+          }
+          
+          if (equipmentItem) {
+            equipmentDisplay = `${equipmentItem.equipmentCode} - ${equipmentItem.equipmentName}`;
+          } else {
+            // If equipment ID exists but not found in master, show the ID as fallback
+            equipmentDisplay = apiAutoclave.equipmentId;
+          }
+        }
 
-          return {
-            id: apiAutoclave.id,
-            autoclRegNum: apiAutoclave.autoclRegNum,
-            companyId: apiAutoclave.companyId,
-            companyName: company?.companyName || 'Unknown',
-            autoclaveDate: apiAutoclave.autoclaveDate,
-            equipmentId: apiAutoclave.equipmentId,
-            batchNo: apiAutoclave.batchNo,
-            wasteCategory: apiAutoclave.wasteCategory,
-            // Convert decimal strings to numbers
-            wasteQtyKg: typeof apiAutoclave.wasteQtyKg === 'string' ? parseFloat(apiAutoclave.wasteQtyKg) : Number(apiAutoclave.wasteQtyKg) || 0,
-            startTime: apiAutoclave.startTime,
-            endTime: apiAutoclave.endTime,
-            temperatureC: typeof apiAutoclave.temperatureC === 'string' ? parseFloat(apiAutoclave.temperatureC) : Number(apiAutoclave.temperatureC) || 0,
-            pressureBar: typeof apiAutoclave.pressureBar === 'string' ? parseFloat(apiAutoclave.pressureBar) : Number(apiAutoclave.pressureBar) || 0,
-            cycleTimeMin: typeof apiAutoclave.cycleTimeMin === 'string' ? parseFloat(apiAutoclave.cycleTimeMin) : Number(apiAutoclave.cycleTimeMin) || 0,
-            indicatorResult: apiAutoclave.indicatorResult,
-            complianceStatus: apiAutoclave.complianceStatus,
-            status: apiAutoclave.status,
-            createdBy: apiAutoclave.createdBy,
-            createdOn: apiAutoclave.createdOn,
-            modifiedBy: apiAutoclave.modifiedBy,
-            modifiedOn: apiAutoclave.modifiedOn,
-          };
-        })
-      );
+        return {
+          id: apiAutoclave.id,
+          autoclRegNum: apiAutoclave.autoclRegNum,
+          companyId: apiAutoclave.companyId,
+          companyName: company?.companyName || apiAutoclave.companyId || 'Unknown',
+          autoclaveDate: apiAutoclave.autoclaveDate,
+          equipmentId: apiAutoclave.equipmentId,
+          equipmentDisplay: equipmentDisplay,
+          batchNo: apiAutoclave.batchNo,
+          wasteCategory: apiAutoclave.wasteCategory,
+          // Convert decimal strings to numbers
+          wasteQtyKg: typeof apiAutoclave.wasteQtyKg === 'string' ? parseFloat(apiAutoclave.wasteQtyKg) : Number(apiAutoclave.wasteQtyKg) || 0,
+          startTime: apiAutoclave.startTime,
+          endTime: apiAutoclave.endTime,
+          temperatureC: typeof apiAutoclave.temperatureC === 'string' ? parseFloat(apiAutoclave.temperatureC) : Number(apiAutoclave.temperatureC) || 0,
+          pressureBar: typeof apiAutoclave.pressureBar === 'string' ? parseFloat(apiAutoclave.pressureBar) : Number(apiAutoclave.pressureBar) || 0,
+          cycleTimeMin: typeof apiAutoclave.cycleTimeMin === 'string' ? parseFloat(apiAutoclave.cycleTimeMin) : Number(apiAutoclave.cycleTimeMin) || 0,
+          indicatorResult: apiAutoclave.indicatorResult,
+          complianceStatus: apiAutoclave.complianceStatus,
+          status: apiAutoclave.status,
+          createdBy: apiAutoclave.createdBy,
+          createdOn: apiAutoclave.createdOn,
+          modifiedBy: apiAutoclave.modifiedBy,
+          modifiedOn: apiAutoclave.modifiedOn,
+        };
+      });
+      
+      console.log('Loaded autoclaves:', mappedAutoclaves.length, 'Companies available:', companies.length, 'Equipment available:', equipment.length);
+      // Debug: Log equipment mapping for first few items to verify correct mapping
+      if (mappedAutoclaves.length > 0) {
+        console.log('Sample equipment mappings:', mappedAutoclaves.slice(0, 3).map(a => ({
+          autoclRegNum: a.autoclRegNum,
+          equipmentId: a.equipmentId,
+          equipmentDisplay: a.equipmentDisplay
+        })));
+      }
       setAutoclaves(mappedAutoclaves);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load autoclave registers';
-      setError(errorMessage);
       console.error('Error loading autoclave registers:', err);
+      toast.error(errorMessage);
       setAutoclaves([]); // Set empty array on error to prevent crashes
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, companies]);
+  }, [statusFilter, companies, equipment]);
 
-  // Initialize data
+  // Track if initial load has happened
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Initialize master data - only run once on mount
   useEffect(() => {
+    if (initialLoadDone) return;
+    
     const initializeData = async () => {
-      await loadCompanies();
-      await loadCategories();
+      try {
+        // Load master data first
+        await Promise.all([
+          loadCompanies(),
+          loadCategories(),
+          loadEquipment()
+        ]);
+        
+        setInitialLoadDone(true);
+      } catch (err) {
+        console.error('Error initializing master data:', err);
+        setLoading(false);
+        setInitialLoadDone(true); // Set to true even on error to prevent retry loop
+      }
     };
+    
     initializeData();
-  }, [loadCompanies, loadCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Load autoclaves when dependencies are ready
+  // Load autoclaves when companies and equipment are ready and initial load is done
   useEffect(() => {
-    if (companies.length > 0) {
+    if (initialLoadDone && companies.length > 0 && equipment.length > 0) {
       loadAutoclaves();
     }
-  }, [companies, statusFilter, loadAutoclaves]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone, companies.length, equipment.length, statusFilter]); // Don't include loadAutoclaves to avoid loop
 
   const filteredAutoclaves = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -220,14 +302,14 @@ const AutoclaveRegisterPage = () => {
         !query ||
         autoclave.autoclRegNum.toLowerCase().includes(query) ||
         autoclave.companyName.toLowerCase().includes(query) ||
-        autoclave.equipmentId.toLowerCase().includes(query) ||
+        autoclave.equipmentDisplay.toLowerCase().includes(query) ||
         autoclave.batchNo.toLowerCase().includes(query) ||
         autoclave.wasteCategory.toLowerCase().includes(query);
 
       // Advanced filters
       const matchesAutoclRegNum = !autoclRegNumQuery || autoclave.autoclRegNum.toLowerCase().includes(autoclRegNumQuery);
       const matchesCompany = !companyQuery || autoclave.companyName.toLowerCase().includes(companyQuery);
-      const matchesEquipment = !equipmentQuery || autoclave.equipmentId.toLowerCase().includes(equipmentQuery);
+      const matchesEquipment = !equipmentQuery || autoclave.equipmentDisplay.toLowerCase().includes(equipmentQuery);
       const matchesBatch = !batchQuery || autoclave.batchNo.toLowerCase().includes(batchQuery);
       const matchesCompliance = !complianceQuery || autoclave.complianceStatus.toLowerCase().includes(complianceQuery);
       const matchesStatus = statusFilter === 'all' || autoclave.status === statusFilter;
@@ -250,14 +332,12 @@ const AutoclaveRegisterPage = () => {
     if (window.confirm('Are you sure you want to delete this autoclave register?')) {
       try {
         setLoading(true);
-        setError(null);
         await autoclaveRegisterService.deleteAutoclaveRegister(id);
-        setSuccessMessage('Autoclave register deleted successfully');
+        toast.success('Autoclave register deleted successfully');
         await loadAutoclaves();
-        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete autoclave register';
-        setError(errorMessage);
+        toast.error(errorMessage);
         console.error('Error deleting autoclave register:', err);
       } finally {
         setLoading(false);
@@ -268,7 +348,6 @@ const AutoclaveRegisterPage = () => {
   const handleSave = async (data: Partial<AutoclaveRegister>) => {
     try {
       setLoading(true);
-      setError(null);
 
       if (editingAutoclave) {
         // Update existing autoclave
@@ -287,12 +366,13 @@ const AutoclaveRegisterPage = () => {
           complianceStatus: data.complianceStatus,
           status: data.status,
         });
-        setSuccessMessage('Autoclave register updated successfully');
+        toast.success('Autoclave register updated successfully');
       } else {
         // Create new autoclave
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
-          setError('Please select a valid company');
+          toast.error('Please select a valid company');
+          setLoading(false);
           return;
         }
 
@@ -312,16 +392,18 @@ const AutoclaveRegisterPage = () => {
           complianceStatus: data.complianceStatus || 'Compliant',
           status: data.status || 'Active',
         });
-        setSuccessMessage('Autoclave register created successfully');
+        toast.success('Autoclave register created successfully');
       }
 
       setShowModal(false);
       setEditingAutoclave(null);
+      
+      // Reload autoclaves directly - companies should already be loaded
+      // If companies aren't loaded, companyName will show as 'Unknown' temporarily
       await loadAutoclaves();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save autoclave register';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving autoclave register:', err);
     } finally {
       setLoading(false);
@@ -437,25 +519,7 @@ const AutoclaveRegisterPage = () => {
           subtitle="Manage autoclave operation records"
         />
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="ra-alert ra-alert--success" role="status" aria-live="polite">
-            <span>{successMessage}</span>
-            <button onClick={() => setSuccessMessage(null)} className="ra-alert-close" aria-label="Close success message">
-              ×
-            </button>
-          </div>
-        )}
 
-        {/* Error Message */}
-        {error && (
-          <div className="ra-alert ra-alert--error" role="alert">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ra-alert-close" aria-label="Close error message">
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Loading Indicator */}
         {loading && !autoclaves.length && (
@@ -531,10 +595,18 @@ const AutoclaveRegisterPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredAutoclaves.length === 0 ? (
+                {loading && autoclaves.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="empty-message">
-                      {loading ? 'Loading...' : 'No autoclave registers found'}
+                      Loading autoclave registers...
+                    </td>
+                  </tr>
+                ) : filteredAutoclaves.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="empty-message">
+                      {autoclaves.length === 0 
+                        ? 'No autoclave registers found' 
+                        : `No autoclave registers match your filters (${autoclaves.length} total)`}
                     </td>
                   </tr>
                 ) : (
@@ -553,7 +625,7 @@ const AutoclaveRegisterPage = () => {
                         <td>{autoclave.autoclRegNum}</td>
                         <td>{autoclave.companyName}</td>
                         <td>{formatDate(autoclave.autoclaveDate)}</td>
-                        <td>{autoclave.equipmentId}</td>
+                        <td className="autoclave-equipment-cell" title={autoclave.equipmentDisplay}>{autoclave.equipmentDisplay}</td>
                         <td>{autoclave.batchNo}</td>
                         <td>{autoclave.wasteCategory}</td>
                         <td>{Number(autoclave.wasteQtyKg || 0).toFixed(2)}</td>
@@ -650,6 +722,7 @@ const AutoclaveRegisterPage = () => {
           autoclave={editingAutoclave}
           companies={companies.filter(c => c.status === 'Active')}
           categories={categories.filter(c => c.status === 'Active')}
+          equipment={equipment.filter(e => e.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingAutoclave(null);
@@ -666,6 +739,7 @@ interface AutoclaveFormModalProps {
   autoclave: AutoclaveRegister | null;
   companies: Company[];
   categories: Category[];
+  equipment: Equipment[];
   onClose: () => void;
   onSave: (data: Partial<AutoclaveRegister>) => void;
 }
@@ -674,6 +748,7 @@ const AutoclaveFormModal = ({
   autoclave,
   companies,
   categories,
+  equipment,
   onClose,
   onSave,
 }: AutoclaveFormModalProps) => {
@@ -698,12 +773,19 @@ const AutoclaveFormModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate Waste Category
+    if (!formData.wasteCategory || formData.wasteCategory.trim() === '') {
+      toast.error('Please select Waste Category.');
+      return;
+    }
+    
     onSave(formData);
   };
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal etp-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -732,217 +814,212 @@ const AutoclaveFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!autoclave}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="autoclave-date">
-                  Autoclave Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="autoclave-date"
-                  type="date"
-                  value={formData.autoclaveDate || ''}
-                  onChange={(e) => setFormData({ ...formData, autoclaveDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="equipment-id">
-                  Equipment ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="equipment-id"
-                  type="text"
-                  value={formData.equipmentId || ''}
-                  onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter equipment ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="batch-no">
-                  Batch No <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="batch-no"
-                  type="text"
-                  value={formData.batchNo || ''}
-                  onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter batch number"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-category">
-                  Waste Category <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="waste-category"
-                  value={formData.wasteCategory || ''}
-                  onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.categoryName}>
-                      {category.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-qty">
-                  Waste Quantity (kg) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="waste-qty"
-                  type="number"
-                  step="0.01"
-                  value={formData.wasteQtyKg || 0}
-                  onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="start-time">
-                  Start Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="start-time"
-                  type="time"
-                  value={formData.startTime || ''}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
+        <form className="ra-assignment-form etp-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid etp-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!autoclave}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="end-time">
-                  End Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="end-time"
-                  type="time"
-                  value={formData.endTime || ''}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="temperature">
-                  Temperature (°C) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="temperature"
-                  type="number"
-                  step="0.01"
-                  value={formData.temperatureC || 0}
-                  onChange={(e) => setFormData({ ...formData, temperatureC: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="pressure">
-                  Pressure (bar) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="pressure"
-                  type="number"
-                  step="0.01"
-                  value={formData.pressureBar || 0}
-                  onChange={(e) => setFormData({ ...formData, pressureBar: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="cycle-time">
-                  Cycle Time (minutes) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="cycle-time"
-                  type="number"
-                  step="1"
-                  value={formData.cycleTimeMin || 0}
-                  onChange={(e) => setFormData({ ...formData, cycleTimeMin: parseInt(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="indicator-result">Indicator Result</label>
-                <select
-                  id="indicator-result"
-                  value={formData.indicatorResult || 'Pass'}
-                  onChange={(e) => setFormData({ ...formData, indicatorResult: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Pass">Pass</option>
-                  <option value="Fail">Fail</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="autoclave-date">
+                Autoclave Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="autoclave-date"
+                type="date"
+                value={formData.autoclaveDate || ''}
+                onChange={(e) => setFormData({ ...formData, autoclaveDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="equipment-id">
+                Equipment ID <span className="ra-required">*</span>
+              </label>
+              <select
+                id="equipment-id"
+                value={formData.equipmentId || ''}
+                onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.equipmentCode} - {eq.equipmentName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="batch-no">
+                Batch No <span className="ra-required">*</span>
+              </label>
+              <input
+                id="batch-no"
+                type="text"
+                value={formData.batchNo || ''}
+                onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter batch number"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-category">
+                Waste Category <span className="ra-required">*</span>
+              </label>
+              <select
+                id="waste-category"
+                value={formData.wasteCategory || ''}
+                onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Category</option>
+                <option value="Red">Red</option>
+                <option value="Blue">Blue</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-qty">
+                Waste Quantity (kg) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="waste-qty"
+                type="number"
+                step="0.01"
+                value={formData.wasteQtyKg || 0}
+                onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="start-time">
+                Start Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="start-time"
+                type="time"
+                value={formData.startTime || ''}
+                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="end-time">
+                End Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="end-time"
+                type="time"
+                value={formData.endTime || ''}
+                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="temperature">
+                Temperature (°C) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="temperature"
+                type="number"
+                step="0.01"
+                value={formData.temperatureC || 0}
+                onChange={(e) => setFormData({ ...formData, temperatureC: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="pressure">
+                Pressure (bar) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="pressure"
+                type="number"
+                step="0.01"
+                value={formData.pressureBar || 0}
+                onChange={(e) => setFormData({ ...formData, pressureBar: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="cycle-time">
+                Cycle Time (minutes) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="cycle-time"
+                type="number"
+                step="1"
+                value={formData.cycleTimeMin || 0}
+                onChange={(e) => setFormData({ ...formData, cycleTimeMin: parseInt(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="indicator-result">Indicator Result</label>
+              <select
+                id="indicator-result"
+                value={formData.indicatorResult || 'Pass'}
+                onChange={(e) => setFormData({ ...formData, indicatorResult: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Pass">Pass</option>
+                <option value="Fail">Fail</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

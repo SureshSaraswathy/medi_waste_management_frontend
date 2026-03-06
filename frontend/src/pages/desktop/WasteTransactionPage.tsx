@@ -5,10 +5,12 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { wasteTransactionService, WasteTransactionResponse, CreateWasteTransactionRequest, UpdateWasteTransactionRequest } from '../../services/wasteTransactionService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import { wasteCollectionService } from '../../services/wasteCollectionService';
 import PageHeader from '../../components/layout/PageHeader';
 import './wasteTransactionPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface WasteTransaction {
   id: string;
@@ -49,10 +51,6 @@ const WasteTransactionPage = () => {
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<WasteTransaction | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsError, setGpsError] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -63,20 +61,18 @@ const WasteTransactionPage = () => {
   const [transactions, setTransactions] = useState<WasteTransaction[]>([]);
 
   // Form state
-  const [formData, setFormData] = useState<CreateWasteTransactionRequest & { editingId?: string }>({
+  const [formData, setFormData] = useState<CreateWasteTransactionRequest & { editingId?: string; blueBagCount?: number; blueWeightKg?: number | null }>({
     companyId: '',
     hcfId: '',
     pickupDate: new Date().toISOString().split('T')[0],
-    isNilPickup: false,
     yellowBagCount: 0,
     redBagCount: 0,
     whiteBagCount: 0,
+    blueBagCount: 0,
     yellowWeightKg: null,
     redWeightKg: null,
     whiteWeightKg: null,
-    latitude: null,
-    longitude: null,
-    segregationQuality: null,
+    blueWeightKg: null,
     notes: null,
   });
 
@@ -87,7 +83,7 @@ const WasteTransactionPage = () => {
       setCompanies(data);
     } catch (err: any) {
       console.error('Failed to load companies:', err);
-      setError('Failed to load companies');
+      toast.error('Failed to load companies');
     }
   }, []);
 
@@ -98,14 +94,13 @@ const WasteTransactionPage = () => {
       setHcfs(data);
     } catch (err: any) {
       console.error('Failed to load HCFs:', err);
-      setError('Failed to load HCFs');
+      toast.error('Failed to load HCFs');
     }
   }, []);
 
   // Load transactions
   const loadTransactions = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       // Calculate date range for the selected date
       const startDate = selectedDate;
@@ -160,7 +155,7 @@ const WasteTransactionPage = () => {
       setTransactions(mappedTransactions);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load transactions';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error loading transactions:', err);
     } finally {
       setLoading(false);
@@ -181,6 +176,60 @@ const WasteTransactionPage = () => {
     }
   }, [formData.companyId, hcfs]);
 
+  // Auto-load weights from Waste Collection when HCF and Pickup Date are selected
+  useEffect(() => {
+    const loadWeightsFromCollection = async () => {
+      if (!formData.hcfId || !formData.pickupDate || formData.editingId) {
+        // Don't auto-load if editing existing record or fields are not filled
+        return;
+      }
+
+      try {
+        const collections = await wasteCollectionService.getAllWasteCollections(
+          undefined, // companyId
+          formData.hcfId,
+          formData.pickupDate,
+          formData.pickupDate, // endDate same as startDate
+        );
+
+        // Aggregate weights by color
+        let yellowTotal = 0;
+        let redTotal = 0;
+        let whiteTotal = 0;
+        let blueTotal = 0;
+
+        collections.forEach(collection => {
+          const weight = collection.weightKg || 0;
+          if (collection.wasteColor === 'Yellow') {
+            yellowTotal += weight;
+          } else if (collection.wasteColor === 'Red') {
+            redTotal += weight;
+          } else if (collection.wasteColor === 'White') {
+            whiteTotal += weight;
+          } else if (collection.wasteColor === 'Blue') {
+            blueTotal += weight;
+          }
+        });
+
+        // Only update if we found any collections (to avoid overwriting user input)
+        if (collections.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            yellowWeightKg: yellowTotal > 0 ? yellowTotal : prev.yellowWeightKg,
+            redWeightKg: redTotal > 0 ? redTotal : prev.redWeightKg,
+            whiteWeightKg: whiteTotal > 0 ? whiteTotal : prev.whiteWeightKg,
+            blueWeightKg: blueTotal > 0 ? blueTotal : prev.blueWeightKg,
+          }));
+        }
+      } catch (err) {
+        // Silently fail - don't show error for auto-load
+        console.error('Error loading weights from waste collection:', err);
+      }
+    };
+
+    loadWeightsFromCollection();
+  }, [formData.hcfId, formData.pickupDate]);
+
   // Load data on mount
   useEffect(() => {
     loadCompanies();
@@ -194,58 +243,23 @@ const WasteTransactionPage = () => {
     }
   }, [selectedDate, statusFilter, companies, loadTransactions]);
 
-  // Get GPS location
-  const getGPSLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGpsError('Geolocation is not supported by your browser');
-      return;
-    }
-
-    setGpsLoading(true);
-    setGpsError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData(prev => ({
-          ...prev,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        }));
-        setGpsLoading(false);
-        setSuccessMessage('GPS location captured successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      },
-      (error) => {
-        setGpsError(`Failed to get GPS location: ${error.message}`);
-        setGpsLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  }, []);
 
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.companyId || !formData.hcfId || !formData.pickupDate) {
-      setError('Please complete the required fields.');
+      toast.error('Please complete the required fields.');
       return;
     }
 
-    if (!formData.isNilPickup) {
-      if (formData.yellowBagCount === 0 && formData.redBagCount === 0 && formData.whiteBagCount === 0) {
-        setError('Please enter at least one bag count or select NIL pickup');
-        return;
-      }
+    if (formData.yellowBagCount === 0 && formData.redBagCount === 0 && formData.whiteBagCount === 0 && formData.blueBagCount === 0) {
+      toast.error('Please enter at least one bag count');
+      return;
     }
 
     try {
       setLoading(true);
-      setError(null);
 
       if (formData.editingId) {
         // Update existing transaction - only send fields allowed in UpdateWasteTransactionDto
@@ -258,20 +272,16 @@ const WasteTransactionPage = () => {
 
         const updateData: UpdateWasteTransactionRequest = {
           pickupDate: formData.pickupDate,
-          isNilPickup: formData.isNilPickup,
           yellowBagCount: formData.yellowBagCount,
           redBagCount: formData.redBagCount,
           whiteBagCount: formData.whiteBagCount,
           yellowWeightKg: toNumberOrNull(formData.yellowWeightKg),
           redWeightKg: toNumberOrNull(formData.redWeightKg),
           whiteWeightKg: toNumberOrNull(formData.whiteWeightKg),
-          latitude: toNumberOrNull(formData.latitude),
-          longitude: toNumberOrNull(formData.longitude),
-          segregationQuality: formData.segregationQuality,
           notes: formData.notes,
         };
         await wasteTransactionService.updateTransaction(formData.editingId, updateData);
-        setSuccessMessage('Transaction updated successfully');
+        toast.success('Transaction updated successfully');
       } else {
         // Create new transaction - only send fields allowed in CreateWasteTransactionDto
         // Helper function to safely convert to number or null
@@ -285,29 +295,24 @@ const WasteTransactionPage = () => {
           companyId: formData.companyId,
           hcfId: formData.hcfId,
           pickupDate: formData.pickupDate,
-          isNilPickup: formData.isNilPickup,
           yellowBagCount: formData.yellowBagCount,
           redBagCount: formData.redBagCount,
           whiteBagCount: formData.whiteBagCount,
           yellowWeightKg: toNumberOrNull(formData.yellowWeightKg),
           redWeightKg: toNumberOrNull(formData.redWeightKg),
           whiteWeightKg: toNumberOrNull(formData.whiteWeightKg),
-          latitude: toNumberOrNull(formData.latitude),
-          longitude: toNumberOrNull(formData.longitude),
-          segregationQuality: formData.segregationQuality,
           notes: formData.notes,
         };
         await wasteTransactionService.createTransaction(createData);
-        setSuccessMessage('Transaction created successfully');
+        toast.success('Transaction created successfully');
       }
 
       await loadTransactions();
       setShowFormModal(false);
       resetForm();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save transaction';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving transaction:', err);
     } finally {
       setLoading(false);
@@ -318,22 +323,20 @@ const WasteTransactionPage = () => {
   const handleStatusChange = async (transactionId: string, action: 'submit' | 'verify') => {
     try {
       setLoading(true);
-      setError(null);
 
       if (action === 'submit') {
         await wasteTransactionService.submitTransaction(transactionId);
-        setSuccessMessage('Transaction submitted successfully');
+        toast.success('Transaction submitted successfully');
       } else {
         await wasteTransactionService.verifyTransaction(transactionId);
-        setSuccessMessage('Transaction verified successfully');
+        toast.success('Transaction verified successfully');
       }
 
       await loadTransactions();
       setShowDetailModal(false);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update status';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error updating status:', err);
     } finally {
       setLoading(false);
@@ -348,15 +351,13 @@ const WasteTransactionPage = () => {
 
     try {
       setLoading(true);
-      setError(null);
       await wasteTransactionService.deleteTransaction(transactionId);
-      setSuccessMessage('Transaction deleted successfully');
+      toast.success('Transaction deleted successfully');
       await loadTransactions();
       setShowDetailModal(false);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete transaction';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error deleting transaction:', err);
     } finally {
       setLoading(false);
@@ -369,16 +370,14 @@ const WasteTransactionPage = () => {
       companyId: '',
       hcfId: '',
       pickupDate: new Date().toISOString().split('T')[0],
-      isNilPickup: false,
       yellowBagCount: 0,
       redBagCount: 0,
       whiteBagCount: 0,
+      blueBagCount: 0,
       yellowWeightKg: null,
       redWeightKg: null,
       whiteWeightKg: null,
-      latitude: null,
-      longitude: null,
-      segregationQuality: null,
+      blueWeightKg: null,
       notes: null,
     });
   };
@@ -386,7 +385,7 @@ const WasteTransactionPage = () => {
   // Open form for editing
   const handleEdit = (transaction: WasteTransaction) => {
     if (transaction.status !== 'Draft') {
-      setError('Only draft transactions can be edited');
+      toast.error('Only draft transactions can be edited');
       return;
     }
     // Only set fields that are allowed in the form (not response-only fields)
@@ -394,16 +393,14 @@ const WasteTransactionPage = () => {
       companyId: transaction.companyId,
       hcfId: transaction.hcfId,
       pickupDate: transaction.pickupDate.split('T')[0],
-      isNilPickup: transaction.isNilPickup,
       yellowBagCount: transaction.yellowBagCount,
       redBagCount: transaction.redBagCount,
       whiteBagCount: transaction.whiteBagCount,
+      blueBagCount: 0, // Default to 0 if not in backend response
       yellowWeightKg: transaction.yellowWeightKg,
       redWeightKg: transaction.redWeightKg,
       whiteWeightKg: transaction.whiteWeightKg,
-      latitude: transaction.latitude,
-      longitude: transaction.longitude,
-      segregationQuality: transaction.segregationQuality,
+      blueWeightKg: null, // Default to null if not in backend response
       notes: transaction.notes,
       editingId: transaction.id,
     });
@@ -524,70 +521,6 @@ const WasteTransactionPage = () => {
           title="Waste Transaction Data"
           subtitle="Manage waste transaction records"
         />
-
-        {/* Success Message */}
-        {successMessage && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#d4edda', 
-            color: '#155724', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #c3e6cb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span>{successMessage}</span>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#155724',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close success message"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#fee', 
-            color: '#c33', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#c33',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close error message"
-            >
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Loading Indicator */}
         {loading && !transactions.length && (
@@ -868,180 +801,132 @@ const WasteTransactionPage = () => {
                   </div>
                 </div>
 
-                {/* NIL Pickup Checkbox */}
-                <div className="wt-form-row">
-                  <div className="wt-form-group">
-                    <label className="wt-form-checkbox-label">
-                      <input
-                        type="checkbox"
-                        className="wt-form-checkbox"
-                        checked={formData.isNilPickup}
-                        onChange={(e) => setFormData({ ...formData, isNilPickup: e.target.checked })}
-                        disabled={!isFormEditable}
-                      />
-                      <span>NIL Pickup</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* GPS Location Row */}
-                <div className="wt-form-row">
-                  <div className="wt-form-group">
-                    <label className="wt-form-label">Latitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="wt-form-input"
-                      value={formData.latitude || ''}
-                      onChange={(e) => setFormData({ ...formData, latitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      placeholder="28.7041"
-                      disabled={!isFormEditable}
-                    />
-                  </div>
-                  <div className="wt-form-group">
-                    <label className="wt-form-label">Longitude</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="wt-form-input"
-                      value={formData.longitude || ''}
-                      onChange={(e) => setFormData({ ...formData, longitude: e.target.value ? parseFloat(e.target.value) : null })}
-                      placeholder="77.1025"
-                      disabled={!isFormEditable}
-                    />
-                  </div>
-                  <div className="wt-form-group">
-                    <label className="wt-form-label">&nbsp;</label>
-                    <button
-                      type="button"
-                      className="wt-form-gps-btn"
-                      onClick={getGPSLocation}
-                      disabled={!isFormEditable || gpsLoading}
-                    >
-                      {gpsLoading ? 'Capturing...' : 'Capture GPS'}
-                    </button>
-                    {gpsError && <div className="wt-form-error">{gpsError}</div>}
-                  </div>
-                </div>
-
                 {/* Color-wise Bag Counts and Weights */}
-                {!formData.isNilPickup && (
-                  <>
-                    <div className="wt-form-row">
-                      {/* Yellow Bags */}
-                      <div className="wt-color-group wt-color-group--yellow">
-                        <h4 className="wt-color-title">Yellow Bags</h4>
-                        <div className="wt-color-inputs">
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Count</label>
-                            <input
-                              type="number"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.yellowBagCount || 0}
-                              onChange={(e) => setFormData({ ...formData, yellowBagCount: parseInt(e.target.value) || 0 })}
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Weight (kg)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.yellowWeightKg || ''}
-                              onChange={(e) => setFormData({ ...formData, yellowWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                              placeholder="0.00"
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Red Bags */}
-                      <div className="wt-color-group wt-color-group--red">
-                        <h4 className="wt-color-title">Red Bags</h4>
-                        <div className="wt-color-inputs">
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Count</label>
-                            <input
-                              type="number"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.redBagCount || 0}
-                              onChange={(e) => setFormData({ ...formData, redBagCount: parseInt(e.target.value) || 0 })}
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Weight (kg)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.redWeightKg || ''}
-                              onChange={(e) => setFormData({ ...formData, redWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                              placeholder="0.00"
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* White Bags */}
-                      <div className="wt-color-group wt-color-group--white">
-                        <h4 className="wt-color-title">White Bags</h4>
-                        <div className="wt-color-inputs">
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Count</label>
-                            <input
-                              type="number"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.whiteBagCount || 0}
-                              onChange={(e) => setFormData({ ...formData, whiteBagCount: parseInt(e.target.value) || 0 })}
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                          <div className="wt-color-input-group">
-                            <label className="wt-color-label">Weight (kg)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              className="wt-color-input"
-                              value={formData.whiteWeightKg || ''}
-                              onChange={(e) => setFormData({ ...formData, whiteWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
-                              placeholder="0.00"
-                              disabled={!isFormEditable}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quality */}
-                    <div className="wt-form-row">
-                      <div className="wt-form-group">
-                        <label className="wt-form-label">Quality</label>
-                        <select
-                          className="wt-form-select"
-                          value={formData.segregationQuality || ''}
-                          onChange={(e) => setFormData({ ...formData, segregationQuality: e.target.value as any || null })}
+                <div className="wt-form-row">
+                  {/* Yellow Bags */}
+                  <div className="wt-color-group wt-color-group--yellow">
+                    <h4 className="wt-color-title">Yellow Bags</h4>
+                    <div className="wt-color-inputs">
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.yellowBagCount || 0}
+                          onChange={(e) => setFormData({ ...formData, yellowBagCount: parseInt(e.target.value) || 0 })}
                           disabled={!isFormEditable}
-                        >
-                          <option value="">Select Quality</option>
-                          <option value="Excellent">Excellent</option>
-                          <option value="Good">Good</option>
-                          <option value="Fair">Fair</option>
-                          <option value="Poor">Poor</option>
-                        </select>
+                        />
+                      </div>
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Weight (kg)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.yellowWeightKg || ''}
+                          onChange={(e) => setFormData({ ...formData, yellowWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                          placeholder="0.00"
+                          disabled={!isFormEditable}
+                        />
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
+
+                  {/* Red Bags */}
+                  <div className="wt-color-group wt-color-group--red">
+                    <h4 className="wt-color-title">Red Bags</h4>
+                    <div className="wt-color-inputs">
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.redBagCount || 0}
+                          onChange={(e) => setFormData({ ...formData, redBagCount: parseInt(e.target.value) || 0 })}
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Weight (kg)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.redWeightKg || ''}
+                          onChange={(e) => setFormData({ ...formData, redWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                          placeholder="0.00"
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* White Bags */}
+                  <div className="wt-color-group wt-color-group--white">
+                    <h4 className="wt-color-title">White Bags</h4>
+                    <div className="wt-color-inputs">
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.whiteBagCount || 0}
+                          onChange={(e) => setFormData({ ...formData, whiteBagCount: parseInt(e.target.value) || 0 })}
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Weight (kg)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.whiteWeightKg || ''}
+                          onChange={(e) => setFormData({ ...formData, whiteWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                          placeholder="0.00"
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Blue Bags */}
+                  <div className="wt-color-group wt-color-group--blue">
+                    <h4 className="wt-color-title">Blue Bags</h4>
+                    <div className="wt-color-inputs">
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.blueBagCount || 0}
+                          onChange={(e) => setFormData({ ...formData, blueBagCount: parseInt(e.target.value) || 0 })}
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                      <div className="wt-color-input-group">
+                        <label className="wt-color-label">Weight (kg)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="wt-color-input"
+                          value={formData.blueWeightKg || ''}
+                          onChange={(e) => setFormData({ ...formData, blueWeightKg: e.target.value ? parseFloat(e.target.value) : null })}
+                          placeholder="0.00"
+                          disabled={!isFormEditable}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Notes */}
                 <div className="wt-form-row">

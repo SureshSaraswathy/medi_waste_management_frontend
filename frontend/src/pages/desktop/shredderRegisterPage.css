@@ -178,7 +178,7 @@
 
 .route-assignment-table {
   width: 100%;
-  min-width: 1200px; /* Ensure table doesn't collapse */
+  min-width: 2200px; /* Allow the expanded shredder columns to scroll cleanly */
   border-collapse: collapse;
   table-layout: auto;
 }
@@ -253,6 +253,47 @@
 
 .route-assignment-table tbody tr:hover {
   background: #f8fafc;
+}
+
+.shredder-equipment-cell {
+  white-space: nowrap;
+  min-width: 180px;
+}
+
+.text-muted {
+  color: #9aa3af;
+  font-style: italic;
+}
+
+.route-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.route-info--single {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.route-code {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.route-sep {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.route-name {
+  font-size: 12px;
+  color: #64748b;
 }
 
 /* Status Badges */
@@ -397,6 +438,7 @@
   max-width: 680px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22);
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Advanced Filters Modal */
@@ -569,11 +611,16 @@
   z-index: 1100;
 }
 
-.ra-assignment-modal {
-  max-width: 680px;
-  width: 90%;
+.modal-content.ra-assignment-modal {
+  max-width: 1050px !important;
+  width: min(1050px, calc(100vw - 32px)) !important;
+  margin: auto;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  box-sizing: border-box;
+  flex: 0 0 auto;
 }
 
 .ra-assignment-modal-header {
@@ -641,13 +688,24 @@
 }
 
 .ra-assignment-form {
-  padding: 24px;
+  padding: 24px 28px;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.ra-assignment-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 24px;
+.modal-content.ra-assignment-modal .ra-assignment-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(260px, 1fr)) !important;
+  gap: 20px !important;
+  width: 100%;
+  grid-auto-flow: row;
+  align-items: start;
+}
+
+.ra-assignment-form-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ra-assignment-form-col {
@@ -660,6 +718,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ra-assignment-form-group label {
@@ -667,8 +728,11 @@
   font-weight: 500;
   color: #1e293b;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 4px;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .ra-required {
@@ -677,7 +741,7 @@
 
 .ra-assignment-input,
 .ra-assignment-select {
-  height: 36px;
+  height: 38px;
   padding: 0 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -687,6 +751,24 @@
   background: #ffffff;
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.ra-assignment-select--text-fit {
+  font-size: 12.5px;
+  padding-right: 30px;
+}
+
+.ra-assignment-input::placeholder {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.ra-assignment-select option {
+  padding: 8px 12px;
 }
 
 .ra-assignment-input:focus,
@@ -704,6 +786,8 @@
 
 .ra-assignment-input::placeholder {
   color: #94a3b8;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 textarea.ra-assignment-input {
@@ -716,7 +800,7 @@ textarea.ra-assignment-input {
 .ra-assignment-modal-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
   padding: 20px 24px;
   border-top: 1px solid #e2e8f0;
@@ -762,16 +846,41 @@ textarea.ra-assignment-input {
   cursor: not-allowed;
 }
 
+/* Error styling */
+.ra-input-error {
+  border-color: #ef4444 !important;
+}
+
+.ra-input-error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+.ra-input-error-message {
+  display: block;
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 /* Responsive */
+@media (max-width: 1280px) {
+  .modal-content.ra-assignment-modal .ra-assignment-form-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 20px !important;
+  }
+}
+
 @media (max-width: 768px) {
-  .ra-assignment-form-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .modal-content.ra-assignment-modal .ra-assignment-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
   }
   
-  .ra-assignment-modal {
-    width: 95%;
-    max-width: 95%;
+  .modal-content.ra-assignment-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
   }
 
   .ra-filter-grid {

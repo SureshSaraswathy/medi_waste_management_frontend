@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { userService, UserResponse } from '../../services/userService';
+import { roleService, RoleResponse } from '../../services/roleService';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
@@ -64,6 +65,8 @@ interface User {
   employeeCode?: string | null;
   companyId: string;
   status: string;
+  userRoleId?: string | null;
+  roleName?: string | null;
 }
 
 interface AdvancedFilters {
@@ -107,11 +110,18 @@ const RouteAssignmentPage = () => {
   const [pickers, setPickers] = useState<User[]>([]);
   const [supervisors, setSupervisors] = useState<User[]>([]);
   const [assignments, setAssignments] = useState<RouteAssignment[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
 
   // Load companies
   const loadCompanies = useCallback(async () => {
     try {
       const apiCompanies = await companyService.getAllCompanies(true);
+      // Safety check: ensure apiCompanies is an array
+      if (!apiCompanies || !Array.isArray(apiCompanies)) {
+        console.warn('Companies API returned non-array response:', apiCompanies);
+        setCompanies([]);
+        return;
+      }
       const mappedCompanies: Company[] = apiCompanies.map((c: CompanyResponse) => ({
         id: c.id,
         companyCode: c.companyCode,
@@ -121,6 +131,8 @@ const RouteAssignmentPage = () => {
       setCompanies(mappedCompanies);
     } catch (err) {
       console.error('Error loading companies:', err);
+      setCompanies([]); // Set empty array on error to prevent crashes
+      setError('Failed to load companies. Please try again.');
     }
   }, []);
 
@@ -159,6 +171,21 @@ const RouteAssignmentPage = () => {
     }
   }, []);
 
+  // Load roles for the company
+  const loadRoles = useCallback(async (companyId?: string) => {
+    if (!companyId) {
+      setRoles([]);
+      return;
+    }
+    try {
+      const apiRoles = await roleService.getAllRoles(companyId, true);
+      setRoles(apiRoles);
+    } catch (err) {
+      console.error('Error loading roles:', err);
+      setRoles([]);
+    }
+  }, []);
+
   // Load users (drivers, pickers, supervisors) - will be loaded when company is selected
   const loadUsers = useCallback(async (companyId?: string) => {
     if (!companyId) {
@@ -168,22 +195,33 @@ const RouteAssignmentPage = () => {
       return;
     }
     try {
+      // Load roles first to map role IDs to role names
+      const apiRoles = await roleService.getAllRoles(companyId, true);
+      
       // Load users for the selected company
       const apiUsers = await userService.getUsersByCompany(companyId);
-      // Map to User interface
-      const mappedUsers: User[] = apiUsers.map((u: UserResponse) => ({
-        id: u.userId,
-        userName: u.userName,
-        employeeCode: u.employeeCode,
-        companyId: u.companyId,
-        status: u.status,
-      }));
-      // For now, we'll use all active users - you can filter by role later
+      
+      // Map to User interface with role names
+      const mappedUsers: User[] = apiUsers.map((u: UserResponse) => {
+        const role = apiRoles.find((r: RoleResponse) => r.roleId === u.userRoleId);
+        return {
+          id: u.userId,
+          userName: u.userName,
+          employeeCode: u.employeeCode,
+          companyId: u.companyId,
+          status: u.status,
+          userRoleId: u.userRoleId,
+          roleName: role?.roleName || null,
+        };
+      });
+      
       // Filter active users only
       const activeUsers = mappedUsers.filter((u) => u.status === 'Active');
-      setDrivers(activeUsers);
-      setPickers(activeUsers);
-      setSupervisors(activeUsers);
+      
+      // Filter by role name
+      setDrivers(activeUsers.filter((u) => u.roleName === 'Driver'));
+      setPickers(activeUsers.filter((u) => u.roleName === 'Picker'));
+      setSupervisors(activeUsers.filter((u) => u.roleName === 'Supervisor'));
     } catch (err) {
       console.error('Error loading users:', err);
       setDrivers([]);
@@ -255,6 +293,17 @@ const RouteAssignmentPage = () => {
     };
     initializeData();
   }, [loadCompanies]);
+
+  // Helper function to get today and tomorrow dates
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
 
   // Load routes and vehicles when companies are loaded
   useEffect(() => {
@@ -363,7 +412,7 @@ const RouteAssignmentPage = () => {
         }
 
         await routeAssignmentService.createRouteAssignment({
-          assignmentDate: selectedDate,
+          assignmentDate: data.assignmentDate || selectedDate,
           routeId: data.routeId!,
           vehicleId: data.vehicleId!,
           driverId: data.driverId!,
@@ -809,6 +858,17 @@ const AssignmentFormModal = ({
   onClose,
   onSave,
 }: AssignmentFormModalProps) => {
+  // Helper functions for date validation
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = useState<Partial<RouteAssignment>>(
     assignment || {
       companyId: '',
@@ -819,17 +879,25 @@ const AssignmentFormModal = ({
       supervisorId: null,
       status: 'Draft',
       notes: null,
+      assignmentDate: selectedDate,
     }
+  );
+
+  const [localDate, setLocalDate] = useState<string>(
+    assignment ? assignment.assignmentDate : selectedDate
   );
 
   const isReadOnly = !!assignment && (assignment.status === 'In Progress' || assignment.status === 'Completed');
 
-  // Load users when company is selected
+  // Load users when company is selected (for both new and edit modes)
   useEffect(() => {
-    if (formData.companyId && !assignment) {
+    if (formData.companyId) {
       onLoadUsers(formData.companyId);
+    } else {
+      // Clear users when no company is selected
+      setFormData(prev => ({ ...prev, driverId: '', pickerId: null, supervisorId: null }));
     }
-  }, [formData.companyId, assignment, onLoadUsers]);
+  }, [formData.companyId, onLoadUsers]);
 
   // Filter routes and vehicles based on selected company
   const filteredRoutes = formData.companyId
@@ -854,7 +922,21 @@ const AssignmentFormModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Validate date for new assignments
+    if (!assignment) {
+      const today = getTodayDate();
+      const tomorrow = getTomorrowDate();
+      
+      if (localDate !== today && localDate !== tomorrow) {
+        alert('Route assignment can only be created for today or the next day.');
+        return;
+      }
+    }
+    
+    // Include assignmentDate in formData
+    const submitData = { ...formData, assignmentDate: localDate };
+    onSave(submitData);
   };
 
   return (
@@ -925,8 +1007,23 @@ const AssignmentFormModal = ({
                 <input
                   id="assignment-date"
                   type="date"
-                  value={assignment ? assignment.assignmentDate : selectedDate}
-                  disabled={true}
+                  value={localDate}
+                  onChange={(e) => {
+                    const selectedDateValue = e.target.value;
+                    const today = getTodayDate();
+                    const tomorrow = getTomorrowDate();
+                    
+                    if (selectedDateValue !== today && selectedDateValue !== tomorrow) {
+                      alert('Route assignment can only be created for today or the next day.');
+                      return;
+                    }
+                    
+                    setLocalDate(selectedDateValue);
+                    setFormData({ ...formData, assignmentDate: selectedDateValue });
+                  }}
+                  min={getTodayDate()}
+                  max={getTomorrowDate()}
+                  disabled={!!assignment || isReadOnly}
                   className="ra-assignment-input"
                   placeholder="dd-mm-yyyy"
                 />
@@ -963,7 +1060,7 @@ const AssignmentFormModal = ({
                   <option value="">Select Picker (Optional)</option>
                   {filteredPickers.map((picker) => (
                     <option key={picker.id} value={picker.id}>
-                      {picker.userName} {picker.employeeCode ? `(${picker.employeeCode})` : ''}
+                      {picker.employeeCode ? `${picker.employeeCode} – ${picker.userName}` : picker.userName}
                     </option>
                   ))}
                 </select>
@@ -1007,7 +1104,7 @@ const AssignmentFormModal = ({
                   <option value="">Select Driver</option>
                   {filteredDrivers.map((driver) => (
                     <option key={driver.id} value={driver.id}>
-                      {driver.userName} {driver.employeeCode ? `(${driver.employeeCode})` : ''}
+                      {driver.employeeCode ? `${driver.employeeCode} – ${driver.userName}` : driver.userName}
                     </option>
                   ))}
                 </select>
@@ -1024,7 +1121,7 @@ const AssignmentFormModal = ({
                   <option value="">Select Supervisor (Optional)</option>
                   {filteredSupervisors.map((supervisor) => (
                     <option key={supervisor.id} value={supervisor.id}>
-                      {supervisor.userName} {supervisor.employeeCode ? `(${supervisor.employeeCode})` : ''}
+                      {supervisor.employeeCode ? `${supervisor.employeeCode} – ${supervisor.userName}` : supervisor.userName}
                     </option>
                   ))}
                 </select>

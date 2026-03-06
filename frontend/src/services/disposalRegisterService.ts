@@ -39,6 +39,7 @@ export interface UpdateDisposalRegisterRequest {
 
 export interface DisposalRegisterResponse {
   id: string;
+  disposalId?: string;
   dispoRegNum: string;
   companyId: string;
   disposalDate: string;
@@ -139,21 +140,56 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeDisposalRegister = (payload: any): DisposalRegisterResponse => ({
+  id: payload?.id || payload?.disposalId || '',
+  disposalId: payload?.disposalId,
+  dispoRegNum: payload?.dispoRegNum || '',
+  companyId: payload?.companyId || '',
+  disposalDate: payload?.disposalDate || '',
+  sourceTreatmentType: payload?.sourceTreatmentType || '',
+  sourceBatchRef: payload?.sourceBatchRef || '',
+  wasteType: payload?.wasteType || '',
+  quantityKg: payload?.quantityKg ?? 0,
+  disposalMethod: payload?.disposalMethod || '',
+  disposalSite: payload?.disposalSite || '',
+  transportMode: payload?.transportMode || '',
+  vehicleNo: payload?.vehicleNo || '',
+  manifestNo: payload?.manifestNo || '',
+  complianceStatus: payload?.complianceStatus || '',
+  status: payload?.status || 'Active',
+  createdBy: payload?.createdBy,
+  createdOn: payload?.createdOn || '',
+  modifiedBy: payload?.modifiedBy,
+  modifiedOn: payload?.modifiedOn || '',
+});
+
+const extractResponseData = <T>(response: T | ApiResponse<T>): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'data' in (response as Record<string, unknown>)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+};
+
 // Disposal Register API functions
 export const disposalRegisterService = {
   createDisposalRegister: async (data: CreateDisposalRegisterRequest): Promise<DisposalRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DisposalRegisterResponse>>('/disposal-registers', {
+    const response = await apiRequest<DisposalRegisterResponse | ApiResponse<DisposalRegisterResponse>>('/disposal-registers', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeDisposalRegister(extractResponseData(response));
   },
 
   getDisposalRegisterById: async (disposalId: string): Promise<DisposalRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DisposalRegisterResponse>>(`/disposal-registers/${disposalId}`, {
+    const response = await apiRequest<DisposalRegisterResponse | ApiResponse<DisposalRegisterResponse>>(`/disposal-registers/${disposalId}`, {
       method: 'GET',
     });
-    return response.data;
+    return normalizeDisposalRegister(extractResponseData(response));
   },
 
   getAllDisposalRegisters: async (
@@ -172,25 +208,25 @@ export const disposalRegisterService = {
       url += `?${params.toString()}`;
     }
     
-    const response = await apiRequest<ApiResponse<DisposalRegisterResponse[]>>(url, {
+    const response = await apiRequest<DisposalRegisterResponse[] | ApiResponse<DisposalRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    const data = extractResponseData(response);
+    if (!data || !Array.isArray(data)) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return data.map(normalizeDisposalRegister);
   },
 
   updateDisposalRegister: async (
     disposalId: string,
     data: UpdateDisposalRegisterRequest
   ): Promise<DisposalRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DisposalRegisterResponse>>(`/disposal-registers/${disposalId}`, {
-      method: 'PUT',
+    const response = await apiRequest<DisposalRegisterResponse | ApiResponse<DisposalRegisterResponse>>(`/disposal-registers/${disposalId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeDisposalRegister(extractResponseData(response));
   },
 
   deleteDisposalRegister: async (disposalId: string): Promise<void> => {

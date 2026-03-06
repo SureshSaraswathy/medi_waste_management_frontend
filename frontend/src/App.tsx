@@ -19,6 +19,8 @@ import MasterPage from './pages/desktop/MasterPage';
 import CompanyMasterPage from './pages/desktop/CompanyMasterPage';
 import StateMasterPage from './pages/desktop/StateMasterPage';
 import DistrictMasterPage from './pages/desktop/DistrictMasterPage';
+import EquipmentMasterPage from './pages/desktop/EquipmentMasterPage';
+import FinanceYearMasterPage from './pages/desktop/FinanceYearMasterPage';
 import AreaMasterPage from './pages/desktop/AreaMasterPage';
 import CategoryMasterPage from './pages/desktop/CategoryMasterPage';
 import PCBZoneMasterPage from './pages/desktop/PCBZoneMasterPage';
@@ -53,6 +55,7 @@ import PaymentSuccessPage from './pages/desktop/PaymentSuccessPage';
 import ReceiptManagementPage from './pages/desktop/ReceiptManagementPage';
 import FinancialBalanceSummaryPage from './pages/desktop/FinancialBalanceSummaryPage';
 import BarcodeGenerationPage from './pages/desktop/BarcodeGenerationPage';
+import BarcodeListPage from './pages/desktop/BarcodeListPage';
 import TrainingCertificatePage from './pages/desktop/TrainingCertificatePage';
 import ComplianceRegisterPage from './pages/desktop/ComplianceRegisterPage';
 import ContractMasterPage from './pages/desktop/ContractMasterPage';
@@ -265,6 +268,16 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['BARCODE_LABEL_VIEW', 'BARCODE_LABEL_CREATE', 'BARCODE_LABEL_DELETE']}>
               <BarcodeGenerationPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaction/barcode-list"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['BARCODE_LABEL_VIEW', 'BARCODE_LABEL_UPDATE', 'BARCODE_LABEL_DELETE']}>
+              <BarcodeListPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }
@@ -571,6 +584,26 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['DISTRICT_VIEW', 'DISTRICT_CREATE', 'DISTRICT_EDIT', 'DISTRICT_DELETE']}>
               <DistrictMasterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/equipment"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['EQUIPMENT_VIEW', 'EQUIPMENT_CREATE', 'EQUIPMENT_EDIT', 'EQUIPMENT_DELETE']}>
+              <EquipmentMasterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/finance-year"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['FINANCE_YEAR_VIEW', 'FINANCE_YEAR_CREATE', 'FINANCE_YEAR_EDIT', 'FINANCE_YEAR_DELETE']}>
+              <FinanceYearMasterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }

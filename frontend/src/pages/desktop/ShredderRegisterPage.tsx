@@ -4,11 +4,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { shredderRegisterService, ShredderRegisterResponse } from '../../services/shredderRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import { categoryService, CategoryResponse } from '../../services/categoryService';
+import { equipmentService, EquipmentResponse } from '../../services/equipmentService';
 import PageHeader from '../../components/layout/PageHeader';
 import './shredderRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface ShredderRegister {
   id: string;
@@ -28,6 +29,12 @@ interface ShredderRegister {
   indicatorResult: string;
   complianceStatus: string;
   status: 'Active' | 'Inactive';
+  inputSourceType?: string;
+  inputSourceRef?: string;
+  inputQtyKg?: number;
+  outputQtyKg?: number;
+  bladeCondition?: string;
+  outputDispatchedTo?: string;
   createdBy?: string | null;
   createdOn: string;
   modifiedBy?: string | null;
@@ -41,10 +48,11 @@ interface Company {
   status: 'Active' | 'Inactive';
 }
 
-interface Category {
+interface Equipment {
   id: string;
-  categoryCode: string;
-  categoryName: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType: string | null;
   status: 'Active' | 'Inactive';
 }
 
@@ -71,7 +79,6 @@ const ShredderRegisterPage = () => {
   const [editingShredder, setEditingShredder] = useState<ShredderRegister | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
     shredRegNum: '',
     companyName: '',
@@ -82,7 +89,7 @@ const ShredderRegisterPage = () => {
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [shredders, setShredders] = useState<ShredderRegister[]>([]);
 
   // Load companies
@@ -108,26 +115,27 @@ const ShredderRegisterPage = () => {
     }
   }, []);
 
-  // Load categories
-  const loadCategories = useCallback(async () => {
+  // Load equipment from Equipment Master
+  const loadEquipment = useCallback(async () => {
     try {
-      const apiCategories = await categoryService.getAllCategories(undefined, true);
-      // Safety check: ensure apiCategories is an array
-      if (!apiCategories || !Array.isArray(apiCategories)) {
-        console.warn('Categories API returned non-array response:', apiCategories);
-        setCategories([]);
+      const apiEquipment = await equipmentService.getAllEquipment(true);
+      // Safety check: ensure apiEquipment is an array
+      if (!apiEquipment || !Array.isArray(apiEquipment)) {
+        console.warn('Equipment API returned non-array response:', apiEquipment);
+        setEquipment([]);
         return;
       }
-      const mappedCategories: Category[] = apiCategories.map((cat: CategoryResponse) => ({
-        id: cat.id,
-        categoryCode: cat.categoryCode,
-        categoryName: cat.categoryName,
-        status: cat.status,
+      const mappedEquipment: Equipment[] = apiEquipment.map((eq: EquipmentResponse) => ({
+        id: eq.id,
+        equipmentCode: eq.equipmentCode,
+        equipmentName: eq.equipmentName,
+        equipmentType: eq.equipmentType,
+        status: eq.status,
       }));
-      setCategories(mappedCategories);
+      setEquipment(mappedEquipment);
     } catch (err) {
-      console.error('Error loading categories:', err);
-      setCategories([]); // Set empty array on error to prevent crashes
+      console.error('Error loading equipment:', err);
+      setEquipment([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -154,7 +162,7 @@ const ShredderRegisterPage = () => {
           const company = companies.find(c => c.id === apiShredder.companyId);
 
           return {
-            id: apiShredder.id,
+            id: apiShredder.id || apiShredder.shredderId || '',
             shredRegNum: apiShredder.shredRegNum,
             companyId: apiShredder.companyId,
             companyName: company?.companyName || 'Unknown',
@@ -172,6 +180,12 @@ const ShredderRegisterPage = () => {
             indicatorResult: apiShredder.indicatorResult,
             complianceStatus: apiShredder.complianceStatus,
             status: apiShredder.status,
+            inputSourceType: apiShredder.inputSourceType,
+            inputSourceRef: apiShredder.inputSourceRef,
+            inputQtyKg: typeof apiShredder.inputQtyKg === 'string' ? parseFloat(apiShredder.inputQtyKg) : (apiShredder.inputQtyKg ? Number(apiShredder.inputQtyKg) : 0),
+            outputQtyKg: typeof apiShredder.outputQtyKg === 'string' ? parseFloat(apiShredder.outputQtyKg) : (apiShredder.outputQtyKg ? Number(apiShredder.outputQtyKg) : 0),
+            bladeCondition: apiShredder.bladeCondition,
+            outputDispatchedTo: apiShredder.outputDispatchedTo,
             createdBy: apiShredder.createdBy,
             createdOn: apiShredder.createdOn,
             modifiedBy: apiShredder.modifiedBy,
@@ -188,23 +202,60 @@ const ShredderRegisterPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, companies]);
+  }, [statusFilter, companies, equipment]);
 
-  // Initialize data
+  // Track if initial load has happened
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Initialize master data - only run once on mount
   useEffect(() => {
+    if (initialLoadDone) return;
+    
     const initializeData = async () => {
-      await loadCompanies();
-      await loadCategories();
+      try {
+        // Load master data first
+        await Promise.all([
+          loadCompanies(),
+          loadEquipment()
+        ]);
+        
+        setInitialLoadDone(true);
+      } catch (err) {
+        console.error('Error initializing master data:', err);
+        setLoading(false);
+        setInitialLoadDone(true); // Set to true even on error to prevent retry loop
+      }
     };
+    
     initializeData();
-  }, [loadCompanies, loadCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Load shredders when dependencies are ready
+  // Load shredders when companies are ready and initial load is done
   useEffect(() => {
-    if (companies.length > 0) {
+    if (initialLoadDone && companies.length > 0) {
       loadShredders();
     }
-  }, [companies, statusFilter, loadShredders]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLoadDone, companies.length, statusFilter]); // Don't include loadShredders to avoid loop
+
+  const getEquipmentDisplay = useCallback((equipmentId: string) => {
+    const equipmentItem = equipment.find(
+      (eq) => eq.id === equipmentId || eq.equipmentCode === equipmentId
+    );
+
+    if (!equipmentItem) {
+      return {
+        equipmentItem: null,
+        equipmentDisplay: equipmentId || '-',
+      };
+    }
+
+    return {
+      equipmentItem,
+      equipmentDisplay: `${equipmentItem.equipmentCode} - ${equipmentItem.equipmentName}`,
+    };
+  }, [equipment]);
 
   const filteredShredders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -215,26 +266,29 @@ const ShredderRegisterPage = () => {
     const complianceQuery = advancedFilters.complianceStatus.trim().toLowerCase();
 
     return shredders.filter((shredder) => {
+      const { equipmentDisplay } = getEquipmentDisplay(shredder.equipmentId);
+      const normalizedEquipmentDisplay = equipmentDisplay.toLowerCase();
+
       // Top search box: broad match across key fields
       const matchesSearch =
         !query ||
         shredder.shredRegNum.toLowerCase().includes(query) ||
         shredder.companyName.toLowerCase().includes(query) ||
-        shredder.equipmentId.toLowerCase().includes(query) ||
+        normalizedEquipmentDisplay.includes(query) ||
         shredder.batchNo.toLowerCase().includes(query) ||
         shredder.wasteCategory.toLowerCase().includes(query);
 
       // Advanced filters
       const matchesShredRegNum = !shredRegNumQuery || shredder.shredRegNum.toLowerCase().includes(shredRegNumQuery);
       const matchesCompany = !companyQuery || shredder.companyName.toLowerCase().includes(companyQuery);
-      const matchesEquipment = !equipmentQuery || shredder.equipmentId.toLowerCase().includes(equipmentQuery);
+      const matchesEquipment = !equipmentQuery || normalizedEquipmentDisplay.includes(equipmentQuery);
       const matchesBatch = !batchQuery || shredder.batchNo.toLowerCase().includes(batchQuery);
       const matchesCompliance = !complianceQuery || shredder.complianceStatus.toLowerCase().includes(complianceQuery);
       const matchesStatus = statusFilter === 'all' || shredder.status === statusFilter;
 
       return matchesSearch && matchesShredRegNum && matchesCompany && matchesEquipment && matchesBatch && matchesCompliance && matchesStatus;
     });
-  }, [shredders, searchQuery, advancedFilters, statusFilter]);
+  }, [advancedFilters, getEquipmentDisplay, searchQuery, shredders, statusFilter]);
 
   const handleAdd = () => {
     setEditingShredder(null);
@@ -252,12 +306,12 @@ const ShredderRegisterPage = () => {
         setLoading(true);
         setError(null);
         await shredderRegisterService.deleteShredderRegister(id);
-        setSuccessMessage('Shredder register deleted successfully');
+        toast.success('Shredder register deleted successfully');
         await loadShredders();
-        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete shredder register';
         setError(errorMessage);
+        toast.error(errorMessage);
         console.error('Error deleting shredder register:', err);
       } finally {
         setLoading(false);
@@ -270,58 +324,91 @@ const ShredderRegisterPage = () => {
       setLoading(true);
       setError(null);
 
+      // Validate waste category
+      if (!data.wasteCategory || (data.wasteCategory !== 'Red' && data.wasteCategory !== 'Blue')) {
+        setError('Please select Waste Category (Red or Blue)');
+        toast.error('Please select Waste Category');
+        return;
+      }
+
+      const savePayload = {
+        shredderDate: data.shredderDate,
+        equipmentId: data.equipmentId,
+        batchNo: data.batchNo?.trim(),
+        wasteCategory: data.wasteCategory,
+        wasteQtyKg: Number(data.wasteQtyKg ?? 0),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        temperatureC: Number(data.temperatureC ?? 0),
+        pressureBar: Number(data.pressureBar ?? 0),
+        cycleTimeMin: Number(data.cycleTimeMin ?? 0),
+        indicatorResult: data.indicatorResult || 'Pass',
+        complianceStatus: data.complianceStatus || 'Compliant',
+        status: data.status || 'Active',
+        inputSourceType: data.inputSourceType || undefined,
+        inputSourceRef: data.inputSourceRef || undefined,
+        inputQtyKg: data.inputQtyKg ?? undefined,
+        outputQtyKg: data.outputQtyKg ?? 0,
+        bladeCondition: data.bladeCondition || undefined,
+        outputDispatchedTo: data.outputDispatchedTo || undefined,
+      };
+
       if (editingShredder) {
         // Update existing shredder
-        await shredderRegisterService.updateShredderRegister(editingShredder.id, {
-          shredderDate: data.shredderDate,
-          equipmentId: data.equipmentId,
-          batchNo: data.batchNo,
-          wasteCategory: data.wasteCategory,
-          wasteQtyKg: data.wasteQtyKg,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          temperatureC: data.temperatureC,
-          pressureBar: data.pressureBar,
-          cycleTimeMin: data.cycleTimeMin,
-          indicatorResult: data.indicatorResult,
-          complianceStatus: data.complianceStatus,
-          status: data.status,
-        });
-        setSuccessMessage('Shredder register updated successfully');
+        await shredderRegisterService.updateShredderRegister(editingShredder.id, savePayload);
+        toast.success('Shredder register updated successfully');
       } else {
         // Create new shredder
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
           setError('Please select a valid company');
+          toast.error('Please select a valid company');
+          return;
+        }
+
+        if (!data.equipmentId) {
+          setError('Please select Equipment');
+          toast.error('Please select Equipment');
           return;
         }
 
         await shredderRegisterService.createShredderRegister({
           companyId: selectedCompany.id,
-          shredderDate: data.shredderDate!,
-          equipmentId: data.equipmentId!,
-          batchNo: data.batchNo!,
-          wasteCategory: data.wasteCategory!,
-          wasteQtyKg: data.wasteQtyKg!,
-          startTime: data.startTime!,
-          endTime: data.endTime!,
-          temperatureC: data.temperatureC!,
-          pressureBar: data.pressureBar!,
-          cycleTimeMin: data.cycleTimeMin!,
-          indicatorResult: data.indicatorResult!,
-          complianceStatus: data.complianceStatus || 'Compliant',
-          status: data.status || 'Active',
+          shredderDate: savePayload.shredderDate!,
+          equipmentId: savePayload.equipmentId!,
+          batchNo: savePayload.batchNo!,
+          wasteCategory: savePayload.wasteCategory!,
+          wasteQtyKg: savePayload.wasteQtyKg,
+          startTime: savePayload.startTime!,
+          endTime: savePayload.endTime!,
+          temperatureC: savePayload.temperatureC,
+          pressureBar: savePayload.pressureBar,
+          cycleTimeMin: savePayload.cycleTimeMin,
+          indicatorResult: savePayload.indicatorResult,
+          complianceStatus: savePayload.complianceStatus,
+          status: savePayload.status,
+          inputSourceType: savePayload.inputSourceType,
+          inputSourceRef: savePayload.inputSourceRef,
+          inputQtyKg: savePayload.inputQtyKg,
+          outputQtyKg: savePayload.outputQtyKg,
+          bladeCondition: savePayload.bladeCondition,
+          outputDispatchedTo: savePayload.outputDispatchedTo,
         });
-        setSuccessMessage('Shredder register created successfully');
+        toast.success('Shredder register created successfully');
       }
 
       setShowModal(false);
       setEditingShredder(null);
+      // Reload master data and shredders
+      await Promise.all([
+        loadCompanies(),
+        loadEquipment()
+      ]);
       await loadShredders();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save shredder register';
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving shredder register:', err);
     } finally {
       setLoading(false);
@@ -341,16 +428,6 @@ const ShredderRegisterPage = () => {
     }
   };
 
-  const getIndicatorBadgeClass = (result: string) => {
-    switch (result.toLowerCase()) {
-      case 'pass':
-        return 'status-badge--pass';
-      case 'fail':
-        return 'status-badge--fail';
-      default:
-        return '';
-    }
-  };
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
@@ -437,15 +514,6 @@ const ShredderRegisterPage = () => {
           subtitle="Manage shredder operation records"
         />
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="ra-alert ra-alert--success" role="status" aria-live="polite">
-            <span>{successMessage}</span>
-            <button onClick={() => setSuccessMessage(null)} className="ra-alert-close" aria-label="Close success message">
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Error Message */}
         {error && (
@@ -515,14 +583,14 @@ const ShredderRegisterPage = () => {
             <table className="route-assignment-table">
               <thead>
                 <tr>
-                  <th>REG NUM</th>
+                  <th>SHREDDER REG NO</th>
                   <th>COMPANY</th>
-                  <th>DATE</th>
+                  <th>SHREDDING DATE</th>
                   <th>EQUIPMENT ID</th>
-                  <th>BATCH NO</th>
+                  <th>INPUT SOURCE REF</th>
                   <th>WASTE CATEGORY</th>
-                  <th>QTY (KG)</th>
-                  <th>INDICATOR RESULT</th>
+                  <th>START TIME</th>
+                  <th>END TIME</th>
                   <th>COMPLIANCE STATUS</th>
                   <th>STATUS</th>
                   <th>ACTIONS</th>
@@ -546,22 +614,18 @@ const ShredderRegisterPage = () => {
                       return `${day}/${month}/${year}`;
                     };
 
+                    const { equipmentItem, equipmentDisplay } = getEquipmentDisplay(shredder.equipmentId);
+
                     return (
                       <tr key={shredder.id}>
                         <td>{shredder.shredRegNum}</td>
                         <td>{shredder.companyName}</td>
                         <td>{formatDate(shredder.shredderDate)}</td>
-                        <td>{shredder.equipmentId}</td>
-                        <td>{shredder.batchNo}</td>
+                        <td className="shredder-equipment-cell" title={equipmentDisplay}>{equipmentDisplay}</td>
+                        <td>{shredder.inputSourceRef || '-'}</td>
                         <td>{shredder.wasteCategory}</td>
-                        <td>{Number(shredder.wasteQtyKg || 0).toFixed(2)}</td>
-                        <td>
-                          <div className="ra-cell-center">
-                            <span className={`status-badge ${getIndicatorBadgeClass(shredder.indicatorResult)}`}>
-                              {shredder.indicatorResult}
-                            </span>
-                          </div>
-                        </td>
+                        <td>{shredder.startTime || '-'}</td>
+                        <td>{shredder.endTime || '-'}</td>
                         <td>
                           <div className="ra-cell-center">
                             <span className={`status-badge ${getComplianceBadgeClass(shredder.complianceStatus)}`}>
@@ -647,7 +711,7 @@ const ShredderRegisterPage = () => {
         <ShredderFormModal
           shredder={editingShredder}
           companies={companies.filter(c => c.status === 'Active')}
-          categories={categories.filter(c => c.status === 'Active')}
+          equipment={equipment}
           onClose={() => {
             setShowModal(false);
             setEditingShredder(null);
@@ -663,7 +727,7 @@ const ShredderRegisterPage = () => {
 interface ShredderFormModalProps {
   shredder: ShredderRegister | null;
   companies: Company[];
-  categories: Category[];
+  equipment: Equipment[];
   onClose: () => void;
   onSave: (data: Partial<ShredderRegister>) => void;
 }
@@ -671,7 +735,7 @@ interface ShredderFormModalProps {
 const ShredderFormModal = ({
   shredder,
   companies,
-  categories,
+  equipment,
   onClose,
   onSave,
 }: ShredderFormModalProps) => {
@@ -681,21 +745,36 @@ const ShredderFormModal = ({
       shredderDate: new Date().toISOString().split('T')[0],
       equipmentId: '',
       batchNo: '',
+      inputSourceType: '',
+      inputSourceRef: '',
       wasteCategory: '',
       wasteQtyKg: 0,
+      inputQtyKg: 0,
       startTime: '08:00',
       endTime: '17:00',
       temperatureC: 0,
       pressureBar: 0,
       cycleTimeMin: 0,
       indicatorResult: 'Pass',
+      bladeCondition: '',
+      outputDispatchedTo: '',
       complianceStatus: 'Compliant',
       status: 'Active',
+      outputQtyKg: 0,
     }
   );
+  const [wasteCategoryError, setWasteCategoryError] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate waste category
+    if (!formData.wasteCategory || (formData.wasteCategory !== 'Red' && formData.wasteCategory !== 'Blue')) {
+      setWasteCategoryError('Please select Waste Category.');
+      return;
+    }
+    
+    setWasteCategoryError('');
     onSave(formData);
   };
 
@@ -730,215 +809,290 @@ const ShredderFormModal = ({
         {/* Form */}
         <form className="ra-assignment-form" onSubmit={handleSubmit}>
           <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!shredder}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="shredder-date">
-                  Shredder Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="shredder-date"
-                  type="date"
-                  value={formData.shredderDate || ''}
-                  onChange={(e) => setFormData({ ...formData, shredderDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="equipment-id">
-                  Equipment ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="equipment-id"
-                  type="text"
-                  value={formData.equipmentId || ''}
-                  onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter equipment ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="batch-no">
-                  Batch No <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="batch-no"
-                  type="text"
-                  value={formData.batchNo || ''}
-                  onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter batch number"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-category">
-                  Waste Category <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="waste-category"
-                  value={formData.wasteCategory || ''}
-                  onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.categoryName}>
-                      {category.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-qty">
-                  Waste Quantity (kg) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="waste-qty"
-                  type="number"
-                  step="0.01"
-                  value={formData.wasteQtyKg || 0}
-                  onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="start-time">
-                  Start Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="start-time"
-                  type="time"
-                  value={formData.startTime || ''}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
+            {/* Row 1: Company Name | Shredder Date | Equipment ID */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!shredder}
+                className="ra-assignment-select ra-assignment-select--text-fit"
+                title={formData.companyId ? companies.find((company) => company.id === formData.companyId)?.companyName || '' : 'Select Company'}
+              >
+                <option value="">Choose Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="shredder-date">
+                Shredder Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="shredder-date"
+                type="date"
+                value={formData.shredderDate || ''}
+                onChange={(e) => setFormData({ ...formData, shredderDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="equipment-id">
+                Equipment ID <span className="ra-required">*</span>
+              </label>
+              <select
+                id="equipment-id"
+                value={formData.equipmentId || ''}
+                onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map((eq) => (
+                  <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
+                    {eq.equipmentCode} - {eq.equipmentName}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="end-time">
-                  End Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="end-time"
-                  type="time"
-                  value={formData.endTime || ''}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="temperature">
-                  Temperature (°C) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="temperature"
-                  type="number"
-                  step="0.01"
-                  value={formData.temperatureC || 0}
-                  onChange={(e) => setFormData({ ...formData, temperatureC: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="pressure">
-                  Pressure (bar) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="pressure"
-                  type="number"
-                  step="0.01"
-                  value={formData.pressureBar || 0}
-                  onChange={(e) => setFormData({ ...formData, pressureBar: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="cycle-time">
-                  Cycle Time (minutes) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="cycle-time"
-                  type="number"
-                  step="1"
-                  value={formData.cycleTimeMin || 0}
-                  onChange={(e) => setFormData({ ...formData, cycleTimeMin: parseInt(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="indicator-result">Indicator Result</label>
-                <select
-                  id="indicator-result"
-                  value={formData.indicatorResult || 'Pass'}
-                  onChange={(e) => setFormData({ ...formData, indicatorResult: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Pass">Pass</option>
-                  <option value="Fail">Fail</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            {/* Row 2: Start Time | End Time | Batch No */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="start-time">
+                Start Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="start-time"
+                type="time"
+                value={formData.startTime || ''}
+                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="end-time">
+                End Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="end-time"
+                type="time"
+                value={formData.endTime || ''}
+                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="batch-no">
+                Batch No <span className="ra-required">*</span>
+              </label>
+              <input
+                id="batch-no"
+                type="text"
+                value={formData.batchNo || ''}
+                onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter batch number"
+              />
+            </div>
+
+            {/* Row 3: Input Source Type | Input Source Ref | Input Quantity */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="input-source-type">Input Source Type</label>
+              <input
+                id="input-source-type"
+                type="text"
+                value={formData.inputSourceType || ''}
+                onChange={(e) => setFormData({ ...formData, inputSourceType: e.target.value })}
+                className="ra-assignment-input"
+                placeholder="Enter input source type"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="input-source-ref">Input Source Ref</label>
+              <input
+                id="input-source-ref"
+                type="text"
+                value={formData.inputSourceRef || ''}
+                onChange={(e) => setFormData({ ...formData, inputSourceRef: e.target.value })}
+                className="ra-assignment-input"
+                placeholder="Enter input source ref"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="input-qty">Input Quantity (kg)</label>
+              <input
+                id="input-qty"
+                type="number"
+                step="0.01"
+                value={formData.inputQtyKg || 0}
+                onChange={(e) => setFormData({ ...formData, inputQtyKg: parseFloat(e.target.value) || 0 })}
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Row 4: Temperature | Pressure | Cycle Time */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="temperature">
+                Temperature (°C) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="temperature"
+                type="number"
+                step="0.01"
+                value={formData.temperatureC || 0}
+                onChange={(e) => setFormData({ ...formData, temperatureC: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="pressure">
+                Pressure (bar) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="pressure"
+                type="number"
+                step="0.01"
+                value={formData.pressureBar || 0}
+                onChange={(e) => setFormData({ ...formData, pressureBar: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="cycle-time">
+                Cycle Time (minutes) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="cycle-time"
+                type="number"
+                step="1"
+                value={formData.cycleTimeMin || 0}
+                onChange={(e) => setFormData({ ...formData, cycleTimeMin: parseInt(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0"
+              />
+            </div>
+
+            {/* Row 5: Waste Category | Waste Quantity | Output Quantity */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-category">
+                Waste Category <span className="ra-required">*</span>
+              </label>
+              <select
+                id="waste-category"
+                value={formData.wasteCategory || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, wasteCategory: e.target.value });
+                  setWasteCategoryError('');
+                }}
+                required
+                className={`ra-assignment-select ra-assignment-select--text-fit ${wasteCategoryError ? 'ra-input-error' : ''}`}
+                title={formData.wasteCategory || 'Select Waste Category'}
+              >
+                <option value="">Choose Category</option>
+                <option value="Red">Red</option>
+                <option value="Blue">Blue</option>
+              </select>
+              {wasteCategoryError && (
+                <span className="ra-input-error-message">{wasteCategoryError}</span>
+              )}
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-qty">
+                Waste Quantity (kg) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="waste-qty"
+                type="number"
+                step="0.01"
+                value={formData.wasteQtyKg || 0}
+                onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="output-qty">Output Quantity (kg)</label>
+              <input
+                id="output-qty"
+                type="number"
+                step="0.01"
+                value={formData.outputQtyKg || 0}
+                onChange={(e) => setFormData({ ...formData, outputQtyKg: parseFloat(e.target.value) || 0 })}
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Row 6: Blade Condition | Output Dispatched To | Compliance Status */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="blade-condition">Blade Condition</label>
+              <select
+                id="blade-condition"
+                value={formData.bladeCondition || ''}
+                onChange={(e) => setFormData({ ...formData, bladeCondition: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Blade Condition</option>
+                <option value="Good">Good</option>
+                <option value="Worn">Worn</option>
+                <option value="Replac">Replac</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="output-dispatched-to">Output Dispatched To</label>
+              <input
+                id="output-dispatched-to"
+                type="text"
+                value={formData.outputDispatchedTo || ''}
+                onChange={(e) => setFormData({ ...formData, outputDispatchedTo: e.target.value })}
+                className="ra-assignment-input"
+                placeholder="Enter dispatch destination"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+
+            {/* Row 7: Status */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

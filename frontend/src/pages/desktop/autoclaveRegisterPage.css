@@ -390,13 +390,26 @@
   z-index: 1000;
 }
 
+/* Ensure form container is centered */
+.ra-assignment-modal-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .modal-content {
   background: #ffffff;
   border-radius: 12px;
   width: 100%;
-  max-width: 680px;
+  max-width: 600px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22);
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Override for autoclave modal specifically */
+.modal-content.ra-assignment-modal {
+  max-width: 600px !important;
 }
 
 /* Advanced Filters Modal */
@@ -570,10 +583,18 @@
 }
 
 .ra-assignment-modal {
-  max-width: 680px;
-  width: 90%;
+  max-width: 600px !important;
+  width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Ensure modal-content with ra-assignment-modal is exactly 600px */
+.modal-content.ra-assignment-modal {
+  max-width: 600px !important;
+  width: 100%;
 }
 
 .ra-assignment-modal-header {
@@ -642,24 +663,43 @@
 
 .ra-assignment-form {
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .ra-assignment-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px 24px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .ra-assignment-form-col {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ra-assignment-form-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ra-assignment-form-group label {
@@ -687,6 +727,11 @@
   background: #ffffff;
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ra-assignment-input:focus,
@@ -700,6 +745,15 @@
   background: #f8fafc;
   color: #94a3b8;
   cursor: not-allowed;
+}
+
+.ra-input-error {
+  border-color: #ef4444 !important;
+}
+
+.ra-input-error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
 }
 
 .ra-assignment-input::placeholder {
@@ -767,14 +821,33 @@ textarea.ra-assignment-input {
   .ra-assignment-form-grid {
     grid-template-columns: 1fr;
     gap: 20px;
+    max-width: 100%;
   }
   
-  .ra-assignment-modal {
+  .ra-assignment-modal,
+  .modal-content.ra-assignment-modal {
     width: 95%;
-    max-width: 95%;
+    max-width: 95% !important;
   }
 
   .ra-filter-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Form container responsive width */
+@media (max-width: 600px) {
+  .ra-assignment-form-grid {
+    max-width: 100%;
+  }
+  
+  .ra-assignment-modal,
+  .modal-content.ra-assignment-modal {
+    max-width: 95% !important;
+    width: 95%;
+  }
+  
+  .modal-content {
+    max-width: 95%;
   }
 }

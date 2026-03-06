@@ -223,6 +223,12 @@
   grid-column: span 1;
 }
 
+/* Color groups row - 3 columns (Yellow, Red, White in first row, Blue in second row) */
+.wt-form-row:has(.wt-color-group) {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
 .wt-form-group {
   display: flex;
   flex-direction: column;
@@ -371,6 +377,11 @@
 .wt-color-group--white {
   border-color: #94a3b8;
   background: #f8fafc;
+}
+
+.wt-color-group--blue {
+  border-color: #0000FF;
+  background: #e3f2fd;
 }
 
 .wt-color-title {
@@ -968,7 +979,8 @@
     flex-direction: column;
   }
 
-  .wt-form-row {
+  /* General form rows - but not waste boxes */
+  .wt-form-row:not(:has(.wt-color-group)) {
     grid-template-columns: 1fr;
   }
 
@@ -993,5 +1005,20 @@
   .data-table th,
   .data-table td {
     padding: 8px;
+  }
+}
+
+/* Responsive - Waste Boxes Container (must come after general responsive rules) */
+/* Tablet: 2 columns */
+@media (max-width: 900px) {
+  .wt-form-row:has(.wt-color-group) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: 1 column */
+@media (max-width: 600px) {
+  .wt-form-row:has(.wt-color-group) {
+    grid-template-columns: 1fr;
   }
 }

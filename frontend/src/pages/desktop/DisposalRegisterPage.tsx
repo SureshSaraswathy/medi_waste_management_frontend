@@ -4,11 +4,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { disposalRegisterService, DisposalRegisterResponse } from '../../services/disposalRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import { categoryService, CategoryResponse } from '../../services/categoryService';
 import PageHeader from '../../components/layout/PageHeader';
 import './disposalRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface DisposalRegister {
   id: string;
@@ -37,13 +37,6 @@ interface Company {
   id: string;
   companyCode: string;
   companyName: string;
-  status: 'Active' | 'Inactive';
-}
-
-interface Category {
-  id: string;
-  categoryCode: string;
-  categoryName: string;
   status: 'Active' | 'Inactive';
 }
 
@@ -81,7 +74,6 @@ const DisposalRegisterPage = () => {
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [disposals, setDisposals] = useState<DisposalRegister[]>([]);
 
   // Load companies
@@ -104,29 +96,6 @@ const DisposalRegisterPage = () => {
     } catch (err) {
       console.error('Error loading companies:', err);
       setCompanies([]); // Set empty array on error to prevent crashes
-    }
-  }, []);
-
-  // Load categories
-  const loadCategories = useCallback(async () => {
-    try {
-      const apiCategories = await categoryService.getAllCategories(undefined, true);
-      // Safety check: ensure apiCategories is an array
-      if (!apiCategories || !Array.isArray(apiCategories)) {
-        console.warn('Categories API returned non-array response:', apiCategories);
-        setCategories([]);
-        return;
-      }
-      const mappedCategories: Category[] = apiCategories.map((cat: CategoryResponse) => ({
-        id: cat.id,
-        categoryCode: cat.categoryCode,
-        categoryName: cat.categoryName,
-        status: cat.status,
-      }));
-      setCategories(mappedCategories);
-    } catch (err) {
-      console.error('Error loading categories:', err);
-      setCategories([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -153,7 +122,7 @@ const DisposalRegisterPage = () => {
           const company = companies.find(c => c.id === apiDisposal.companyId);
 
           return {
-            id: apiDisposal.id,
+            id: apiDisposal.id || apiDisposal.disposalId || '',
             dispoRegNum: apiDisposal.dispoRegNum,
             companyId: apiDisposal.companyId,
             companyName: company?.companyName || 'Unknown',
@@ -192,10 +161,9 @@ const DisposalRegisterPage = () => {
   useEffect(() => {
     const initializeData = async () => {
       await loadCompanies();
-      await loadCategories();
     };
     initializeData();
-  }, [loadCompanies, loadCategories]);
+  }, [loadCompanies]);
 
   // Load disposals when dependencies are ready
   useEffect(() => {
@@ -252,11 +220,13 @@ const DisposalRegisterPage = () => {
         setError(null);
         await disposalRegisterService.deleteDisposalRegister(id);
         setSuccessMessage('Disposal register deleted successfully');
+        toast.success('Disposal register deleted successfully');
         await loadDisposals();
         setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete disposal register';
         setError(errorMessage);
+        toast.error(errorMessage);
         console.error('Error deleting disposal register:', err);
       } finally {
         setLoading(false);
@@ -286,11 +256,13 @@ const DisposalRegisterPage = () => {
           status: data.status,
         });
         setSuccessMessage('Disposal register updated successfully');
+        toast.success('Disposal register updated successfully');
       } else {
         // Create new disposal
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
           setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -310,6 +282,7 @@ const DisposalRegisterPage = () => {
           status: data.status || 'Active',
         });
         setSuccessMessage('Disposal register created successfully');
+        toast.success('Disposal register created successfully');
       }
 
       setShowModal(false);
@@ -319,6 +292,7 @@ const DisposalRegisterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save disposal register';
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving disposal register:', err);
     } finally {
       setLoading(false);
@@ -632,7 +606,6 @@ const DisposalRegisterPage = () => {
         <DisposalFormModal
           disposal={editingDisposal}
           companies={companies.filter(c => c.status === 'Active')}
-          categories={categories.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingDisposal(null);
@@ -648,7 +621,6 @@ const DisposalRegisterPage = () => {
 interface DisposalFormModalProps {
   disposal: DisposalRegister | null;
   companies: Company[];
-  categories: Category[];
   onClose: () => void;
   onSave: (data: Partial<DisposalRegister>) => void;
 }
@@ -656,7 +628,6 @@ interface DisposalFormModalProps {
 const DisposalFormModal = ({
   disposal,
   companies,
-  categories,
   onClose,
   onSave,
 }: DisposalFormModalProps) => {
@@ -685,7 +656,7 @@ const DisposalFormModal = ({
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal disposal-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -715,213 +686,205 @@ const DisposalFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!disposal}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="disposal-date">
-                  Disposal Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="disposal-date"
-                  type="date"
-                  value={formData.disposalDate || ''}
-                  onChange={(e) => setFormData({ ...formData, disposalDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="source-treatment-type">
-                  Source Treatment Type <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="source-treatment-type"
-                  type="text"
-                  value={formData.sourceTreatmentType || ''}
-                  onChange={(e) => setFormData({ ...formData, sourceTreatmentType: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter source treatment type"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="source-batch-ref">
-                  Source Batch Ref <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="source-batch-ref"
-                  type="text"
-                  value={formData.sourceBatchRef || ''}
-                  onChange={(e) => setFormData({ ...formData, sourceBatchRef: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter source batch reference"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-type">
-                  Waste Type <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="waste-type"
-                  value={formData.wasteType || ''}
-                  onChange={(e) => setFormData({ ...formData, wasteType: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Waste Type</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.categoryName}>
-                      {category.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="quantity">
-                  Quantity (kg) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="quantity"
-                  type="number"
-                  step="0.01"
-                  value={formData.quantityKg || 0}
-                  onChange={(e) => setFormData({ ...formData, quantityKg: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="disposal-method">
-                  Disposal Method <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="disposal-method"
-                  value={formData.disposalMethod || ''}
-                  onChange={(e) => setFormData({ ...formData, disposalMethod: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Disposal Method</option>
-                  <option value="Landfill">Landfill</option>
-                  <option value="Incineration">Incineration</option>
-                  <option value="Recycling">Recycling</option>
-                  <option value="Composting">Composting</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+        <form className="ra-assignment-form disposal-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid disposal-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!disposal}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="disposal-date">
+                Disposal Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="disposal-date"
+                type="date"
+                value={formData.disposalDate || ''}
+                onChange={(e) => setFormData({ ...formData, disposalDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="source-treatment-type">
+                Source Treatment Type <span className="ra-required">*</span>
+              </label>
+              <input
+                id="source-treatment-type"
+                type="text"
+                value={formData.sourceTreatmentType || ''}
+                onChange={(e) => setFormData({ ...formData, sourceTreatmentType: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter source treatment type"
+              />
             </div>
 
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="disposal-site">
-                  Disposal Site <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="disposal-site"
-                  type="text"
-                  value={formData.disposalSite || ''}
-                  onChange={(e) => setFormData({ ...formData, disposalSite: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter disposal site"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="transport-mode">
-                  Transport Mode <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="transport-mode"
-                  value={formData.transportMode || ''}
-                  onChange={(e) => setFormData({ ...formData, transportMode: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Transport Mode</option>
-                  <option value="Truck">Truck</option>
-                  <option value="Van">Van</option>
-                  <option value="Container">Container</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="vehicle-no">
-                  Vehicle No <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="vehicle-no"
-                  type="text"
-                  value={formData.vehicleNo || ''}
-                  onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter vehicle number"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="manifest-no">
-                  Manifest No <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="manifest-no"
-                  type="text"
-                  value={formData.manifestNo || ''}
-                  onChange={(e) => setFormData({ ...formData, manifestNo: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter manifest number"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="source-batch-ref">
+                Source Batch Ref <span className="ra-required">*</span>
+              </label>
+              <input
+                id="source-batch-ref"
+                type="text"
+                value={formData.sourceBatchRef || ''}
+                onChange={(e) => setFormData({ ...formData, sourceBatchRef: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter source batch reference"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-type">
+                Waste Type <span className="ra-required">*</span>
+              </label>
+              <input
+                id="waste-type"
+                type="text"
+                value={formData.wasteType || ''}
+                onChange={(e) => setFormData({ ...formData, wasteType: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter waste type"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="quantity">
+                Quantity (kg) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="quantity"
+                type="number"
+                step="0.01"
+                value={formData.quantityKg || 0}
+                onChange={(e) => setFormData({ ...formData, quantityKg: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="ra-assignment-form-group">
+              <label htmlFor="disposal-method">
+                Disposal Method <span className="ra-required">*</span>
+              </label>
+              <select
+                id="disposal-method"
+                value={formData.disposalMethod || ''}
+                onChange={(e) => setFormData({ ...formData, disposalMethod: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Disposal Method</option>
+                <option value="Landfill">Landfill</option>
+                <option value="Incineration">Incineration</option>
+                <option value="Recycling">Recycling</option>
+                <option value="Composting">Composting</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="disposal-site">
+                Disposal Site <span className="ra-required">*</span>
+              </label>
+              <input
+                id="disposal-site"
+                type="text"
+                value={formData.disposalSite || ''}
+                onChange={(e) => setFormData({ ...formData, disposalSite: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter disposal site"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="transport-mode">
+                Transport Mode <span className="ra-required">*</span>
+              </label>
+              <select
+                id="transport-mode"
+                value={formData.transportMode || ''}
+                onChange={(e) => setFormData({ ...formData, transportMode: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Transport Mode</option>
+                <option value="Truck">Truck</option>
+                <option value="Van">Van</option>
+                <option value="Container">Container</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="ra-assignment-form-group">
+              <label htmlFor="vehicle-no">
+                Vehicle No <span className="ra-required">*</span>
+              </label>
+              <input
+                id="vehicle-no"
+                type="text"
+                value={formData.vehicleNo || ''}
+                onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter vehicle number"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="manifest-no">
+                Manifest No <span className="ra-required">*</span>
+              </label>
+              <input
+                id="manifest-no"
+                type="text"
+                value={formData.manifestNo || ''}
+                onChange={(e) => setFormData({ ...formData, manifestNo: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter manifest number"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

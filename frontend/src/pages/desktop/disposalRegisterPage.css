@@ -558,11 +558,12 @@
   z-index: 1100;
 }
 
-.ra-assignment-modal {
+.modal-content.ra-assignment-modal.disposal-register-modal {
   max-width: 680px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: visible;
 }
 
 .ra-assignment-modal-header {
@@ -629,26 +630,25 @@
   color: #0f172a;
 }
 
-.ra-assignment-form {
+.ra-assignment-form.disposal-register-form {
   padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.ra-assignment-form-grid {
+.ra-assignment-form-grid.disposal-register-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 24px;
-}
-
-.ra-assignment-form-col {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 20px;
+  width: 100%;
+  align-items: start;
 }
 
 .ra-assignment-form-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .ra-assignment-form-group label {
@@ -666,7 +666,8 @@
 
 .ra-assignment-input,
 .ra-assignment-select {
-  height: 36px;
+  width: 100%;
+  height: 38px;
   padding: 0 12px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -676,6 +677,7 @@
   background: #ffffff;
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .ra-assignment-input:focus,
@@ -751,14 +753,20 @@ textarea.ra-assignment-input {
   cursor: not-allowed;
 }
 
+@media (max-width: 1024px) {
+  .ra-assignment-form-grid.disposal-register-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-  .ra-assignment-form-grid {
+  .ra-assignment-form-grid.disposal-register-form-grid {
     grid-template-columns: 1fr;
     gap: 20px;
   }
   
-  .ra-assignment-modal {
+  .modal-content.ra-assignment-modal.disposal-register-modal {
     width: 95%;
     max-width: 95%;
   }

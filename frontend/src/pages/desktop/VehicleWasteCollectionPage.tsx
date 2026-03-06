@@ -8,6 +8,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import './vehicleWasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface VehicleWasteCollection {
   id: string;
@@ -147,11 +148,11 @@ const VehicleWasteCollectionPage = () => {
     
     // Validation
     if (!formData.vehicleId) {
-      setError('Please select a vehicle');
+      toast.error('Please select a vehicle');
       return;
     }
     if (formData.grossWeightKg < formData.tareWeightKg) {
-      setError('Gross weight must be greater than or equal to tare weight');
+      toast.error('Gross weight must be greater than or equal to tare weight');
       return;
     }
     // Net weight validation removed - backend will handle validation
@@ -172,7 +173,18 @@ const VehicleWasteCollectionPage = () => {
           notes: formData.notes,
         };
         await vehicleWasteCollectionService.updateCollection(formData.editingId, updateData);
-        setSuccessMessage('Collection updated successfully');
+        toast.success('Collection updated successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         const createData: CreateVehicleWasteCollectionRequest = {
           vehicleId: formData.vehicleId,
@@ -187,16 +199,26 @@ const VehicleWasteCollectionPage = () => {
           notes: formData.notes,
         };
         await vehicleWasteCollectionService.createCollection(createData);
-        setSuccessMessage('Collection created successfully');
+        toast.success('Created Successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
 
       await loadCollections();
       setShowFormModal(false);
       resetForm();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save collection';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving collection:', err);
     } finally {
       setLoading(false);
@@ -209,16 +231,37 @@ const VehicleWasteCollectionPage = () => {
       setError(null);
       if (action === 'submit') {
         await vehicleWasteCollectionService.submitCollection(collectionId);
-        setSuccessMessage('Collection submitted successfully');
+        toast.success('Collection submitted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         await vehicleWasteCollectionService.verifyCollection(collectionId);
-        setSuccessMessage('Collection verified successfully');
+        toast.success('Collection verified successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
       await loadCollections();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update status';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error updating status:', err);
     } finally {
       setLoading(false);
@@ -233,12 +276,22 @@ const VehicleWasteCollectionPage = () => {
       setLoading(true);
       setError(null);
       await vehicleWasteCollectionService.deleteCollection(collectionId);
-      setSuccessMessage('Collection deleted successfully');
+      toast.success('Collection deleted successfully', {
+        icon: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        ),
+        style: {
+          background: '#d4edda',
+          color: '#155724',
+          border: '1px solid #c3e6cb',
+        },
+      });
       await loadCollections();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete collection';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error deleting collection:', err);
     } finally {
       setLoading(false);
@@ -790,7 +843,7 @@ const VehicleWasteCollectionPage = () => {
                   </div>
 
                   <div className="vwc-form-group">
-                    <label htmlFor="fuelUsageLiters" className="vwc-form-label">Fuel Usage (Liters)</label>
+                    <label htmlFor="fuelUsageLiters" className="vwc-form-label">Fuel Amount</label>
                     <input
                       id="fuelUsageLiters"
                       type="number"
@@ -800,6 +853,7 @@ const VehicleWasteCollectionPage = () => {
                       value={formData.fuelUsageLiters || ''}
                       onChange={(e) => setFormData({ ...formData, fuelUsageLiters: e.target.value ? parseFloat(e.target.value) : null })}
                       disabled={!!formData.editingId && formData.editingStatus !== 'Draft'}
+                      placeholder="Enter fuel amount"
                     />
                   </div>
                 </div>

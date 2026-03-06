@@ -21,6 +21,12 @@ export interface CreateShredderRegisterRequest {
   indicatorResult: string;
   complianceStatus: string;
   status: 'Active' | 'Inactive';
+  inputSourceType?: string;
+  inputSourceRef?: string;
+  inputQtyKg?: number;
+  outputQtyKg?: number;
+  bladeCondition?: string;
+  outputDispatchedTo?: string;
 }
 
 export interface UpdateShredderRegisterRequest {
@@ -37,10 +43,17 @@ export interface UpdateShredderRegisterRequest {
   indicatorResult?: string;
   complianceStatus?: string;
   status?: 'Active' | 'Inactive';
+  inputSourceType?: string;
+  inputSourceRef?: string;
+  inputQtyKg?: number;
+  outputQtyKg?: number;
+  bladeCondition?: string;
+  outputDispatchedTo?: string;
 }
 
 export interface ShredderRegisterResponse {
   id: string;
+  shredderId?: string;
   shredRegNum: string;
   companyId: string;
   shredderDate: string;
@@ -56,6 +69,12 @@ export interface ShredderRegisterResponse {
   indicatorResult: string;
   complianceStatus: string;
   status: 'Active' | 'Inactive';
+  inputSourceType?: string;
+  inputSourceRef?: string;
+  inputQtyKg?: number;
+  outputQtyKg?: number;
+  bladeCondition?: string;
+  outputDispatchedTo?: string;
   createdBy?: string | null;
   createdOn: string;
   modifiedBy?: string | null;
@@ -142,21 +161,63 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeShredderRegister = (payload: any): ShredderRegisterResponse => ({
+  id: payload?.id || payload?.shredderId || '',
+  shredderId: payload?.shredderId,
+  shredRegNum: payload?.shredRegNum || '',
+  companyId: payload?.companyId || '',
+  shredderDate: payload?.shredderDate || '',
+  equipmentId: payload?.equipmentId || '',
+  batchNo: payload?.batchNo || '',
+  wasteCategory: payload?.wasteCategory || '',
+  wasteQtyKg: payload?.wasteQtyKg ?? 0,
+  startTime: payload?.startTime || '',
+  endTime: payload?.endTime || '',
+  temperatureC: payload?.temperatureC ?? 0,
+  pressureBar: payload?.pressureBar ?? 0,
+  cycleTimeMin: payload?.cycleTimeMin ?? 0,
+  indicatorResult: payload?.indicatorResult || '',
+  complianceStatus: payload?.complianceStatus || '',
+  status: payload?.status || 'Active',
+  inputSourceType: payload?.inputSourceType,
+  inputSourceRef: payload?.inputSourceRef,
+  inputQtyKg: payload?.inputQtyKg,
+  outputQtyKg: payload?.outputQtyKg,
+  bladeCondition: payload?.bladeCondition,
+  outputDispatchedTo: payload?.outputDispatchedTo,
+  createdBy: payload?.createdBy,
+  createdOn: payload?.createdOn || '',
+  modifiedBy: payload?.modifiedBy,
+  modifiedOn: payload?.modifiedOn || '',
+});
+
+const extractResponseData = <T>(response: T | ApiResponse<T>): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'data' in (response as Record<string, unknown>)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+};
+
 // Shredder Register API functions
 export const shredderRegisterService = {
   createShredderRegister: async (data: CreateShredderRegisterRequest): Promise<ShredderRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ShredderRegisterResponse>>('/shredder-registers', {
+    const response = await apiRequest<ShredderRegisterResponse | ApiResponse<ShredderRegisterResponse>>('/shredder-registers', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeShredderRegister(extractResponseData(response));
   },
 
   getShredderRegisterById: async (shredderId: string): Promise<ShredderRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ShredderRegisterResponse>>(`/shredder-registers/${shredderId}`, {
+    const response = await apiRequest<ShredderRegisterResponse | ApiResponse<ShredderRegisterResponse>>(`/shredder-registers/${shredderId}`, {
       method: 'GET',
     });
-    return response.data;
+    return normalizeShredderRegister(extractResponseData(response));
   },
 
   getAllShredderRegisters: async (
@@ -175,25 +236,25 @@ export const shredderRegisterService = {
       url += `?${params.toString()}`;
     }
     
-    const response = await apiRequest<ApiResponse<ShredderRegisterResponse[]>>(url, {
+    const response = await apiRequest<ShredderRegisterResponse[] | ApiResponse<ShredderRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    const data = extractResponseData(response);
+    if (!data || !Array.isArray(data)) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return data.map(normalizeShredderRegister);
   },
 
   updateShredderRegister: async (
     shredderId: string,
     data: UpdateShredderRegisterRequest
   ): Promise<ShredderRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ShredderRegisterResponse>>(`/shredder-registers/${shredderId}`, {
-      method: 'PUT',
+    const response = await apiRequest<ShredderRegisterResponse | ApiResponse<ShredderRegisterResponse>>(`/shredder-registers/${shredderId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeShredderRegister(extractResponseData(response));
   },
 
   deleteShredderRegister: async (shredderId: string): Promise<void> => {

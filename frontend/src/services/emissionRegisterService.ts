@@ -140,14 +140,22 @@ export const emissionRegisterService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return Array.isArray(response) ? response[0] : (response.data || response);
   },
 
   getEmissionRegisterById: async (emissionId: string): Promise<EmissionRegisterResponse> => {
     const response = await apiRequest<ApiResponse<EmissionRegisterResponse>>(`/emission-registers/${emissionId}`, {
       method: 'GET',
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return response.data || response;
   },
 
   getAllEmissionRegisters: async (
@@ -169,11 +177,11 @@ export const emissionRegisterService = {
     const response = await apiRequest<ApiResponse<EmissionRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    // Safety check: ensure data is an array and handle raw array response
+    if (!response) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return Array.isArray(response) ? response : (response.data || []);
   },
 
   updateEmissionRegister: async (
@@ -181,10 +189,14 @@ export const emissionRegisterService = {
     data: UpdateEmissionRegisterRequest
   ): Promise<EmissionRegisterResponse> => {
     const response = await apiRequest<ApiResponse<EmissionRegisterResponse>>(`/emission-registers/${emissionId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return response.data || response;
   },
 
   deleteEmissionRegister: async (emissionId: string): Promise<void> => {

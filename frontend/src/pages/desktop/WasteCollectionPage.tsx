@@ -9,6 +9,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import './wasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface WasteCollection {
   id: string;
@@ -60,8 +61,6 @@ const WasteCollectionPage = () => {
   const [collectionToEdit, setCollectionToEdit] = useState<WasteCollection | null>(null);
   const [collectionToDelete, setCollectionToDelete] = useState<WasteCollection | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeLookupResult, setBarcodeLookupResult] = useState<BarcodeLookupResponse | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -89,7 +88,6 @@ const WasteCollectionPage = () => {
   // Load collections
   const loadCollections = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const apiCollections = await wasteCollectionService.getAllWasteCollections(
         undefined,
@@ -137,7 +135,7 @@ const WasteCollectionPage = () => {
       setCollections(mappedCollections);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load collections';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error loading collections:', err);
     } finally {
       setLoading(false);
@@ -162,12 +160,11 @@ const WasteCollectionPage = () => {
   // Handle barcode lookup
   const handleBarcodeLookup = async (barcode: string) => {
     if (!barcode || barcode.length < 5) {
-      setError('Please enter a valid barcode (at least 5 characters)');
+      toast.error('Please enter a valid barcode (at least 5 characters)');
       return;
     }
 
     setLookupLoading(true);
-    setError(null);
     setBarcodeLookupResult(null);
 
     try {
@@ -180,7 +177,7 @@ const WasteCollectionPage = () => {
       );
       
       if (existingCollection) {
-        setError(`Barcode ${barcode} has already been collected on ${selectedDate}`);
+        toast.error(`Barcode ${barcode} has already been collected on ${selectedDate}`);
         setBarcodeLookupResult(null);
       } else {
         // Open collection modal with pre-filled data
@@ -188,7 +185,7 @@ const WasteCollectionPage = () => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to lookup barcode';
-      setError(errorMessage);
+      toast.error(errorMessage);
       setBarcodeLookupResult(null);
     } finally {
       setLookupLoading(false);
@@ -207,13 +204,12 @@ const WasteCollectionPage = () => {
   // Handle collection save
   const handleSaveCollection = async (data: Partial<WasteCollection>) => {
     if (!barcodeLookupResult) {
-      setError('Barcode lookup result is missing');
+      toast.error('Barcode lookup result is missing');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
 
       await wasteCollectionService.createWasteCollection({
         barcode: barcodeLookupResult.barcode,
@@ -226,14 +222,13 @@ const WasteCollectionPage = () => {
         notes: data.notes || null,
       });
 
-      setSuccessMessage('Waste collection recorded successfully');
+      toast.success('Waste collection recorded successfully');
       setShowCollectionModal(false);
       setBarcodeLookupResult(null);
       await loadCollections();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save collection';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving collection:', err);
     } finally {
       setLoading(false);
@@ -244,14 +239,12 @@ const WasteCollectionPage = () => {
   const handleCollectWaste = async (collectionId: string, weightKg: number) => {
     try {
       setLoading(true);
-      setError(null);
       await wasteCollectionService.collectWaste(collectionId, weightKg);
-      setSuccessMessage('Waste collected successfully');
+      toast.success('Waste collected successfully');
       await loadCollections();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to collect waste';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error collecting waste:', err);
     } finally {
       setLoading(false);
@@ -275,16 +268,14 @@ const WasteCollectionPage = () => {
     if (!collectionToEdit) return;
     try {
       setLoading(true);
-      setError(null);
       await wasteCollectionService.collectWaste(collectionToEdit.id, data.weightKg);
-      setSuccessMessage('Collection updated successfully');
+      toast.success('Collection updated successfully');
       await loadCollections();
       setShowEditModal(false);
       setCollectionToEdit(null);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update collection';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error updating collection:', err);
     } finally {
       setLoading(false);
@@ -302,16 +293,14 @@ const WasteCollectionPage = () => {
     if (!collectionToDelete) return;
     try {
       setLoading(true);
-      setError(null);
       await wasteCollectionService.deleteWasteCollection(collectionToDelete.id);
-      setSuccessMessage('Collection deleted successfully');
+      toast.success('Collection deleted successfully');
       await loadCollections();
       setShowDeleteModal(false);
       setCollectionToDelete(null);
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete collection';
-      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error deleting collection:', err);
     } finally {
       setLoading(false);
@@ -445,70 +434,6 @@ const WasteCollectionPage = () => {
           title="Waste Collection"
           subtitle="Manage waste collection records"
         />
-
-        {/* Success Message */}
-        {successMessage && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#d4edda', 
-            color: '#155724', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #c3e6cb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span>{successMessage}</span>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#155724',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close success message"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div style={{ 
-            padding: '12px 16px', 
-            background: '#fee', 
-            color: '#c33', 
-            marginBottom: '16px', 
-            borderRadius: '6px',
-            border: '1px solid #fcc',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <span>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#c33',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0 8px',
-                lineHeight: '1'
-              }}
-              aria-label="Close error message"
-            >
-              ×
-            </button>
-          </div>
-        )}
 
         {/* Loading Indicator */}
         {loading && !collections.length && (
@@ -804,14 +729,61 @@ const CollectionFormModal = ({
   onClose,
   onSave,
 }: CollectionFormModalProps) => {
-  const [formData, setFormData] = useState<Partial<WasteCollection>>({
+  const [formData, setFormData] = useState<Partial<WasteCollection> & { isNilCollection?: boolean; latitude?: number | null; longitude?: number | null; quality?: 'Good' | 'Average' | 'Poor' | null }>({
     weightKg: null,
     notes: null,
+    isNilCollection: false,
+    latitude: null,
+    longitude: null,
+    quality: null,
   });
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const handleNilCollectionChange = (checked: boolean) => {
+    setFormData({
+      ...formData,
+      isNilCollection: checked,
+      weightKg: checked ? 0 : formData.weightKg,
+    });
+  };
+
+  const getGPSLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setGpsLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData({
+          ...formData,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setGpsLoading(false);
+      },
+      (error) => {
+        alert(`Failed to get GPS location: ${error.message}`);
+        setGpsLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // If NIL Collection is checked, ensure weight is 0
+    const submitData = {
+      ...formData,
+      weightKg: formData.isNilCollection ? 0 : formData.weightKg,
+    };
+    onSave(submitData);
   };
 
   const formatDateForDisplay = (dateStr: string) => {
@@ -866,6 +838,17 @@ const CollectionFormModal = ({
                 />
               </div>
               <div className="wc-collection-form-group">
+                <label className="wc-collection-checkbox-label">
+                  <input
+                    type="checkbox"
+                    className="wc-collection-checkbox"
+                    checked={formData.isNilCollection || false}
+                    onChange={(e) => handleNilCollectionChange(e.target.checked)}
+                  />
+                  <span>NIL Collection</span>
+                </label>
+              </div>
+              <div className="wc-collection-form-group">
                 <label className="wc-collection-label">Company</label>
                 <input
                   type="text"
@@ -896,6 +879,45 @@ const CollectionFormModal = ({
           </div>
 
           <div className="wc-collection-form-section">
+            <h3 className="wc-collection-section-title">LOCATION INFORMATION</h3>
+            <div className="wc-collection-form-grid">
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Latitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="wc-collection-input"
+                  value={formData.latitude || ''}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value ? parseFloat(e.target.value) : null })}
+                  placeholder="28.7041"
+                />
+              </div>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">Longitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="wc-collection-input"
+                  value={formData.longitude || ''}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value ? parseFloat(e.target.value) : null })}
+                  placeholder="77.1025"
+                />
+              </div>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">&nbsp;</label>
+                <button
+                  type="button"
+                  className="wc-collection-gps-btn"
+                  onClick={getGPSLocation}
+                  disabled={gpsLoading}
+                >
+                  {gpsLoading ? 'Capturing...' : 'Capture GPS'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="wc-collection-form-section">
             <h3 className="wc-collection-section-title">COLLECTION DETAILS</h3>
             <div className="wc-collection-form-grid">
               <div className="wc-collection-form-group">
@@ -908,10 +930,27 @@ const CollectionFormModal = ({
                   min="0"
                   value={formData.weightKg || ''}
                   onChange={(e) => setFormData({ ...formData, weightKg: parseFloat(e.target.value) || null })}
-                  required
+                  required={!formData.isNilCollection}
+                  disabled={formData.isNilCollection}
                   className="wc-collection-input"
                   placeholder="Enter weight"
                 />
+              </div>
+              <div className="wc-collection-form-group">
+                <label className="wc-collection-label">
+                  Quality <span className="wc-collection-required">*</span>
+                </label>
+                <select
+                  className="wc-collection-select"
+                  value={formData.quality || ''}
+                  onChange={(e) => setFormData({ ...formData, quality: e.target.value as 'Good' | 'Average' | 'Poor' | null || null })}
+                  required
+                >
+                  <option value="">Select Quality</option>
+                  <option value="Good">Good</option>
+                  <option value="Average">Average</option>
+                  <option value="Poor">Poor</option>
+                </select>
               </div>
               <div className="wc-collection-form-group wc-collection-form-group--full">
                 <label className="wc-collection-label">Notes</label>

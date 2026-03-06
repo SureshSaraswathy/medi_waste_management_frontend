@@ -251,6 +251,11 @@
   min-height: 0;
 }
 
+.incineration-equipment-cell {
+  white-space: nowrap;
+  text-align: left;
+}
+
 .route-assignment-table tbody tr:hover {
   background: #f8fafc;
 }
@@ -565,6 +570,17 @@
   overflow-y: auto;
 }
 
+.modal-content.incineration-register-modal {
+  max-width: 1050px !important;
+  width: 95%;
+  margin: auto;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .ra-assignment-modal-header {
   display: flex;
   align-items: flex-start;
@@ -639,6 +655,22 @@
   gap: 20px 24px;
 }
 
+.ra-assignment-form.incineration-register-form {
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.modal-content.incineration-register-modal .ra-assignment-form-grid.incineration-register-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(260px, 1fr)) !important;
+  gap: 18px 20px !important;
+  width: 100%;
+  align-items: start;
+  padding-bottom: 40px;
+}
+
 .ra-assignment-form-col {
   display: flex;
   flex-direction: column;
@@ -660,6 +692,19 @@
   gap: 4px;
 }
 
+.modal-content.incineration-register-modal .ra-assignment-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.modal-content.incineration-register-modal .ra-assignment-form-group label {
+  white-space: normal;
+  line-height: 1.35;
+}
+
 .ra-required {
   color: #ef4444;
 }
@@ -676,6 +721,13 @@
   background: #ffffff;
   transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
+}
+
+.modal-content.incineration-register-modal .ra-assignment-input,
+.modal-content.incineration-register-modal .ra-assignment-select {
+  width: 100%;
+  height: 38px;
+  box-sizing: border-box;
 }
 
 .ra-assignment-input:focus,
@@ -765,5 +817,23 @@ textarea.ra-assignment-input {
 
   .ra-filter-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Incineration Register Modal Responsive */
+@media (max-width: 1024px) {
+  .modal-content.incineration-register-modal .ra-assignment-form-grid.incineration-register-form-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-content.incineration-register-modal .ra-assignment-form-grid.incineration-register-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .modal-content.incineration-register-modal {
+    width: 95%;
+    max-width: 95%;
   }
 }

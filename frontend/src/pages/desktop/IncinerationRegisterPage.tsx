@@ -4,11 +4,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { incinerationRegisterService, IncinerationRegisterResponse } from '../../services/incinerationRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import { categoryService, CategoryResponse } from '../../services/categoryService';
+import { equipmentService, EquipmentResponse } from '../../services/equipmentService';
 import PageHeader from '../../components/layout/PageHeader';
 import './incinerationRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface IncinerationRegister {
   id: string;
@@ -17,6 +18,7 @@ interface IncinerationRegister {
   companyName: string;
   incinerationDate: string;
   equipmentId: string;
+  equipmentDisplay: string;
   secondaryChamberId: string;
   batchNo: string;
   wasteCategory: string;
@@ -41,10 +43,11 @@ interface Company {
   status: 'Active' | 'Inactive';
 }
 
-interface Category {
+interface Equipment {
   id: string;
-  categoryCode: string;
-  categoryName: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType: string | null;
   status: 'Active' | 'Inactive';
 }
 
@@ -82,7 +85,7 @@ const IncinerationRegisterPage = () => {
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [incinerations, setIncinerations] = useState<IncinerationRegister[]>([]);
 
   // Load companies
@@ -108,26 +111,27 @@ const IncinerationRegisterPage = () => {
     }
   }, []);
 
-  // Load categories
-  const loadCategories = useCallback(async () => {
+  // Load equipment from Equipment Master
+  const loadEquipment = useCallback(async () => {
     try {
-      const apiCategories = await categoryService.getAllCategories(undefined, true);
-      // Safety check: ensure apiCategories is an array
-      if (!apiCategories || !Array.isArray(apiCategories)) {
-        console.warn('Categories API returned non-array response:', apiCategories);
-        setCategories([]);
+      const apiEquipment = await equipmentService.getAllEquipment(true);
+      // Safety check: ensure apiEquipment is an array
+      if (!apiEquipment || !Array.isArray(apiEquipment)) {
+        console.warn('Equipment API returned non-array response:', apiEquipment);
+        setEquipment([]);
         return;
       }
-      const mappedCategories: Category[] = apiCategories.map((cat: CategoryResponse) => ({
-        id: cat.id,
-        categoryCode: cat.categoryCode,
-        categoryName: cat.categoryName,
-        status: cat.status,
+      const mappedEquipment: Equipment[] = apiEquipment.map((eq: EquipmentResponse) => ({
+        id: eq.id,
+        equipmentCode: eq.equipmentCode,
+        equipmentName: eq.equipmentName,
+        equipmentType: eq.equipmentType,
+        status: eq.status,
       }));
-      setCategories(mappedCategories);
+      setEquipment(mappedEquipment);
     } catch (err) {
-      console.error('Error loading categories:', err);
-      setCategories([]); // Set empty array on error to prevent crashes
+      console.error('Error loading equipment:', err);
+      setEquipment([]); // Set empty array on error to prevent crashes
     }
   }, []);
 
@@ -152,14 +156,21 @@ const IncinerationRegisterPage = () => {
       const mappedIncinerations: IncinerationRegister[] = await Promise.all(
         apiIncinerations.map(async (apiIncineration: IncinerationRegisterResponse) => {
           const company = companies.find(c => c.id === apiIncineration.companyId);
+          const equipmentItem = equipment.find(
+            (eq) => eq.id === apiIncineration.equipmentId || eq.equipmentCode === apiIncineration.equipmentId
+          );
+          const equipmentDisplay = equipmentItem
+            ? `${equipmentItem.equipmentCode} - ${equipmentItem.equipmentName}`
+            : apiIncineration.equipmentId || '-';
 
           return {
-            id: apiIncineration.id,
+            id: apiIncineration.id || apiIncineration.incinerationId || '',
             inciRegNum: apiIncineration.inciRegNum,
             companyId: apiIncineration.companyId,
             companyName: company?.companyName || 'Unknown',
             incinerationDate: apiIncineration.incinerationDate,
             equipmentId: apiIncineration.equipmentId,
+            equipmentDisplay: equipmentDisplay,
             secondaryChamberId: apiIncineration.secondaryChamberId,
             batchNo: apiIncineration.batchNo,
             wasteCategory: apiIncineration.wasteCategory,
@@ -188,23 +199,23 @@ const IncinerationRegisterPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, companies]);
+  }, [statusFilter, companies, equipment]);
 
   // Initialize data
   useEffect(() => {
     const initializeData = async () => {
       await loadCompanies();
-      await loadCategories();
+      await loadEquipment();
     };
     initializeData();
-  }, [loadCompanies, loadCategories]);
+  }, [loadCompanies, loadEquipment]);
 
   // Load incinerations when dependencies are ready
   useEffect(() => {
-    if (companies.length > 0) {
+    if (companies.length > 0 && equipment.length > 0) {
       loadIncinerations();
     }
-  }, [companies, statusFilter, loadIncinerations]);
+  }, [companies, equipment, statusFilter, loadIncinerations]);
 
   const filteredIncinerations = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -252,12 +263,22 @@ const IncinerationRegisterPage = () => {
         setLoading(true);
         setError(null);
         await incinerationRegisterService.deleteIncinerationRegister(id);
-        setSuccessMessage('Incineration register deleted successfully');
+        toast.success('Incineration register deleted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
         await loadIncinerations();
-        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete incineration register';
-        setError(errorMessage);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting incineration register:', err);
       } finally {
         setLoading(false);
@@ -287,12 +308,23 @@ const IncinerationRegisterPage = () => {
           complianceStatus: data.complianceStatus,
           status: data.status,
         });
-        setSuccessMessage('Incineration register updated successfully');
+        toast.success('Incineration register updated successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         // Create new incineration
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
-          setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -312,16 +344,26 @@ const IncinerationRegisterPage = () => {
           complianceStatus: data.complianceStatus || 'Compliant',
           status: data.status || 'Active',
         });
-        setSuccessMessage('Incineration register created successfully');
+        toast.success('Created Successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
 
       setShowModal(false);
       setEditingIncineration(null);
       await loadIncinerations();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save incineration register';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving incineration register:', err);
     } finally {
       setLoading(false);
@@ -541,7 +583,7 @@ const IncinerationRegisterPage = () => {
                         <td>{incineration.inciRegNum}</td>
                         <td>{incineration.companyName}</td>
                         <td>{formatDate(incineration.incinerationDate)}</td>
-                        <td>{incineration.equipmentId}</td>
+                        <td className="incineration-equipment-cell" title={incineration.equipmentDisplay}>{incineration.equipmentDisplay}</td>
                         <td>{incineration.batchNo}</td>
                         <td>{incineration.wasteCategory}</td>
                         <td>{Number(incineration.wasteQtyKg || 0).toFixed(2)}</td>
@@ -630,7 +672,7 @@ const IncinerationRegisterPage = () => {
         <IncinerationFormModal
           incineration={editingIncineration}
           companies={companies.filter(c => c.status === 'Active')}
-          categories={categories.filter(c => c.status === 'Active')}
+          equipment={equipment.filter(eq => eq.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingIncineration(null);
@@ -646,7 +688,7 @@ const IncinerationRegisterPage = () => {
 interface IncinerationFormModalProps {
   incineration: IncinerationRegister | null;
   companies: Company[];
-  categories: Category[];
+  equipment: Equipment[];
   onClose: () => void;
   onSave: (data: Partial<IncinerationRegister>) => void;
 }
@@ -654,7 +696,7 @@ interface IncinerationFormModalProps {
 const IncinerationFormModal = ({
   incineration,
   companies,
-  categories,
+  equipment,
   onClose,
   onSave,
 }: IncinerationFormModalProps) => {
@@ -665,7 +707,7 @@ const IncinerationFormModal = ({
       equipmentId: '',
       secondaryChamberId: '',
       batchNo: '',
-      wasteCategory: '',
+      wasteCategory: 'Yellow',
       wasteQtyKg: 0,
       startTime: '08:00',
       endTime: '17:00',
@@ -684,7 +726,7 @@ const IncinerationFormModal = ({
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal incineration-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -713,219 +755,212 @@ const IncinerationFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!incineration}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="incineration-date">
-                  Incineration Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="incineration-date"
-                  type="date"
-                  value={formData.incinerationDate || ''}
-                  onChange={(e) => setFormData({ ...formData, incinerationDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="equipment-id">
-                  Equipment ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="equipment-id"
-                  type="text"
-                  value={formData.equipmentId || ''}
-                  onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter equipment ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="secondary-chamber-id">
-                  Secondary Chamber ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="secondary-chamber-id"
-                  type="text"
-                  value={formData.secondaryChamberId || ''}
-                  onChange={(e) => setFormData({ ...formData, secondaryChamberId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter secondary chamber ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="batch-no">
-                  Batch No <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="batch-no"
-                  type="text"
-                  value={formData.batchNo || ''}
-                  onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter batch number"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-category">
-                  Waste Category <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="waste-category"
-                  value={formData.wasteCategory || ''}
-                  onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.categoryName}>
-                      {category.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-qty">
-                  Waste Quantity (kg) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="waste-qty"
-                  type="number"
-                  step="0.01"
-                  value={formData.wasteQtyKg || 0}
-                  onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
+        <form className="ra-assignment-form incineration-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid incineration-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!incineration}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="start-time">
-                  Start Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="start-time"
-                  type="time"
-                  value={formData.startTime || ''}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="end-time">
-                  End Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="end-time"
-                  type="time"
-                  value={formData.endTime || ''}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="avg-temp">
-                  Average Temperature (°C) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="avg-temp"
-                  type="number"
-                  step="0.01"
-                  value={formData.avgTempC || 0}
-                  onChange={(e) => setFormData({ ...formData, avgTempC: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="retention-time">
-                  Retention Time (seconds) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="retention-time"
-                  type="number"
-                  step="1"
-                  value={formData.retentionTimeSec || 0}
-                  onChange={(e) => setFormData({ ...formData, retentionTimeSec: parseInt(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="fuel-used">
-                  Fuel Used (L) <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="fuel-used"
-                  type="number"
-                  step="0.01"
-                  value={formData.fuelUsedL || 0}
-                  onChange={(e) => setFormData({ ...formData, fuelUsedL: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="incineration-date">
+                Incineration Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="incineration-date"
+                type="date"
+                value={formData.incinerationDate || ''}
+                onChange={(e) => setFormData({ ...formData, incinerationDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="equipment-id">
+                Equipment ID <span className="ra-required">*</span>
+              </label>
+              <select
+                id="equipment-id"
+                value={formData.equipmentId || ''}
+                onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map((eq) => (
+                  <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
+                    {eq.equipmentCode} - {eq.equipmentName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="secondary-chamber-id">
+                Secondary Chamber ID <span className="ra-required">*</span>
+              </label>
+              <input
+                id="secondary-chamber-id"
+                type="text"
+                value={formData.secondaryChamberId || ''}
+                onChange={(e) => setFormData({ ...formData, secondaryChamberId: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter secondary chamber ID"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="batch-no">
+                Batch No <span className="ra-required">*</span>
+              </label>
+              <input
+                id="batch-no"
+                type="text"
+                value={formData.batchNo || ''}
+                onChange={(e) => setFormData({ ...formData, batchNo: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter batch number"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-category">
+                Waste Category <span className="ra-required">*</span>
+              </label>
+              <select
+                id="waste-category"
+                value={formData.wasteCategory || 'Yellow'}
+                onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="Yellow">Yellow</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-qty">
+                Waste Quantity (kg) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="waste-qty"
+                type="number"
+                step="0.01"
+                value={formData.wasteQtyKg || 0}
+                onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="start-time">
+                Start Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="start-time"
+                type="time"
+                value={formData.startTime || ''}
+                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="end-time">
+                End Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="end-time"
+                type="time"
+                value={formData.endTime || ''}
+                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="avg-temp">
+                Average Temperature (°C) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="avg-temp"
+                type="number"
+                step="0.01"
+                value={formData.avgTempC || 0}
+                onChange={(e) => setFormData({ ...formData, avgTempC: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="retention-time">
+                Retention Time (seconds) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="retention-time"
+                type="number"
+                step="1"
+                value={formData.retentionTimeSec || 0}
+                onChange={(e) => setFormData({ ...formData, retentionTimeSec: parseInt(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="fuel-used">
+                Fuel Used (L) <span className="ra-required">*</span>
+              </label>
+              <input
+                id="fuel-used"
+                type="number"
+                step="0.01"
+                value={formData.fuelUsedL || 0}
+                onChange={(e) => setFormData({ ...formData, fuelUsedL: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

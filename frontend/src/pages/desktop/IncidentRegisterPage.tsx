@@ -4,11 +4,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { incidentRegisterService, IncidentRegisterResponse } from '../../services/incidentRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
-import { categoryService, CategoryResponse } from '../../services/categoryService';
 import PageHeader from '../../components/layout/PageHeader';
 import './incidentRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface IncidentRegister {
   id: string;
@@ -42,12 +42,6 @@ interface Company {
   status: 'Active' | 'Inactive';
 }
 
-interface Category {
-  id: string;
-  categoryCode: string;
-  categoryName: string;
-  status: 'Active' | 'Inactive';
-}
 
 interface AdvancedFilters {
   incidentNum: string;
@@ -83,7 +77,6 @@ const IncidentRegisterPage = () => {
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [incidents, setIncidents] = useState<IncidentRegister[]>([]);
 
   // Load companies
@@ -109,28 +102,6 @@ const IncidentRegisterPage = () => {
     }
   }, []);
 
-  // Load categories
-  const loadCategories = useCallback(async () => {
-    try {
-      const apiCategories = await categoryService.getAllCategories(undefined, true);
-      // Safety check: ensure apiCategories is an array
-      if (!apiCategories || !Array.isArray(apiCategories)) {
-        console.warn('Categories API returned non-array response:', apiCategories);
-        setCategories([]);
-        return;
-      }
-      const mappedCategories: Category[] = apiCategories.map((cat: CategoryResponse) => ({
-        id: cat.id,
-        categoryCode: cat.categoryCode,
-        categoryName: cat.categoryName,
-        status: cat.status,
-      }));
-      setCategories(mappedCategories);
-    } catch (err) {
-      console.error('Error loading categories:', err);
-      setCategories([]); // Set empty array on error to prevent crashes
-    }
-  }, []);
 
   // Load incidents
   const loadIncidents = useCallback(async () => {
@@ -155,7 +126,7 @@ const IncidentRegisterPage = () => {
           const company = companies.find(c => c.id === apiIncident.companyId);
 
           return {
-            id: apiIncident.id,
+            id: apiIncident.id || apiIncident.incidentId || '',
             incidentNum: apiIncident.incidentNum,
             companyId: apiIncident.companyId,
             companyName: company?.companyName || 'Unknown',
@@ -196,10 +167,9 @@ const IncidentRegisterPage = () => {
   useEffect(() => {
     const initializeData = async () => {
       await loadCompanies();
-      await loadCategories();
     };
     initializeData();
-  }, [loadCompanies, loadCategories]);
+  }, [loadCompanies]);
 
   // Load incidents when dependencies are ready
   useEffect(() => {
@@ -254,12 +224,22 @@ const IncidentRegisterPage = () => {
         setLoading(true);
         setError(null);
         await incidentRegisterService.deleteIncidentRegister(id);
-        setSuccessMessage('Incident register deleted successfully');
+        toast.success('Incident register deleted successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
         await loadIncidents();
-        setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete incident register';
-        setError(errorMessage);
+        toast.error(`Error: ${errorMessage}`);
         console.error('Error deleting incident register:', err);
       } finally {
         setLoading(false);
@@ -290,12 +270,23 @@ const IncidentRegisterPage = () => {
           incidentStatus: data.incidentStatus,
           status: data.status,
         });
-        setSuccessMessage('Incident register updated successfully');
+        toast.success('Incident register updated successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       } else {
         // Create new incident
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
-          setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -316,16 +307,26 @@ const IncidentRegisterPage = () => {
           incidentStatus: data.incidentStatus || 'Reported',
           status: data.status || 'Active',
         });
-        setSuccessMessage('Incident register created successfully');
+        toast.success('Created Successfully', {
+          icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ),
+          style: {
+            background: '#d4edda',
+            color: '#155724',
+            border: '1px solid #c3e6cb',
+          },
+        });
       }
 
       setShowModal(false);
       setEditingIncident(null);
       await loadIncidents();
-      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save incident register';
-      setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`);
       console.error('Error saving incident register:', err);
     } finally {
       setLoading(false);
@@ -657,7 +658,6 @@ const IncidentRegisterPage = () => {
         <IncidentFormModal
           incident={editingIncident}
           companies={companies.filter(c => c.status === 'Active')}
-          categories={categories.filter(c => c.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingIncident(null);
@@ -673,7 +673,6 @@ const IncidentRegisterPage = () => {
 interface IncidentFormModalProps {
   incident: IncidentRegister | null;
   companies: Company[];
-  categories: Category[];
   onClose: () => void;
   onSave: (data: Partial<IncidentRegister>) => void;
 }
@@ -681,7 +680,6 @@ interface IncidentFormModalProps {
 const IncidentFormModal = ({
   incident,
   companies,
-  categories,
   onClose,
   onSave,
 }: IncidentFormModalProps) => {
@@ -712,7 +710,7 @@ const IncidentFormModal = ({
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal incident-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -741,233 +739,225 @@ const IncidentFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!incident}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="incident-date">
-                  Incident Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="incident-date"
-                  type="date"
-                  value={formData.incidentDate || ''}
-                  onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="incident-time">
-                  Incident Time <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="incident-time"
-                  type="time"
-                  value={formData.incidentTime || ''}
-                  onChange={(e) => setFormData({ ...formData, incidentTime: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="incident-type">
-                  Incident Type <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="incident-type"
-                  value={formData.incidentType || ''}
-                  onChange={(e) => setFormData({ ...formData, incidentType: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Type</option>
-                  <option value="Spill">Spill</option>
-                  <option value="Exposure">Exposure</option>
-                  <option value="Injury">Injury</option>
-                  <option value="Fire">Fire</option>
-                  <option value="Equipment Failure">Equipment Failure</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="location">
-                  Location <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="location"
-                  type="text"
-                  value={formData.location || ''}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter location"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="waste-category">
-                  Waste Category <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="waste-category"
-                  value={formData.wasteCategory || ''}
-                  onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.categoryName}>
-                      {category.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <form className="ra-assignment-form incident-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid incident-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!incident}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="quantity-value">
-                  Quantity Value <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="quantity-value"
-                  type="number"
-                  step="0.01"
-                  value={formData.quantityValue || 0}
-                  onChange={(e) => setFormData({ ...formData, quantityValue: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="quantity-unit">
-                  Quantity Unit <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="quantity-unit"
-                  value={formData.quantityUnit || 'kg'}
-                  onChange={(e) => setFormData({ ...formData, quantityUnit: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="L">L</option>
-                  <option value="mL">mL</option>
-                  <option value="pieces">pieces</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="severity">
-                  Severity <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="severity"
-                  value={formData.severity || 'Low'}
-                  onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Critical">Critical</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="person-affected">Person Affected</label>
-                <input
-                  id="person-affected"
-                  type="text"
-                  value={formData.personAffected || ''}
-                  onChange={(e) => setFormData({ ...formData, personAffected: e.target.value || null })}
-                  className="ra-assignment-input"
-                  placeholder="Enter person name"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="immediate-action">Immediate Action</label>
-                <textarea
-                  id="immediate-action"
-                  value={formData.immediateAction || ''}
-                  onChange={(e) => setFormData({ ...formData, immediateAction: e.target.value || null })}
-                  className="ra-assignment-input"
-                  rows={3}
-                  placeholder="Describe immediate actions taken"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="medical-action">Medical Action</label>
-                <textarea
-                  id="medical-action"
-                  value={formData.medicalAction || ''}
-                  onChange={(e) => setFormData({ ...formData, medicalAction: e.target.value || null })}
-                  className="ra-assignment-input"
-                  rows={3}
-                  placeholder="Describe medical actions taken"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="reported-to">Reported To</label>
-                <input
-                  id="reported-to"
-                  type="text"
-                  value={formData.reportedTo || ''}
-                  onChange={(e) => setFormData({ ...formData, reportedTo: e.target.value || null })}
-                  className="ra-assignment-input"
-                  placeholder="Enter person/department reported to"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="incident-status">Incident Status</label>
-                <select
-                  id="incident-status"
-                  value={formData.incidentStatus || 'Reported'}
-                  onChange={(e) => setFormData({ ...formData, incidentStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Reported">Reported</option>
-                  <option value="Under Investigation">Under Investigation</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="incident-date">
+                Incident Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="incident-date"
+                type="date"
+                value={formData.incidentDate || ''}
+                onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="incident-time">
+                Incident Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="incident-time"
+                type="time"
+                value={formData.incidentTime || ''}
+                onChange={(e) => setFormData({ ...formData, incidentTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="incident-type">
+                Incident Type <span className="ra-required">*</span>
+              </label>
+              <select
+                id="incident-type"
+                value={formData.incidentType || ''}
+                onChange={(e) => setFormData({ ...formData, incidentType: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Type</option>
+                <option value="Spill">Spill</option>
+                <option value="Exposure">Exposure</option>
+                <option value="Injury">Injury</option>
+                <option value="Fire">Fire</option>
+                <option value="Equipment Failure">Equipment Failure</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="location">
+                Location <span className="ra-required">*</span>
+              </label>
+              <input
+                id="location"
+                type="text"
+                value={formData.location || ''}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter location"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="waste-category">
+                Waste Category <span className="ra-required">*</span>
+              </label>
+              <select
+                id="waste-category"
+                value={formData.wasteCategory || ''}
+                onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Category</option>
+                <option value="Red">Red</option>
+                <option value="Yellow">Yellow</option>
+                <option value="Blue">Blue</option>
+                <option value="White">White</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="quantity-value">
+                Quantity Value <span className="ra-required">*</span>
+              </label>
+              <input
+                id="quantity-value"
+                type="number"
+                step="0.01"
+                value={formData.quantityValue || 0}
+                onChange={(e) => setFormData({ ...formData, quantityValue: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="quantity-unit">
+                Quantity Unit <span className="ra-required">*</span>
+              </label>
+              <select
+                id="quantity-unit"
+                value={formData.quantityUnit || 'kg'}
+                onChange={(e) => setFormData({ ...formData, quantityUnit: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="kg">kg</option>
+                <option value="g">g</option>
+                <option value="L">L</option>
+                <option value="mL">mL</option>
+                <option value="pieces">pieces</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="severity">
+                Severity <span className="ra-required">*</span>
+              </label>
+              <select
+                id="severity"
+                value={formData.severity || 'Low'}
+                onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="person-affected">Person Affected</label>
+              <input
+                id="person-affected"
+                type="text"
+                value={formData.personAffected || ''}
+                onChange={(e) => setFormData({ ...formData, personAffected: e.target.value || null })}
+                className="ra-assignment-input"
+                placeholder="Enter person name"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="immediate-action">Immediate Action</label>
+              <textarea
+                id="immediate-action"
+                value={formData.immediateAction || ''}
+                onChange={(e) => setFormData({ ...formData, immediateAction: e.target.value || null })}
+                className="ra-assignment-input"
+                rows={3}
+                placeholder="Describe immediate actions taken"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="medical-action">Medical Action</label>
+              <textarea
+                id="medical-action"
+                value={formData.medicalAction || ''}
+                onChange={(e) => setFormData({ ...formData, medicalAction: e.target.value || null })}
+                className="ra-assignment-input"
+                rows={3}
+                placeholder="Describe medical actions taken"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="reported-to">Reported To</label>
+              <input
+                id="reported-to"
+                type="text"
+                value={formData.reportedTo || ''}
+                onChange={(e) => setFormData({ ...formData, reportedTo: e.target.value || null })}
+                className="ra-assignment-input"
+                placeholder="Enter person/department reported to"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="incident-status">Incident Status</label>
+              <select
+                id="incident-status"
+                value={formData.incidentStatus || 'Reported'}
+                onChange={(e) => setFormData({ ...formData, incidentStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Reported">Reported</option>
+                <option value="Under Investigation">Under Investigation</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

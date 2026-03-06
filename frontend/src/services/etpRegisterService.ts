@@ -37,6 +37,7 @@ export interface UpdateETPRegisterRequest {
 
 export interface ETPRegisterResponse {
   id: string;
+  etpId?: string;
   etpRegNum: string;
   companyId: string;
   date: string;
@@ -136,21 +137,55 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeETPRegister = (payload: any): ETPRegisterResponse => ({
+  id: payload?.id || payload?.etpId || '',
+  etpId: payload?.etpId,
+  etpRegNum: payload?.etpRegNum || '',
+  companyId: payload?.companyId || '',
+  date: payload?.date || '',
+  inflow: payload?.inflow ?? 0,
+  treated: payload?.treated ?? 0,
+  ph: payload?.ph ?? 0,
+  bod: payload?.bod ?? 0,
+  cod: payload?.cod ?? 0,
+  tss: payload?.tss ?? 0,
+  oilGrease: payload?.oilGrease ?? 0,
+  dischargeMode: payload?.dischargeMode || '',
+  complianceStatus: payload?.complianceStatus || '',
+  status: payload?.status || 'Active',
+  createdBy: payload?.createdBy,
+  createdOn: payload?.createdOn || '',
+  modifiedBy: payload?.modifiedBy,
+  modifiedOn: payload?.modifiedOn || '',
+});
+
+const extractResponseData = <T>(response: T | ApiResponse<T>): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'data' in (response as Record<string, unknown>)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+};
+
 // ETP Register API functions
 export const etpRegisterService = {
   createETPRegister: async (data: CreateETPRegisterRequest): Promise<ETPRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ETPRegisterResponse>>('/etp-registers', {
+    const response = await apiRequest<ETPRegisterResponse | ApiResponse<ETPRegisterResponse>>('/etp-registers', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeETPRegister(extractResponseData(response));
   },
 
   getETPRegisterById: async (etpId: string): Promise<ETPRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ETPRegisterResponse>>(`/etp-registers/${etpId}`, {
+    const response = await apiRequest<ETPRegisterResponse | ApiResponse<ETPRegisterResponse>>(`/etp-registers/${etpId}`, {
       method: 'GET',
     });
-    return response.data;
+    return normalizeETPRegister(extractResponseData(response));
   },
 
   getAllETPRegisters: async (
@@ -169,25 +204,25 @@ export const etpRegisterService = {
       url += `?${params.toString()}`;
     }
     
-    const response = await apiRequest<ApiResponse<ETPRegisterResponse[]>>(url, {
+    const response = await apiRequest<ETPRegisterResponse[] | ApiResponse<ETPRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    const data = extractResponseData(response);
+    if (!data || !Array.isArray(data)) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return data.map(normalizeETPRegister);
   },
 
   updateETPRegister: async (
     etpId: string,
     data: UpdateETPRegisterRequest
   ): Promise<ETPRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<ETPRegisterResponse>>(`/etp-registers/${etpId}`, {
-      method: 'PUT',
+    const response = await apiRequest<ETPRegisterResponse | ApiResponse<ETPRegisterResponse>>(`/etp-registers/${etpId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeETPRegister(extractResponseData(response));
   },
 
   deleteETPRegister: async (etpId: string): Promise<void> => {

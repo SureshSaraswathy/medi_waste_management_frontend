@@ -299,10 +299,13 @@ const TransactionPage = () => {
   const visibleItems = useMemo(() => {
     const byPerm = filteredItems.filter((item) => canSeeTransactionCard(item.id));
 
+    // Filter out Compliance Register card
+    const withoutCompliance = byPerm.filter((item) => item.id !== 'compliance-register');
+
     const byGroup =
       filters.moduleGroup === 'all'
-        ? byPerm
-        : byPerm.filter((item) => getItemCategory(item.title, item.id) === filters.moduleGroup);
+        ? withoutCompliance
+        : withoutCompliance.filter((item) => getItemCategory(item.title, item.id) === filters.moduleGroup);
 
     const byFavorites = filters.favorites ? byGroup.filter((item) => favoriteIds.has(item.id)) : byGroup;
 

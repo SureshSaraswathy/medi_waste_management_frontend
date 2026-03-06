@@ -8,6 +8,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import './etpRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface ETPRegister {
   id: string;
@@ -118,7 +119,7 @@ const ETPRegisterPage = () => {
           const company = companies.find(c => c.id === apiETP.companyId);
 
           return {
-            id: apiETP.id,
+            id: apiETP.id || apiETP.etpId || '',
             etpRegNum: apiETP.etpRegNum,
             companyId: apiETP.companyId,
             companyName: company?.companyName || 'Unknown',
@@ -210,11 +211,13 @@ const ETPRegisterPage = () => {
         setError(null);
         await etpRegisterService.deleteETPRegister(id);
         setSuccessMessage('ETP register deleted successfully');
+        toast.success('ETP register deleted successfully');
         await loadETPRegisters();
         setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete ETP register';
         setError(errorMessage);
+        toast.error(errorMessage);
         console.error('Error deleting ETP register:', err);
       } finally {
         setLoading(false);
@@ -243,11 +246,13 @@ const ETPRegisterPage = () => {
           status: data.status,
         });
         setSuccessMessage('ETP register updated successfully');
+        toast.success('ETP register updated successfully');
       } else {
         // Create new ETP
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
           setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -266,6 +271,7 @@ const ETPRegisterPage = () => {
           status: data.status || 'Active',
         });
         setSuccessMessage('ETP register created successfully');
+        toast.success('ETP register created successfully');
       }
 
       setShowModal(false);
@@ -275,6 +281,7 @@ const ETPRegisterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save ETP register';
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving ETP register:', err);
     } finally {
       setLoading(false);
@@ -462,8 +469,6 @@ const ETPRegisterPage = () => {
                   <th>REG NUM</th>
                   <th>COMPANY</th>
                   <th>DATE</th>
-                  <th>INFLOW</th>
-                  <th>TREATED</th>
                   <th>PH</th>
                   <th>BOD</th>
                   <th>COD</th>
@@ -478,7 +483,7 @@ const ETPRegisterPage = () => {
               <tbody>
                 {filteredETPs.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="empty-message">
+                    <td colSpan={12} className="empty-message">
                       {loading ? 'Loading...' : 'No ETP registers found'}
                     </td>
                   </tr>
@@ -498,8 +503,6 @@ const ETPRegisterPage = () => {
                         <td>{etp.etpRegNum}</td>
                         <td>{etp.companyName}</td>
                         <td>{formatDate(etp.date)}</td>
-                        <td>{Number(etp.inflow || 0).toFixed(2)}</td>
-                        <td>{Number(etp.treated || 0).toFixed(2)}</td>
                         <td>{Number(etp.ph || 0).toFixed(2)}</td>
                         <td>{Number(etp.bod || 0).toFixed(2)}</td>
                         <td>{Number(etp.cod || 0).toFixed(2)}</td>
@@ -640,7 +643,7 @@ const ETPFormModal = ({
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal etp-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -669,196 +672,186 @@ const ETPFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!etp}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="date">
-                  Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="date"
-                  type="date"
-                  value={formData.date || ''}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="inflow">
-                  Inflow <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="inflow"
-                  type="number"
-                  step="0.01"
-                  value={formData.inflow || 0}
-                  onChange={(e) => setFormData({ ...formData, inflow: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="treated">
-                  Treated <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="treated"
-                  type="number"
-                  step="0.01"
-                  value={formData.treated || 0}
-                  onChange={(e) => setFormData({ ...formData, treated: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="ph">
-                  pH <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="ph"
-                  type="number"
-                  step="0.01"
-                  value={formData.ph || 0}
-                  onChange={(e) => setFormData({ ...formData, ph: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="bod">
-                  BOD <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="bod"
-                  type="number"
-                  step="0.01"
-                  value={formData.bod || 0}
-                  onChange={(e) => setFormData({ ...formData, bod: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="cod">
-                  COD <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="cod"
-                  type="number"
-                  step="0.01"
-                  value={formData.cod || 0}
-                  onChange={(e) => setFormData({ ...formData, cod: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
+        <form className="ra-assignment-form etp-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid etp-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!etp}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="date">
+                Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="date"
+                type="date"
+                value={formData.date || ''}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="tss">
+                TSS <span className="ra-required">*</span>
+              </label>
+              <input
+                id="tss"
+                type="number"
+                step="0.01"
+                value={formData.tss || 0}
+                onChange={(e) => setFormData({ ...formData, tss: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
             </div>
 
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="tss">
-                  TSS <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="tss"
-                  type="number"
-                  step="0.01"
-                  value={formData.tss || 0}
-                  onChange={(e) => setFormData({ ...formData, tss: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="oil-grease">
-                  Oil/Grease <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="oil-grease"
-                  type="number"
-                  step="0.01"
-                  value={formData.oilGrease || 0}
-                  onChange={(e) => setFormData({ ...formData, oilGrease: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="discharge-mode">
-                  Discharge Mode <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="discharge-mode"
-                  value={formData.dischargeMode || ''}
-                  onChange={(e) => setFormData({ ...formData, dischargeMode: e.target.value })}
-                  required
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Discharge Mode</option>
-                  <option value="Surface Water">Surface Water</option>
-                  <option value="Ground Water">Ground Water</option>
-                  <option value="Sewer">Sewer</option>
-                  <option value="Reuse">Reuse</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="oil-grease">
+                Oil/Grease <span className="ra-required">*</span>
+              </label>
+              <input
+                id="oil-grease"
+                type="number"
+                step="0.01"
+                value={formData.oilGrease || 0}
+                onChange={(e) => setFormData({ ...formData, oilGrease: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="inflow">
+                Inflow <span className="ra-required">*</span>
+              </label>
+              <input
+                id="inflow"
+                type="number"
+                step="0.01"
+                value={formData.inflow || 0}
+                onChange={(e) => setFormData({ ...formData, inflow: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="treated">
+                Treated <span className="ra-required">*</span>
+              </label>
+              <input
+                id="treated"
+                type="number"
+                step="0.01"
+                value={formData.treated || 0}
+                onChange={(e) => setFormData({ ...formData, treated: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="ra-assignment-form-group">
+              <label htmlFor="ph">
+                pH <span className="ra-required">*</span>
+              </label>
+              <input
+                id="ph"
+                type="number"
+                step="0.01"
+                value={formData.ph || 0}
+                onChange={(e) => setFormData({ ...formData, ph: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="bod">
+                BOD <span className="ra-required">*</span>
+              </label>
+              <input
+                id="bod"
+                type="number"
+                step="0.01"
+                value={formData.bod || 0}
+                onChange={(e) => setFormData({ ...formData, bod: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="cod">
+                COD <span className="ra-required">*</span>
+              </label>
+              <input
+                id="cod"
+                type="number"
+                step="0.01"
+                value={formData.cod || 0}
+                onChange={(e) => setFormData({ ...formData, cod: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="ra-assignment-form-group">
+              <label htmlFor="discharge-mode">
+                Discharge Mode <span className="ra-required">*</span>
+              </label>
+              <input
+                id="discharge-mode"
+                value={formData.dischargeMode || ''}
+                onChange={(e) => setFormData({ ...formData, dischargeMode: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter discharge mode"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { emissionRegisterService, EmissionRegisterResponse } from '../../services/emissionRegisterService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import { equipmentService, EquipmentResponse } from '../../services/equipmentService';
 import PageHeader from '../../components/layout/PageHeader';
 import './emissionRegisterPage.css';
 import '../desktop/dashboardPage.css';
@@ -17,6 +18,7 @@ interface EmissionRegister {
   companyName: string;
   emissionDate: string;
   equipmentId: string;
+  equipmentDisplay: string;
   stackId: string;
   pm: number;
   co: number;
@@ -35,6 +37,14 @@ interface Company {
   id: string;
   companyCode: string;
   companyName: string;
+  status: 'Active' | 'Inactive';
+}
+
+interface Equipment {
+  id: string;
+  equipmentCode: string;
+  equipmentName: string;
+  equipmentType: string | null;
   status: 'Active' | 'Inactive';
 }
 
@@ -71,6 +81,7 @@ const EmissionRegisterPage = () => {
 
   // Master data
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [emissions, setEmissions] = useState<EmissionRegister[]>([]);
 
   // Load companies
@@ -96,6 +107,30 @@ const EmissionRegisterPage = () => {
     }
   }, []);
 
+  // Load equipment from Equipment Master
+  const loadEquipment = useCallback(async () => {
+    try {
+      const apiEquipment = await equipmentService.getAllEquipment(true);
+      // Safety check: ensure apiEquipment is an array
+      if (!apiEquipment || !Array.isArray(apiEquipment)) {
+        console.warn('Equipment API returned non-array response:', apiEquipment);
+        setEquipment([]);
+        return;
+      }
+      const mappedEquipment: Equipment[] = apiEquipment.map((eq: EquipmentResponse) => ({
+        id: eq.id,
+        equipmentCode: eq.equipmentCode,
+        equipmentName: eq.equipmentName,
+        equipmentType: eq.equipmentType,
+        status: eq.status,
+      }));
+      setEquipment(mappedEquipment);
+    } catch (err) {
+      console.error('Error loading equipment:', err);
+      setEquipment([]); // Set empty array on error to prevent crashes
+    }
+  }, []);
+
   // Load emissions
   const loadEmissions = useCallback(async () => {
     setLoading(true);
@@ -114,10 +149,24 @@ const EmissionRegisterPage = () => {
       }
 
       // Map backend response to frontend format with names
-      // Use current companies state from closure
+      // Use current companies and equipment state from closure
       const mappedEmissions: EmissionRegister[] = await Promise.all(
         apiEmissions.map(async (apiEmission: EmissionRegisterResponse) => {
           const company = companies.find(c => c.id === apiEmission.companyId);
+          
+          // Handle equipment display - check if equipmentId is empty/null/undefined first
+          let equipmentDisplay = '-';
+          if (apiEmission.equipmentId && apiEmission.equipmentId.trim() !== '') {
+            const equipmentItem = equipment.find(
+              (eq) => eq.id === apiEmission.equipmentId || eq.equipmentCode === apiEmission.equipmentId
+            );
+            if (equipmentItem) {
+              equipmentDisplay = `${equipmentItem.equipmentCode} - ${equipmentItem.equipmentName}`;
+            } else {
+              // If equipment ID exists but not found in master, show the ID as fallback
+              equipmentDisplay = apiEmission.equipmentId;
+            }
+          }
 
           return {
             id: apiEmission.id,
@@ -126,6 +175,7 @@ const EmissionRegisterPage = () => {
             companyName: company?.companyName || 'Unknown',
             emissionDate: apiEmission.emissionDate,
             equipmentId: apiEmission.equipmentId,
+            equipmentDisplay: equipmentDisplay,
             stackId: apiEmission.stackId,
             // Convert decimal strings to numbers
             pm: typeof apiEmission.pm === 'string' ? parseFloat(apiEmission.pm) : Number(apiEmission.pm) || 0,
@@ -151,22 +201,23 @@ const EmissionRegisterPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, companies]);
+  }, [statusFilter, companies, equipment]);
 
   // Initialize data
   useEffect(() => {
     const initializeData = async () => {
       await loadCompanies();
+      await loadEquipment();
     };
     initializeData();
-  }, [loadCompanies]);
+  }, [loadCompanies, loadEquipment]);
 
   // Load emissions when dependencies are ready
   useEffect(() => {
-    if (companies.length > 0) {
+    if (companies.length > 0 && equipment.length > 0) {
       loadEmissions();
     }
-  }, [companies, statusFilter, loadEmissions]);
+  }, [companies, equipment, statusFilter, loadEmissions]);
 
   const filteredEmissions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -528,7 +579,7 @@ const EmissionRegisterPage = () => {
                         <td>{emission.emisRegNum}</td>
                         <td>{emission.companyName}</td>
                         <td>{formatDate(emission.emissionDate)}</td>
-                        <td>{emission.equipmentId}</td>
+                        <td className="emission-equipment-cell" title={emission.equipmentDisplay}>{emission.equipmentDisplay}</td>
                         <td>{emission.stackId}</td>
                         <td>{Number(emission.pm || 0).toFixed(2)}</td>
                         <td>{Number(emission.co || 0).toFixed(2)}</td>
@@ -620,6 +671,7 @@ const EmissionRegisterPage = () => {
         <EmissionFormModal
           emission={editingEmission}
           companies={companies.filter(c => c.status === 'Active')}
+          equipment={equipment.filter(eq => eq.status === 'Active')}
           onClose={() => {
             setShowModal(false);
             setEditingEmission(null);
@@ -635,6 +687,7 @@ const EmissionRegisterPage = () => {
 interface EmissionFormModalProps {
   emission: EmissionRegister | null;
   companies: Company[];
+  equipment: Equipment[];
   onClose: () => void;
   onSave: (data: Partial<EmissionRegister>) => void;
 }
@@ -642,6 +695,7 @@ interface EmissionFormModalProps {
 const EmissionFormModal = ({
   emission,
   companies,
+  equipment,
   onClose,
   onSave,
 }: EmissionFormModalProps) => {
@@ -668,7 +722,7 @@ const EmissionFormModal = ({
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal emission-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -703,177 +757,173 @@ const EmissionFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form" onSubmit={handleSubmit}>
-          <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  required
-                  disabled={!!emission}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies && companies.length > 0 ? companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  )) : (
-                    <option value="" disabled>No companies available</option>
-                  )}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="emission-date">
-                  Emission Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="emission-date"
-                  type="date"
-                  value={formData.emissionDate || ''}
-                  onChange={(e) => setFormData({ ...formData, emissionDate: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="equipment-id">
-                  Equipment ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="equipment-id"
-                  type="text"
-                  value={formData.equipmentId || ''}
-                  onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter equipment ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="stack-id">
-                  Stack ID <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="stack-id"
-                  type="text"
-                  value={formData.stackId || ''}
-                  onChange={(e) => setFormData({ ...formData, stackId: e.target.value })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="Enter stack ID"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="pm">
-                  PM <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="pm"
-                  type="number"
-                  step="0.01"
-                  value={formData.pm || 0}
-                  onChange={(e) => setFormData({ ...formData, pm: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="co">
-                  CO <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="co"
-                  type="number"
-                  step="0.01"
-                  value={formData.co || 0}
-                  onChange={(e) => setFormData({ ...formData, co: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
+        <form className="ra-assignment-form emission-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid emission-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!emission}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="hci">
-                  HCI <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="hci"
-                  type="number"
-                  step="0.01"
-                  value={formData.hci || 0}
-                  onChange={(e) => setFormData({ ...formData, hci: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="temp">
-                  Temperature <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="temp"
-                  type="number"
-                  step="0.01"
-                  value={formData.temp || 0}
-                  onChange={(e) => setFormData({ ...formData, temp: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="oxygen">
-                  Oxygen <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="oxygen"
-                  type="number"
-                  step="0.01"
-                  value={formData.oxygen || 0}
-                  onChange={(e) => setFormData({ ...formData, oxygen: parseFloat(e.target.value) || 0 })}
-                  required
-                  className="ra-assignment-input"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="compliance-status">Compliance Status</label>
-                <select
-                  id="compliance-status"
-                  value={formData.complianceStatus || 'Compliant'}
-                  onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Compliant">Compliant</option>
-                  <option value="Non-Compliant">Non-Compliant</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
-                  className="ra-assignment-select"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="emission-date">
+                Emission Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="emission-date"
+                type="date"
+                value={formData.emissionDate || ''}
+                onChange={(e) => setFormData({ ...formData, emissionDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="equipment-id">
+                Equipment ID <span className="ra-required">*</span>
+              </label>
+              <select
+                id="equipment-id"
+                value={formData.equipmentId || ''}
+                onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map((eq) => (
+                  <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
+                    {eq.equipmentCode} - {eq.equipmentName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="stack-id">
+                Stack ID <span className="ra-required">*</span>
+              </label>
+              <input
+                id="stack-id"
+                type="text"
+                value={formData.stackId || ''}
+                onChange={(e) => setFormData({ ...formData, stackId: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter stack ID"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="pm">
+                PM <span className="ra-required">*</span>
+              </label>
+              <input
+                id="pm"
+                type="number"
+                step="0.01"
+                value={formData.pm || 0}
+                onChange={(e) => setFormData({ ...formData, pm: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="co">
+                CO <span className="ra-required">*</span>
+              </label>
+              <input
+                id="co"
+                type="number"
+                step="0.01"
+                value={formData.co || 0}
+                onChange={(e) => setFormData({ ...formData, co: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="hci">
+                HCI <span className="ra-required">*</span>
+              </label>
+              <input
+                id="hci"
+                type="number"
+                step="0.01"
+                value={formData.hci || 0}
+                onChange={(e) => setFormData({ ...formData, hci: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="temp">
+                Temperature <span className="ra-required">*</span>
+              </label>
+              <input
+                id="temp"
+                type="number"
+                step="0.01"
+                value={formData.temp || 0}
+                onChange={(e) => setFormData({ ...formData, temp: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="oxygen">
+                Oxygen <span className="ra-required">*</span>
+              </label>
+              <input
+                id="oxygen"
+                type="number"
+                step="0.01"
+                value={formData.oxygen || 0}
+                onChange={(e) => setFormData({ ...formData, oxygen: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

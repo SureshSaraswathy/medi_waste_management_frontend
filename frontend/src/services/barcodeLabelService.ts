@@ -22,9 +22,43 @@ export interface BarcodeLabelResponse {
   sequenceNumber: number;
   barcodeValue: string;
   barcodeType: 'Barcode' | 'QR Code';
-  colorBlock: 'Yellow' | 'Red' | 'White';
+  colorBlock: 'Yellow' | 'Red' | 'White' | 'Blue';
+  status: 'Active' | 'Inactive' | 'Deleted';
   createdBy?: string | null;
   createdOn: string;
+}
+
+export interface UpdateBarcodeLabelRequest {
+  colorBlock?: 'Yellow' | 'Red' | 'White' | 'Blue';
+  status?: 'Active' | 'Inactive' | 'Deleted';
+}
+
+export interface BarcodeListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  colorBlock?: string;
+  barcodeType?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  includeDeleted?: boolean;
+}
+
+export interface BarcodeListResponse {
+  data: BarcodeLabelResponse[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface BarcodeSummaryResponse {
+  total: number;
+  barcodes: number;
+  qrCodes: number;
 }
 
 export interface LastSequenceResponse {
@@ -158,17 +192,59 @@ export const barcodeLabelService = {
     return response.data;
   },
 
-  getLastSequence: async (
-    hcfCode: string,
-    barcodeType: 'Barcode' | 'QR Code'
-  ): Promise<number> => {
+  getLastSequence: async (): Promise<number> => {
     const response = await apiRequest<ApiResponse<LastSequenceResponse>>(
-      `/barcode-labels/last-sequence?hcfCode=${encodeURIComponent(hcfCode)}&barcodeType=${encodeURIComponent(barcodeType)}`,
+      `/barcode-labels/last-sequence`,
       {
         method: 'GET',
       }
     );
     return response.data.lastSequence;
+  },
+
+  getBarcodeList: async (params: BarcodeListParams): Promise<BarcodeListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.colorBlock) queryParams.append('colorBlock', params.colorBlock);
+    if (params.barcodeType) queryParams.append('barcodeType', params.barcodeType);
+    if (params.status) queryParams.append('status', params.status);
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.includeDeleted) queryParams.append('includeDeleted', 'true');
+
+    const response = await apiRequest<ApiResponse<BarcodeLabelResponse[]> & { pagination: any }>(
+      `/barcode-labels/list?${queryParams.toString()}`,
+      {
+        method: 'GET',
+      }
+    );
+    return {
+      data: response.data,
+      pagination: response.pagination,
+    };
+  },
+
+  updateBarcodeLabel: async (labelId: string, data: UpdateBarcodeLabelRequest): Promise<BarcodeLabelResponse> => {
+    const response = await apiRequest<ApiResponse<BarcodeLabelResponse>>(
+      `/barcode-labels/${labelId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
+    return response.data;
+  },
+
+  getSummary: async (): Promise<BarcodeSummaryResponse> => {
+    const response = await apiRequest<ApiResponse<BarcodeSummaryResponse>>(
+      `/barcode-labels/summary`,
+      {
+        method: 'GET',
+      }
+    );
+    return response.data;
   },
 
   deleteBarcodeLabel: async (labelId: string): Promise<void> => {

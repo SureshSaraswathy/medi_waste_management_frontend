@@ -142,6 +142,40 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeAutoclaveRegister = (payload: any): AutoclaveRegisterResponse => ({
+  id: payload?.id || payload?.autoclaveId || '',
+  autoclRegNum: payload?.autoclRegNum || '',
+  companyId: payload?.companyId || '',
+  autoclaveDate: payload?.autoclaveDate || '',
+  equipmentId: payload?.equipmentId || '',
+  batchNo: payload?.batchNo || '',
+  wasteCategory: payload?.wasteCategory || '',
+  wasteQtyKg: payload?.wasteQtyKg ?? 0,
+  startTime: payload?.startTime || '',
+  endTime: payload?.endTime || '',
+  temperatureC: payload?.temperatureC ?? 0,
+  pressureBar: payload?.pressureBar ?? 0,
+  cycleTimeMin: payload?.cycleTimeMin ?? 0,
+  indicatorResult: payload?.indicatorResult || '',
+  complianceStatus: payload?.complianceStatus || '',
+  status: payload?.status || 'Active',
+  createdBy: payload?.createdBy,
+  createdOn: payload?.createdOn || '',
+  modifiedBy: payload?.modifiedBy,
+  modifiedOn: payload?.modifiedOn || '',
+});
+
+const extractResponseData = <T>(response: T | ApiResponse<T>): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'data' in (response as Record<string, unknown>)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+  return response as T;
+};
+
 // Autoclave Register API functions
 export const autoclaveRegisterService = {
   createAutoclaveRegister: async (data: CreateAutoclaveRegisterRequest): Promise<AutoclaveRegisterResponse> => {
@@ -149,14 +183,16 @@ export const autoclaveRegisterService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    const rawData = extractResponseData(response);
+    return normalizeAutoclaveRegister(rawData);
   },
 
   getAutoclaveRegisterById: async (autoclaveId: string): Promise<AutoclaveRegisterResponse> => {
     const response = await apiRequest<ApiResponse<AutoclaveRegisterResponse>>(`/autoclave-registers/${autoclaveId}`, {
       method: 'GET',
     });
-    return response.data;
+    const rawData = extractResponseData(response);
+    return normalizeAutoclaveRegister(rawData);
   },
 
   getAllAutoclaveRegisters: async (
@@ -179,10 +215,11 @@ export const autoclaveRegisterService = {
       method: 'GET',
     });
     // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    const rawData = extractResponseData(response);
+    if (!rawData || !Array.isArray(rawData)) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return rawData.map(normalizeAutoclaveRegister);
   },
 
   updateAutoclaveRegister: async (
@@ -190,10 +227,11 @@ export const autoclaveRegisterService = {
     data: UpdateAutoclaveRegisterRequest
   ): Promise<AutoclaveRegisterResponse> => {
     const response = await apiRequest<ApiResponse<AutoclaveRegisterResponse>>(`/autoclave-registers/${autoclaveId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    const rawData = extractResponseData(response);
+    return normalizeAutoclaveRegister(rawData);
   },
 
   deleteAutoclaveRegister: async (autoclaveId: string): Promise<void> => {

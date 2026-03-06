@@ -37,6 +37,7 @@ export interface UpdateDowntimeRegisterRequest {
 
 export interface DowntimeRegisterResponse {
   id: string;
+  downtimeId?: string;
   dtRegNum: string;
   companyId: string;
   breakdownDate: string;
@@ -136,21 +137,55 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeDowntimeRegister = (payload: any): DowntimeRegisterResponse => ({
+  id: payload?.id || payload?.downtimeId || '',
+  downtimeId: payload?.downtimeId,
+  dtRegNum: payload?.dtRegNum || '',
+  companyId: payload?.companyId || '',
+  breakdownDate: payload?.breakdownDate || '',
+  equipmentId: payload?.equipmentId || '',
+  breakdownType: payload?.breakdownType || '',
+  startTime: payload?.startTime || '',
+  endTime: payload?.endTime || '',
+  downtimeHours: payload?.downtimeHours ?? 0,
+  cause: payload?.cause || '',
+  actionTaken: payload?.actionTaken || '',
+  sparesUsed: payload?.sparesUsed || '',
+  complianceStatus: payload?.complianceStatus || '',
+  status: payload?.status || 'Active',
+  createdBy: payload?.createdBy,
+  createdOn: payload?.createdOn || '',
+  modifiedBy: payload?.modifiedBy,
+  modifiedOn: payload?.modifiedOn || '',
+});
+
+const extractResponseData = <T>(response: T | ApiResponse<T>): T => {
+  if (
+    response &&
+    typeof response === 'object' &&
+    'data' in (response as Record<string, unknown>)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+};
+
 // Downtime Register API functions
 export const downtimeRegisterService = {
   createDowntimeRegister: async (data: CreateDowntimeRegisterRequest): Promise<DowntimeRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DowntimeRegisterResponse>>('/downtime-registers', {
+    const response = await apiRequest<DowntimeRegisterResponse | ApiResponse<DowntimeRegisterResponse>>('/downtime-registers', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeDowntimeRegister(extractResponseData(response));
   },
 
   getDowntimeRegisterById: async (downtimeId: string): Promise<DowntimeRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DowntimeRegisterResponse>>(`/downtime-registers/${downtimeId}`, {
+    const response = await apiRequest<DowntimeRegisterResponse | ApiResponse<DowntimeRegisterResponse>>(`/downtime-registers/${downtimeId}`, {
       method: 'GET',
     });
-    return response.data;
+    return normalizeDowntimeRegister(extractResponseData(response));
   },
 
   getAllDowntimeRegisters: async (
@@ -169,25 +204,25 @@ export const downtimeRegisterService = {
       url += `?${params.toString()}`;
     }
     
-    const response = await apiRequest<ApiResponse<DowntimeRegisterResponse[]>>(url, {
+    const response = await apiRequest<DowntimeRegisterResponse[] | ApiResponse<DowntimeRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    const data = extractResponseData(response);
+    if (!data || !Array.isArray(data)) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return data.map(normalizeDowntimeRegister);
   },
 
   updateDowntimeRegister: async (
     downtimeId: string,
     data: UpdateDowntimeRegisterRequest
   ): Promise<DowntimeRegisterResponse> => {
-    const response = await apiRequest<ApiResponse<DowntimeRegisterResponse>>(`/downtime-registers/${downtimeId}`, {
-      method: 'PUT',
+    const response = await apiRequest<DowntimeRegisterResponse | ApiResponse<DowntimeRegisterResponse>>(`/downtime-registers/${downtimeId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    return normalizeDowntimeRegister(extractResponseData(response));
   },
 
   deleteDowntimeRegister: async (downtimeId: string): Promise<void> => {

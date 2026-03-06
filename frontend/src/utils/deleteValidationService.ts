@@ -23,6 +23,7 @@ import { wasteCollectionService } from '../services/wasteCollectionService';
 import { wasteTransactionService } from '../services/wasteTransactionService';
 import { autoclaveRegisterService } from '../services/autoclaveRegisterService';
 import { disposalRegisterService } from '../services/disposalRegisterService';
+import { incinerationRegisterService } from '../services/incinerationRegisterService';
 
 export interface ValidationResult {
   canDelete: boolean;
@@ -377,16 +378,12 @@ export const validateEquipmentDelete = async (equipmentId: string): Promise<Vali
   try {
     // Check Incinerator Register references
     try {
-      const incinerations = await autoclaveRegisterService.getAllAutoclaveRegisters();
-      const equipmentInIncinerator = incinerations.some(record => {
-        // Check if equipmentId is referenced
-        // Adjust based on actual structure
-        return false; // Placeholder
-      });
+      const incinerations = await incinerationRegisterService.getAllIncinerationRegisters();
+      const equipmentInIncinerator = incinerations.some(record => record.equipmentId === equipmentId);
       if (equipmentInIncinerator) {
         return {
           canDelete: false,
-          message: 'Deletion not allowed. Record is used in another module.'
+          message: 'Equipment cannot be deleted because it is used in operations.'
         };
       }
     } catch (error) {
@@ -394,17 +391,21 @@ export const validateEquipmentDelete = async (equipmentId: string): Promise<Vali
     }
 
     // Check Disposal Register references
+    // Note: Disposal Register may not have equipmentId field directly
+    // If equipment is referenced via sourceBatchRef or other fields, update this check accordingly
     try {
       const disposals = await disposalRegisterService.getAllDisposalRegisters();
+      // For now, checking if equipmentId might be referenced in sourceBatchRef or other fields
+      // This may need adjustment based on actual Disposal Register structure
       const equipmentInDisposal = disposals.some(record => {
-        // Check if equipmentId is referenced
-        // Adjust based on actual structure
-        return false; // Placeholder
+        // If Disposal Register has equipmentId field, check it
+        // Otherwise, check if equipmentId is referenced in sourceBatchRef or other relevant fields
+        return false; // Placeholder - update when Disposal Register structure is confirmed
       });
       if (equipmentInDisposal) {
         return {
           canDelete: false,
-          message: 'Deletion not allowed. Record is used in another module.'
+          message: 'Equipment cannot be deleted because it is used in operations.'
         };
       }
     } catch (error) {

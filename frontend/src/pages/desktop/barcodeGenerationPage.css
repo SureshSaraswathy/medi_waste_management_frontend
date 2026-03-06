@@ -150,6 +150,674 @@
   flex-shrink: 0;
 }
 
+/* Summary Container - Replaces large grid listing */
+.barcode-summary-container {
+  margin-bottom: 20px;
+}
+
+.barcode-summary-card {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.barcode-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.barcode-summary-header svg {
+  color: #0f172a;
+  flex-shrink: 0;
+}
+
+.barcode-summary-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.barcode-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.barcode-summary-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.barcode-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.barcode-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.barcode-summary-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.barcode-summary-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.barcode-summary-sample {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.barcode-summary-sample-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.barcode-summary-sample-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.barcode-summary-sample-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.barcode-summary-sample-key {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 100px;
+}
+
+.barcode-summary-sample-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  font-family: 'Courier New', monospace;
+}
+
+.barcode-summary-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.barcode-view-list-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.barcode-view-list-btn:hover {
+  background: #111c33;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+}
+
+/* Pagination */
+.barcode-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.barcode-pagination-btn {
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.barcode-pagination-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.barcode-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge--active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge--inactive {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge--deleted {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* View/Modify Modal Styles */
+.view-field {
+  margin-bottom: 16px;
+}
+
+.view-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.view-value {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+.form-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 36px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%233b82f6' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+.form-select:hover {
+  border-color: #cbd5e1;
+}
+
+.form-input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.required {
+  color: #ef4444;
+}
+
+.barcode-action-btn--edit {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #3b82f6;
+}
+
+.barcode-action-btn--edit:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+/* Barcode Label Preview Modal */
+.barcode-label-preview-modal {
+  max-width: 480px;
+  width: 90%;
+}
+
+.barcode-label-preview-body {
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
+  max-height: calc(100vh - 200px);
+}
+
+.barcode-label-preview-container {
+  width: 63mm;
+  height: 38mm;
+  border: 2px solid #000000;
+  padding: 3mm;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  position: relative;
+  transform: scale(1.1);
+  transform-origin: center center;
+  margin: 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Top: HCF Name */
+.barcode-label-preview-top {
+  text-align: center;
+  margin-bottom: 2mm;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2mm;
+}
+
+.barcode-label-preview-hcf-name {
+  font-size: 10pt;
+  font-weight: 700;
+  color: #000000;
+  font-family: Arial, sans-serif;
+  text-transform: uppercase;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Main Content: Left and Right */
+.barcode-label-preview-main {
+  display: flex;
+  flex: 1;
+  gap: 3mm;
+  margin: 2mm 0;
+}
+
+/* Left: QR Code / Barcode */
+.barcode-label-preview-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.barcode-label-preview-code-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.barcode-label-preview-code-container canvas,
+.barcode-label-preview-code-container svg {
+  max-width: 100%;
+  max-height: 20mm;
+  width: auto;
+  height: auto;
+}
+
+/* Right: Waste Color Block + Barcode Number + HCF Unique ID */
+.barcode-label-preview-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2mm;
+}
+
+.barcode-label-preview-color-block {
+  width: 100%;
+  min-height: 8mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8pt;
+  font-weight: 700;
+  color: #000000;
+  font-family: Arial, sans-serif;
+  text-transform: uppercase;
+  border: 2px solid #000000;
+}
+
+.barcode-label-preview-color-block--yellow {
+  background-color: #FFFF00;
+}
+
+.barcode-label-preview-color-block--red {
+  background-color: #FF0000;
+  color: #FFFFFF;
+}
+
+.barcode-label-preview-color-block--blue {
+  background-color: #0000FF;
+  color: #FFFFFF;
+}
+
+.barcode-label-preview-color-block--white {
+  background-color: #FFFFFF;
+  color: #000000;
+}
+
+.barcode-label-preview-barcode-number {
+  font-size: 9pt;
+  font-weight: 600;
+  color: #000000;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  word-break: break-all;
+}
+
+.barcode-label-preview-hcf-unique-id {
+  font-size: 8pt;
+  font-weight: 600;
+  color: #000000;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  word-break: break-all;
+}
+
+/* Bottom: Hospital Name */
+.barcode-label-preview-bottom {
+  text-align: center;
+  margin-top: 2mm;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 2mm;
+}
+
+.barcode-label-preview-hospital-name {
+  font-size: 9pt;
+  font-weight: 600;
+  color: #000000;
+  font-family: Arial, sans-serif;
+  line-height: 1.2;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsive adjustments for label preview */
+@media screen and (max-width: 768px) {
+  .barcode-label-preview-modal {
+    max-width: 95%;
+    width: 95%;
+  }
+
+  .barcode-label-preview-body {
+    padding: 12px;
+    max-height: calc(100vh - 180px);
+  }
+
+  .barcode-label-preview-container {
+    transform: scale(1);
+    width: 63mm;
+    height: 38mm;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .barcode-label-preview-modal {
+    max-width: 98%;
+    width: 98%;
+  }
+
+  .barcode-label-preview-body {
+    padding: 10px;
+    max-height: calc(100vh - 160px);
+  }
+
+  .barcode-label-preview-container {
+    transform: scale(0.85);
+  }
+}
+
+@media screen and (max-height: 600px) {
+  .barcode-label-preview-container {
+    transform: scale(0.9);
+  }
+}
+
+/* Print Styles for Single Label */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-container,
+  .print-container * {
+    visibility: visible;
+  }
+
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+  }
+
+  .print-label-single {
+    width: 63mm;
+    height: 38mm;
+    border: 2px solid #000000;
+    padding: 3mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    position: relative;
+    page-break-after: always;
+    page-break-inside: avoid;
+    margin: 0 auto;
+  }
+
+  .print-label-top {
+    text-align: center;
+    margin-bottom: 2mm;
+    border-bottom: 1px solid #000000;
+    padding-bottom: 2mm;
+  }
+
+  .print-label-hcf-name {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #000000;
+    font-family: Arial, sans-serif;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+
+  .print-label-main {
+    display: flex;
+    flex: 1;
+    gap: 3mm;
+    margin: 2mm 0;
+  }
+
+  .print-label-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .print-label-code-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .print-label-code-container canvas,
+  .print-label-code-container svg {
+    max-width: 100%;
+    max-height: 20mm;
+  }
+
+  .print-label-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2mm;
+  }
+
+  .print-label-color-block {
+    width: 100%;
+    min-height: 8mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8pt;
+    font-weight: 700;
+    color: #000000;
+    font-family: Arial, sans-serif;
+    text-transform: uppercase;
+    border: 2px solid #000000;
+  }
+
+  .print-label-color-block--yellow {
+    background-color: #FFFF00;
+  }
+
+  .print-label-color-block--red {
+    background-color: #FF0000;
+    color: #FFFFFF;
+  }
+
+  .print-label-color-block--blue {
+    background-color: #0000FF;
+    color: #FFFFFF;
+  }
+
+  .print-label-color-block--white {
+    background-color: #FFFFFF;
+    color: #000000;
+  }
+
+  .print-label-barcode-number {
+    font-size: 9pt;
+    font-weight: 600;
+    color: #000000;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .print-label-hcf-unique-id {
+    font-size: 8pt;
+    font-weight: 600;
+    color: #000000;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .print-label-bottom {
+    text-align: center;
+    margin-top: 2mm;
+    border-top: 1px solid #000000;
+    padding-top: 2mm;
+  }
+
+  .print-label-hospital-name {
+    font-size: 9pt;
+    font-weight: 600;
+    color: #000000;
+    font-family: Arial, sans-serif;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+}
+
 /* Table */
 .barcode-table-container {
   background: #ffffff;
@@ -692,7 +1360,8 @@
 /* Color Block Options */
 .bg-color-block-options {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .bg-color-block-btn {
@@ -1007,6 +1676,12 @@
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.modal-body {
+  padding: 16px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 .modal-footer {
@@ -1336,6 +2011,21 @@
   text-transform: uppercase;
   font-family: Arial, sans-serif;
   letter-spacing: 1px;
+}
+
+.preview-summary {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.preview-summary-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
 }
 
 /* Print Container - Hidden by default, visible when printing */

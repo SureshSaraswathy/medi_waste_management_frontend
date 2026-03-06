@@ -8,6 +8,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import './downtimeRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import toast from 'react-hot-toast';
 
 interface DowntimeRegister {
   id: string;
@@ -120,7 +121,7 @@ const DowntimeRegisterPage = () => {
           const company = companies.find(c => c.id === apiDowntime.companyId);
 
           return {
-            id: apiDowntime.id,
+            id: apiDowntime.id || apiDowntime.downtimeId || '',
             dtRegNum: apiDowntime.dtRegNum,
             companyId: apiDowntime.companyId,
             companyName: company?.companyName || 'Unknown',
@@ -215,11 +216,13 @@ const DowntimeRegisterPage = () => {
         setError(null);
         await downtimeRegisterService.deleteDowntimeRegister(id);
         setSuccessMessage('Downtime register deleted successfully');
+        toast.success('Downtime register deleted successfully');
         await loadDowntimes();
         setTimeout(() => setSuccessMessage(null), 3000);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete downtime register';
         setError(errorMessage);
+        toast.error(errorMessage);
         console.error('Error deleting downtime register:', err);
       } finally {
         setLoading(false);
@@ -248,11 +251,13 @@ const DowntimeRegisterPage = () => {
           status: data.status,
         });
         setSuccessMessage('Downtime register updated successfully');
+        toast.success('Downtime register updated successfully');
       } else {
         // Create new downtime
         const selectedCompany = companies.find(c => c.id === data.companyId);
         if (!selectedCompany) {
           setError('Please select a valid company');
+          toast.error('Please select a valid company');
           return;
         }
 
@@ -271,6 +276,7 @@ const DowntimeRegisterPage = () => {
           status: data.status || 'Active',
         });
         setSuccessMessage('Downtime register created successfully');
+        toast.success('Downtime register created successfully');
       }
 
       setShowModal(false);
@@ -280,6 +286,7 @@ const DowntimeRegisterPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save downtime register';
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Error saving downtime register:', err);
     } finally {
       setLoading(false);
@@ -617,7 +624,6 @@ const DowntimeFormModal = ({
   onSave,
 }: DowntimeFormModalProps) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [causeType, setCauseType] = useState<string>('');
 
   // Get current time in HH:MM format
   const getCurrentTime = () => {
@@ -643,29 +649,6 @@ const DowntimeFormModal = ({
       status: 'Active',
     }
   );
-
-  // Initialize cause type
-  useEffect(() => {
-    if (downtime?.cause) {
-      const predefinedCauses = [
-        'Mechanical Failure',
-        'Electrical Fault',
-        'Component Wear',
-        'Lubrication Issue',
-        'Calibration Error',
-        'Operator Error',
-        'Power Failure',
-        'Sensor Malfunction',
-      ];
-      if (predefinedCauses.includes(downtime.cause)) {
-        setCauseType(downtime.cause);
-      } else {
-        setCauseType('Other');
-      }
-    } else if (!downtime) {
-      setCauseType('');
-    }
-  }, [downtime]);
 
   // Running timer when End Time is empty
   useEffect(() => {
@@ -713,40 +696,14 @@ const DowntimeFormModal = ({
     }
   }, [formData.endTime]);
 
-  const handleCauseChange = (value: string) => {
-    setCauseType(value);
-    if (value !== 'Other') {
-      setFormData(prev => ({ ...prev, cause: value }));
-    } else {
-      setFormData(prev => ({ ...prev, cause: '' }));
-    }
-  };
-
-  const formatElapsedTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure cause is set correctly based on causeType
-    let finalCause = formData.cause;
-    if (causeType && causeType !== 'Other') {
-      finalCause = causeType;
-    }
-    // Validate cause field
-    if (!causeType || (causeType === 'Other' && !finalCause)) {
-      return;
-    }
-    // Submit with correct cause value
-    onSave({ ...formData, cause: finalCause });
+    onSave(formData);
   };
 
   return (
     <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
-      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content ra-assignment-modal downtime-register-modal" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="ra-assignment-modal-header">
           <div className="ra-assignment-modal-titlewrap">
@@ -775,220 +732,182 @@ const DowntimeFormModal = ({
         </div>
 
         {/* Form */}
-        <form className="ra-assignment-form dt-compact-form" onSubmit={handleSubmit}>
-          <div className="dt-form-sections">
-            {/* GROUP 1: EQUIPMENT */}
-            <div className="dt-form-section-group">
-              <div className="dt-section-separator"></div>
-              <div className="dt-form-grid">
-                <div className="dt-form-row">
-                  <label htmlFor="company">
-                    Company <span className="ra-required">*</span>
-                  </label>
-                  <select
-                    id="company"
-                    value={formData.companyId || ''}
-                    onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                    required
-                    disabled={!!downtime}
-                    className="dt-form-input"
-                  >
-                    <option value="">Select Company</option>
-                    {(companies || []).map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.companyName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="dt-form-row">
-                  <label htmlFor="equipment-id">
-                    Equipment ID <span className="ra-required">*</span>
-                  </label>
-                  <input
-                    id="equipment-id"
-                    type="text"
-                    value={formData.equipmentId || ''}
-                    onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
-                    required
-                    className="dt-form-input"
-                    placeholder="Enter equipment ID"
-                  />
-                </div>
-                <div className="dt-form-row">
-                  <label htmlFor="breakdown-type">
-                    Breakdown Type <span className="ra-required">*</span>
-                  </label>
-                  <select
-                    id="breakdown-type"
-                    value={formData.breakdownType || ''}
-                    onChange={(e) => setFormData({ ...formData, breakdownType: e.target.value })}
-                    required
-                    className="dt-form-input"
-                  >
-                    <option value="">Select Type</option>
-                    <option value="Mechanical">Mechanical</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Plumbing">Plumbing</option>
-                    <option value="Software">Software</option>
-                    <option value="Preventive Maintenance">Preventive Maintenance</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
+        <form className="ra-assignment-form downtime-register-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid downtime-register-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
+                required
+                disabled={!!downtime}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {(companies || []).map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="breakdown-date">
+                Breakdown Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="breakdown-date"
+                type="date"
+                value={formData.breakdownDate || ''}
+                onChange={(e) => setFormData({ ...formData, breakdownDate: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="equipment-id">
+                Equipment ID <span className="ra-required">*</span>
+              </label>
+              <input
+                id="equipment-id"
+                type="text"
+                value={formData.equipmentId || ''}
+                onChange={(e) => setFormData({ ...formData, equipmentId: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter equipment ID"
+              />
             </div>
 
-            {/* GROUP 2: TIME */}
-            <div className="dt-form-section-group">
-              <div className="dt-section-separator"></div>
-              <div className="dt-form-grid">
-                <div className="dt-form-row">
-                  <label htmlFor="breakdown-date">
-                    Breakdown Date <span className="ra-required">*</span>
-                  </label>
-                  <input
-                    id="breakdown-date"
-                    type="date"
-                    value={formData.breakdownDate || ''}
-                    onChange={(e) => setFormData({ ...formData, breakdownDate: e.target.value })}
-                    required
-                    className="dt-form-input"
-                  />
-                </div>
-                <div className="dt-form-row dt-form-row-time">
-                  <label>
-                    Time <span className="ra-required">*</span>
-                  </label>
-                  <div className="dt-time-grid">
-                    <label htmlFor="start-time">
-                      Start Time <span className="ra-required">*</span>
-                    </label>
-                    <input
-                      id="start-time"
-                      type="time"
-                      value={formData.startTime || ''}
-                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      required
-                      className="dt-form-input"
-                    />
-                    <label htmlFor="end-time">End Time</label>
-                    <div>
-                      <input
-                        id="end-time"
-                        type="time"
-                        value={formData.endTime || ''}
-                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                        className="dt-form-input"
-                      />
-                      {!formData.endTime && formData.startTime ? (
-                        <div className="dt-duration-status">
-                          <span className="dt-running-badge">
-                            <span className="dt-running-dot"></span>
-                            Running {formatElapsedTime(elapsedSeconds)}
-                          </span>
-                        </div>
-                      ) : formData.endTime ? (
-                        <div className="dt-duration-status">
-                          <span className="dt-duration-text">
-                            {(formData.downtimeHours || 0).toFixed(2)} hrs
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="breakdown-type">
+                Breakdown Type <span className="ra-required">*</span>
+              </label>
+              <select
+                id="breakdown-type"
+                value={formData.breakdownType || ''}
+                onChange={(e) => setFormData({ ...formData, breakdownType: e.target.value })}
+                required
+                className="ra-assignment-select"
+              >
+                <option value="">Select Type</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Software">Software</option>
+                <option value="Preventive Maintenance">Preventive Maintenance</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="start-time">
+                Start Time <span className="ra-required">*</span>
+              </label>
+              <input
+                id="start-time"
+                type="time"
+                value={formData.startTime || ''}
+                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                required
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="end-time">End Time</label>
+              <input
+                id="end-time"
+                type="time"
+                value={formData.endTime || ''}
+                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                className="ra-assignment-input"
+              />
             </div>
 
-            {/* GROUP 3: REASON */}
-            <div className="dt-form-section-group">
-              <div className="dt-section-separator"></div>
-              <div className="dt-form-grid">
-                <div className="dt-form-row">
-                  <label htmlFor="cause-type">
-                    Cause <span className="ra-required">*</span>
-                  </label>
-                  <div>
-                    <select
-                      id="cause-type"
-                      value={causeType}
-                      onChange={(e) => handleCauseChange(e.target.value)}
-                      required
-                      className="dt-form-input"
-                    >
-                      <option value="">Select Cause</option>
-                      <option value="Mechanical Failure">Mechanical Failure</option>
-                      <option value="Electrical Fault">Electrical Fault</option>
-                      <option value="Component Wear">Component Wear</option>
-                      <option value="Lubrication Issue">Lubrication Issue</option>
-                      <option value="Calibration Error">Calibration Error</option>
-                      <option value="Operator Error">Operator Error</option>
-                      <option value="Power Failure">Power Failure</option>
-                      <option value="Sensor Malfunction">Sensor Malfunction</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {causeType === 'Other' && (
-                      <textarea
-                        id="cause"
-                        value={formData.cause || ''}
-                        onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
-                        required
-                        className="dt-form-input dt-form-textarea"
-                        placeholder="Enter cause"
-                        rows={2}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="downtime-hours">
+                Downtime Hours <span className="ra-required">*</span>
+              </label>
+              <input
+                id="downtime-hours"
+                type="number"
+                step="0.01"
+                value={formData.downtimeHours || 0}
+                onChange={(e) => setFormData({ ...formData, downtimeHours: parseFloat(e.target.value) || 0 })}
+                required
+                className="ra-assignment-input"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="cause">
+                Cause <span className="ra-required">*</span>
+              </label>
+              <input
+                id="cause"
+                type="text"
+                value={formData.cause || ''}
+                onChange={(e) => setFormData({ ...formData, cause: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter cause"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="action-taken">
+                Action Taken <span className="ra-required">*</span>
+              </label>
+              <input
+                id="action-taken"
+                type="text"
+                value={formData.actionTaken || ''}
+                onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter action taken"
+              />
             </div>
 
-            {/* GROUP 4: RESOLUTION */}
-            <div className="dt-form-section-group">
-              <div className="dt-section-separator"></div>
-              <div className="dt-form-grid">
-                <div className="dt-form-row">
-                  <label htmlFor="action-taken">
-                    Action Taken <span className="ra-required">*</span>
-                  </label>
-                  <textarea
-                    id="action-taken"
-                    value={formData.actionTaken || ''}
-                    onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
-                    required
-                    className="dt-form-input dt-form-textarea"
-                    placeholder="Enter action taken"
-                    rows={2}
-                  />
-                </div>
-                <div className="dt-form-row">
-                  <label htmlFor="spares-used">
-                    Spares Used <span className="ra-required">*</span>
-                  </label>
-                  <input
-                    id="spares-used"
-                    type="text"
-                    value={formData.sparesUsed || ''}
-                    onChange={(e) => setFormData({ ...formData, sparesUsed: e.target.value })}
-                    required
-                    className="dt-form-input"
-                    placeholder="Enter spares used"
-                  />
-                </div>
-                <div className="dt-form-row">
-                  <label htmlFor="compliance-status">Compliance Status</label>
-                  <select
-                    id="compliance-status"
-                    value={formData.complianceStatus || 'Compliant'}
-                    onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
-                    className="dt-form-input"
-                  >
-                    <option value="Compliant">Compliant</option>
-                    <option value="Non-Compliant">Non-Compliant</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-              </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="spares-used">
+                Spares Used <span className="ra-required">*</span>
+              </label>
+              <input
+                id="spares-used"
+                type="text"
+                value={formData.sparesUsed || ''}
+                onChange={(e) => setFormData({ ...formData, sparesUsed: e.target.value })}
+                required
+                className="ra-assignment-input"
+                placeholder="Enter spares used"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="compliance-status">Compliance Status</label>
+              <select
+                id="compliance-status"
+                value={formData.complianceStatus || 'Compliant'}
+                onChange={(e) => setFormData({ ...formData, complianceStatus: e.target.value })}
+                className="ra-assignment-select"
+              >
+                <option value="Compliant">Compliant</option>
+                <option value="Non-Compliant">Non-Compliant</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })}
+                className="ra-assignment-select"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
           </div>
 

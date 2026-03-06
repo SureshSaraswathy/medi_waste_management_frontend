@@ -5,7 +5,7 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { wasteProcessService, WasteProcessResponse, CreateWasteProcessRequest, UpdateWasteProcessRequest } from '../../services/wasteProcessService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
-import './wasteProcessPage.css';
+import './routeAssignmentPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
 
@@ -250,14 +250,29 @@ const WasteProcessPage = () => {
     });
   };
 
-  // Filter processes by search query
+  // Filter processes by search query and status
   const filteredProcesses = processes.filter((process) => {
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        process.companyName.toLowerCase().includes(query);
+        process.companyName.toLowerCase().includes(query) ||
+        process.processDate.toLowerCase().includes(query);
       
       if (!matchesSearch) {
+        return false;
+      }
+    }
+    
+    // Status filter
+    if (statusFilter !== 'all' && process.status !== statusFilter) {
+      return false;
+    }
+    
+    // Date filter
+    if (selectedDate) {
+      const processDate = new Date(process.processDate).toISOString().split('T')[0];
+      if (processDate !== selectedDate) {
         return false;
       }
     }
@@ -268,15 +283,15 @@ const WasteProcessPage = () => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'Draft':
-        return 'status-badge status-badge--draft';
+        return 'status-badge--draft';
       case 'Submitted':
-        return 'status-badge status-badge--submitted';
+        return 'status-badge--submitted';
       case 'Verified':
-        return 'status-badge status-badge--verified';
+        return 'status-badge--verified';
       case 'Closed':
-        return 'status-badge status-badge--closed';
+        return 'status-badge--closed';
       default:
-        return 'status-badge';
+        return '';
     }
   };
 
@@ -386,46 +401,54 @@ const WasteProcessPage = () => {
           </div>
         )}
 
-        <div className="waste-process-page">
+        <div className="route-assignment-page">
           {/* Page Header */}
-          <div className="wp-page-header">
-            <div className="wp-header-icon">
+          <div className="ra-page-header">
+            <div className="ra-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M12 6v6l4 2"></path>
               </svg>
             </div>
-            <h1 className="wp-page-title">Waste Processing</h1>
+            <div className="ra-header-text">
+              <h1 className="ra-page-title">Waste Processing</h1>
+              <p className="ra-page-subtitle">Manage and track waste processing operations</p>
+            </div>
           </div>
 
-          {/* Filters */}
-          <div className="wp-filters-toolbar">
-            <div className="wp-filter-group">
-              <label htmlFor="process-date">Process Date</label>
-              <div className="wp-date-input-wrapper">
-                <svg className="wp-date-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
+          {/* Search and Actions */}
+          <div className="ra-search-actions">
+            <div className="ra-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by company name, process date..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search-input"
+              />
+            </div>
+            <div className="ra-actions">
+              <div className="ra-filter-group-inline">
+                <label htmlFor="process-date-filter">Date</label>
                 <input
-                  id="process-date"
+                  id="process-date-filter"
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="wp-date-input"
+                  className="ra-date-filter-input"
                 />
               </div>
-            </div>
-            <div className="wp-filter-group">
-              <label htmlFor="status-filter">Status</label>
-              <div className="wp-select-wrapper">
+              <div className="ra-filter-group-inline">
+                <label htmlFor="status-filter">Status</label>
                 <select
                   id="status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="wp-status-select"
+                  className="ra-status-filter-select"
                 >
                   <option value="all">All Status</option>
                   <option value="Draft">Draft</option>
@@ -433,30 +456,8 @@ const WasteProcessPage = () => {
                   <option value="Verified">Verified</option>
                   <option value="Closed">Closed</option>
                 </select>
-                <svg className="wp-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
               </div>
-            </div>
-            <div className="wp-filter-group wp-filter-group--search">
-              <label htmlFor="search">Search</label>
-              <div className="wp-search-box">
-                <svg className="wp-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                </svg>
-                <input
-                  id="search"
-                  type="text"
-                  placeholder="Search by company name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="wp-search-input"
-                />
-              </div>
-            </div>
-            <div className="wp-filter-group wp-filter-group--action">
-              <button className="wp-add-process-btn" onClick={() => { resetForm(); setShowFormModal(true); }}>
+              <button className="ra-add-btn" onClick={() => { resetForm(); setShowFormModal(true); }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -466,27 +467,29 @@ const WasteProcessPage = () => {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="table-container">
-            {filteredProcesses.length === 0 ? (
-              <div className="empty-state">
-                <p>No processes found</p>
-              </div>
-            ) : (
-              <table className="wp-data-table">
-                <thead>
+          {/* Processes Table */}
+          <div className="route-assignment-table-container">
+            <table className="route-assignment-table">
+              <thead>
+                <tr>
+                  <th>PROCESS DATE</th>
+                  <th>COMPANY</th>
+                  <th>INCINERATION WEIGHT (KG)</th>
+                  <th>AUTOCLAVE WEIGHT (KG)</th>
+                  <th>TOTAL WEIGHT (KG)</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProcesses.length === 0 ? (
                   <tr>
-                    <th>PROCESS DATE</th>
-                    <th>COMPANY</th>
-                    <th>INCINERATION WEIGHT (KG)</th>
-                    <th>AUTOCLAVE WEIGHT (KG)</th>
-                    <th>TOTAL WEIGHT (KG)</th>
-                    <th>STATUS</th>
-                    <th>ACTIONS</th>
+                    <td colSpan={7} className="empty-message">
+                      {loading ? 'Loading...' : 'No processes found'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredProcesses.map((process) => {
+                ) : (
+                  filteredProcesses.map((process) => {
                     const processDate = new Date(process.processDate);
                     const formattedDate = `${String(processDate.getDate()).padStart(2, '0')}/${String(processDate.getMonth() + 1).padStart(2, '0')}/${processDate.getFullYear()}`;
                     return (
@@ -497,17 +500,19 @@ const WasteProcessPage = () => {
                         <td>{process.autoclaveWeightKg.toFixed(1)}</td>
                         <td>{(Number(process.incinerationWeightKg) + Number(process.autoclaveWeightKg)).toFixed(1)}</td>
                         <td>
-                          <span className={getStatusBadgeClass(process.status)}>
-                            {process.status === 'Submitted' ? 'SUBMITTED' : 
-                             process.status === 'Verified' ? 'COMPLETED' : 
-                             process.status === 'Draft' ? 'IN PROGRESS' : 
-                             process.status.toUpperCase()}
-                          </span>
+                          <div className="ra-cell-center">
+                            <span className={`status-badge ${getStatusBadgeClass(process.status)}`}>
+                              {process.status === 'Submitted' ? 'SUBMITTED' : 
+                               process.status === 'Verified' ? 'COMPLETED' : 
+                               process.status === 'Draft' ? 'IN PROGRESS' : 
+                               process.status.toUpperCase()}
+                            </span>
+                          </div>
                         </td>
                         <td>
-                          <div className="wp-action-buttons">
+                          <div className="action-buttons ra-actions">
                             <button
-                              className="wp-action-btn wp-action-btn--view"
+                              className="action-btn action-btn--view"
                               onClick={() => handleViewDetails(process)}
                               title="View Details"
                             >
@@ -519,7 +524,7 @@ const WasteProcessPage = () => {
                             {process.status === 'Draft' && (
                               <>
                                 <button
-                                  className="wp-action-btn wp-action-btn--edit"
+                                  className="action-btn action-btn--edit"
                                   onClick={() => handleEdit(process)}
                                   title="Edit"
                                 >
@@ -529,7 +534,7 @@ const WasteProcessPage = () => {
                                   </svg>
                                 </button>
                                 <button
-                                  className="wp-action-btn wp-action-btn--delete"
+                                  className="action-btn action-btn--delete"
                                   onClick={() => handleDeleteClick(process)}
                                   title="Delete"
                                 >
@@ -544,17 +549,14 @@ const WasteProcessPage = () => {
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            )}
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-
-          {filteredProcesses.length > 0 && (
-            <div className="table-footer">
-              Showing {filteredProcesses.length} of {processes.length} Items
-            </div>
-          )}
+          <div className="route-assignment-pagination-info">
+            Showing {filteredProcesses.length} of {processes.length} items
+          </div>
         </div>
       </main>
 

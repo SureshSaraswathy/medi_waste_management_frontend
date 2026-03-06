@@ -149,14 +149,22 @@ export const incinerationRegisterService = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return Array.isArray(response) ? response[0] : (response.data || response);
   },
 
   getIncinerationRegisterById: async (incinerationId: string): Promise<IncinerationRegisterResponse> => {
     const response = await apiRequest<ApiResponse<IncinerationRegisterResponse>>(`/incineration-registers/${incinerationId}`, {
       method: 'GET',
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return response.data || response;
   },
 
   getAllIncinerationRegisters: async (
@@ -178,11 +186,11 @@ export const incinerationRegisterService = {
     const response = await apiRequest<ApiResponse<IncinerationRegisterResponse[]>>(url, {
       method: 'GET',
     });
-    // Safety check: ensure data is an array
-    if (!response || !response.data) {
+    // Safety check: ensure data is an array and handle raw array response
+    if (!response) {
       return [];
     }
-    return Array.isArray(response.data) ? response.data : [];
+    return Array.isArray(response) ? response : (response.data || []);
   },
 
   updateIncinerationRegister: async (
@@ -190,10 +198,14 @@ export const incinerationRegisterService = {
     data: UpdateIncinerationRegisterRequest
   ): Promise<IncinerationRegisterResponse> => {
     const response = await apiRequest<ApiResponse<IncinerationRegisterResponse>>(`/incineration-registers/${incinerationId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return response.data;
+    // Handle both wrapped and raw responses
+    if (!response) {
+      throw new Error('No response received from server');
+    }
+    return response.data || response;
   },
 
   deleteIncinerationRegister: async (incinerationId: string): Promise<void> => {
