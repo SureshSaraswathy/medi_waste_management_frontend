@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hcfService, HcfResponse } from '../../services/hcfService';
@@ -23,6 +23,7 @@ interface BarcodeLabelWithDetails extends BarcodeLabelResponse {
 const BarcodeListPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showViewModal, setShowViewModal] = useState(false);
   const [showModifyModal, setShowModifyModal] = useState(false);
@@ -53,7 +54,7 @@ const BarcodeListPage = () => {
   const [companies, setCompanies] = useState<CompanyResponse[]>([]);
   const [hcfs, setHcfs] = useState<HcfResponse[]>([]);
   const [labels, setLabels] = useState<BarcodeLabelWithDetails[]>([]);
-  const [summary, setSummary] = useState({ total: 0, barcodes: 0, qrCodes: 0 });
+  const [summary, setSummary] = useState({ total: 0, barcodes: 0, qrCodes: 0, collected: 0, deactivated: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,15 +82,57 @@ const BarcodeListPage = () => {
     }
   }, []);
 
-  // Load summary
-  const loadSummary = useCallback(async () => {
-    try {
-      const data = await barcodeLabelService.getSummary();
-      setSummary(data);
-    } catch (err: any) {
-      console.error('Failed to load summary:', err);
+  // Load filtered summary - fetch all filtered labels for accurate summary calculation
+  const loadFilteredSummary = useCallback(async () => {
+    // Check if we have filters applied
+    const hasFilters = !!(searchQuery || filters.search || filters.colorBlock || filters.barcodeType || filters.status || filters.startDate || filters.endDate);
+    
+    if (!hasFilters) {
+      // No filters - use global summary
+      try {
+        const data = await barcodeLabelService.getSummary();
+        setSummary(data);
+      } catch (err: any) {
+        console.error('Failed to load summary:', err);
+      }
+      return;
     }
-  }, []);
+
+    try {
+      // Fetch all filtered labels (with large limit) for accurate summary
+      const params: BarcodeListParams = {
+        page: 1,
+        limit: 10000, // Large limit to get all filtered records
+        search: searchQuery || filters.search,
+        colorBlock: filters.colorBlock,
+        barcodeType: filters.barcodeType,
+        status: filters.status,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        includeDeleted: filters.includeDeleted,
+      };
+
+      const result = await barcodeLabelService.getBarcodeList(params);
+      
+      // Calculate summary from all filtered labels
+      const total = result.pagination.total;
+      const barcodes = result.data.filter(l => l.barcodeType === 'Barcode').length;
+      const qrCodes = result.data.filter(l => l.barcodeType === 'QR Code').length;
+      const collected = result.data.filter(l => l.status === 'Collected').length;
+      const deactivated = result.data.filter(l => l.status === 'Inactive').length;
+      
+      setSummary({ total, barcodes, qrCodes, collected, deactivated });
+    } catch (err: any) {
+      console.error('Failed to load filtered summary:', err);
+      // Fallback to global summary if filtered summary fails
+      try {
+        const data = await barcodeLabelService.getSummary();
+        setSummary(data);
+      } catch (fallbackErr) {
+        console.error('Failed to load fallback summary:', fallbackErr);
+      }
+    }
+  }, [searchQuery, filters]);
 
   // Load labels with pagination
   const loadLabels = useCallback(async () => {
@@ -111,39 +154,85 @@ const BarcodeListPage = () => {
 
       const result = await barcodeLabelService.getBarcodeList(params);
       
-      // Generate HCFUniqueID helper function
-      const generateHCFUniqueID = (hcf: HcfResponse): string => {
-        if (!hcf) return '';
-        const hcfCode = hcf.hcfCode || '';
-        const pincode = hcf.pincode || '';
+      // Generate HCFUniqueID helper function - async to fetch HCF data if needed
+      // Format: First 5 chars HCF Code + Pincode + State Code + HCF Type + Last 5 chars HCF Code
+      const generateHCFUniqueID = async (hcfCode: string, hcfId: string): Promise<string> => {
+        // First try to find in loaded HCFs
+        let hcf = hcfs.find(h => h.id === hcfId);
+        
+        // If not found, try to fetch individually (for old barcodes)
+        if (!hcf) {
+          try {
+            hcf = await hcfService.getHcfById(hcfId);
+            // Cache it for future use using functional update
+            if (hcf) {
+              setHcfs(prev => {
+                // Check if already exists to avoid duplicates
+                if (!prev.find(h => h.id === hcfId)) {
+                  return [...prev, hcf!];
+                }
+                return prev;
+              });
+            }
+          } catch (err) {
+            console.warn(`HCF ${hcfId} not found, using fallback for HCF Unique ID`);
+          }
+        }
+        
+        if (!hcf) {
+          // Fallback: Use HCF Code only if HCF data not available (for very old/deleted HCFs)
+          const code = hcfCode || '';
+          const first5Chars = code.substring(0, 5).padEnd(5, '0');
+          const last5Chars = code.length >= 5 
+            ? code.substring(code.length - 5)
+            : code.padStart(5, '0');
+          return `${first5Chars}000000${last5Chars}`; // Use zeros for missing data
+        }
+        
+        const code = hcfCode || '';
+        const pincode = (hcf.pincode || '').padStart(6, '0'); // Ensure 6 digits for pincode
         const stateCode = hcf.stateCode || '';
         const hcfType = hcf.hcfTypeCode || '';
-        const first5Chars = hcfCode.substring(0, 5).padEnd(5, '0');
-        const last5Chars = hcfCode.length >= 5 
-          ? hcfCode.substring(hcfCode.length - 5)
-          : hcfCode.padStart(5, '0');
+        const first5Chars = code.substring(0, 5).padEnd(5, '0');
+        const last5Chars = code.length >= 5 
+          ? code.substring(code.length - 5)
+          : code.padStart(5, '0');
         return `${first5Chars}${pincode}${stateCode}${hcfType}${last5Chars}`;
       };
 
-      // Enrich with HCF and Company names, and generate HCFUniqueID
-      const enrichedLabels = await Promise.all(
-        result.data.map(async (label) => {
-          let hcfName = '';
-          let companyName = '';
-          let hcfUniqueId = '';
+      // Map labels - Generate HCFUniqueID for all labels (including old ones)
+      const enrichedLabels = await Promise.all(result.data.map(async (label) => {
+        // Try to find company in loaded list
+        let company = companies.find(c => c.id === label.companyId);
+        
+        // If not found, try to fetch individually (for old barcodes)
+        if (!company) {
           try {
-            const hcf = await hcfService.getHcfById(label.hcfId);
-            hcfName = hcf.hcfName;
-            // Generate HCFUniqueID for display
-            hcfUniqueId = generateHCFUniqueID(hcf);
-            const company = companies.find(c => c.id === label.companyId);
-            companyName = company?.companyName || 'Unknown';
+            const companyData = await companyService.getCompanyById(label.companyId);
+            if (companyData) {
+              company = companyData;
+              // Cache it for future use
+              setCompanies(prev => {
+                if (!prev.find(c => c.id === label.companyId)) {
+                  return [...prev, companyData];
+                }
+                return prev;
+              });
+            }
           } catch (err) {
-            console.error('Error loading details:', err);
+            console.warn(`Company ${label.companyId} not found`);
           }
-          return { ...label, hcfName, companyName, hcfUniqueId };
-        })
-      );
+        }
+        
+        // Always generate HCFUniqueID, even for old labels
+        const hcfUniqueId = await generateHCFUniqueID(label.hcfCode, label.hcfId);
+        
+        return { 
+          ...label, 
+          companyName: company?.companyName || label.companyId || '',
+          hcfUniqueId: hcfUniqueId, // Always include
+        };
+      }));
       
       setLabels(enrichedLabels);
       setTotalRecords(result.pagination.total);
@@ -155,21 +244,42 @@ const BarcodeListPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchQuery, filters, companies]);
+  }, [currentPage, pageSize, searchQuery, filters, companies, hcfs]);
+
+  // Read URL params on mount and apply filters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const searchParam = urlParams.get('search');
+    const barcodeTypeParam = urlParams.get('barcodeType');
+    const colorBlockParam = urlParams.get('colorBlock');
+    
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+    
+    if (barcodeTypeParam || colorBlockParam) {
+      setFilters(prev => ({
+        ...prev,
+        ...(barcodeTypeParam && { barcodeType: barcodeTypeParam }),
+        ...(colorBlockParam && { colorBlock: colorBlockParam }),
+      }));
+    }
+  }, [location.search]);
 
   // Load data on mount
   useEffect(() => {
     loadCompanies();
     loadHcfs();
-    loadSummary();
-  }, [loadCompanies, loadHcfs, loadSummary]);
+  }, [loadCompanies, loadHcfs]);
 
-  // Load labels when filters change
+  // Load labels and summary when filters change
+  // Note: HCFs will be fetched individually if not in the list (for old barcodes)
   useEffect(() => {
     if (companies.length > 0) {
       loadLabels();
+      loadFilteredSummary();
     }
-  }, [loadLabels]);
+  }, [loadLabels, loadFilteredSummary, companies.length]);
 
   // Handle search with debounce
   useEffect(() => {
@@ -217,7 +327,7 @@ const BarcodeListPage = () => {
         },
       });
       await loadLabels();
-      await loadSummary();
+      await loadFilteredSummary();
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete label';
       toast.error(`Error: ${errorMessage}`);
@@ -250,7 +360,7 @@ const BarcodeListPage = () => {
       setShowModifyModal(false);
       setSelectedLabel(null);
       await loadLabels();
-      await loadSummary();
+      await loadFilteredSummary();
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update label';
       toast.error(`Error: ${errorMessage}`);
@@ -343,6 +453,40 @@ const BarcodeListPage = () => {
         />
 
         <div className="barcode-generation-page">
+          {/* Back Navigation Button */}
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => navigate('/transaction/barcode-generation')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                color: '#1e293b',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = '#f8fafc';
+                e.currentTarget.style.borderColor = '#94a3b8';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = '#ffffff';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              Back to Barcode Generation
+            </button>
+          </div>
+
           <div className="barcode-generation-header">
             <div className="barcode-generation-header-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -365,15 +509,23 @@ const BarcodeListPage = () => {
               <div className="barcode-summary-stats">
                 <div className="barcode-summary-stat">
                   <span className="barcode-summary-stat-value">{summary.total}</span>
-                  <span className="barcode-summary-stat-label">Total Labels</span>
+                  <span className="barcode-summary-stat-label">Total Labels Generated</span>
                 </div>
                 <div className="barcode-summary-stat">
                   <span className="barcode-summary-stat-value">{summary.barcodes}</span>
-                  <span className="barcode-summary-stat-label">Barcodes</span>
+                  <span className="barcode-summary-stat-label">Total Barcodes</span>
                 </div>
                 <div className="barcode-summary-stat">
                   <span className="barcode-summary-stat-value">{summary.qrCodes}</span>
-                  <span className="barcode-summary-stat-label">QR Codes</span>
+                  <span className="barcode-summary-stat-label">Total QR Codes</span>
+                </div>
+                <div className="barcode-summary-stat">
+                  <span className="barcode-summary-stat-value">{summary.collected}</span>
+                  <span className="barcode-summary-stat-label">Collected Barcodes</span>
+                </div>
+                <div className="barcode-summary-stat">
+                  <span className="barcode-summary-stat-value">{summary.deactivated}</span>
+                  <span className="barcode-summary-stat-label">Deactivated Barcodes</span>
                 </div>
               </div>
             </div>
@@ -620,11 +772,11 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
   const previewQrRef = useRef<HTMLCanvasElement>(null);
   const printContainerRef = useRef<HTMLDivElement>(null);
 
-  // Generate barcode/QR code for preview
+  // Generate barcode/QR code for preview - encode sequence number (13 digits)
   useEffect(() => {
-    const displayValue = label.barcodeType === 'QR Code' && label.hcfUniqueId 
-      ? label.hcfUniqueId 
-      : label.barcodeValue;
+    const displayValue = label.sequenceNumber 
+      ? label.sequenceNumber.toString().padStart(13, '0') 
+      : (label.barcodeValue || '').padStart(13, '0');
 
     if (label.barcodeType === 'Barcode' && previewBarcodeRef.current) {
       try {
@@ -657,14 +809,14 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
   const handlePrint = () => {
     if (!printContainerRef.current) return;
     
-    // Generate barcode/QR code for print
+    // Generate barcode/QR code for print - encode sequence number (13 digits)
     setTimeout(() => {
-      const displayValue = label.barcodeType === 'QR Code' && label.hcfUniqueId 
-        ? label.hcfUniqueId 
-        : label.barcodeValue;
+      const displayValue = label.sequenceNumber 
+        ? label.sequenceNumber.toString().padStart(13, '0') 
+        : (label.barcodeValue || '').padStart(13, '0');
 
       if (label.barcodeType === 'Barcode') {
-        const svg = printContainerRef.current?.querySelector<SVGElement>('.print-barcode-svg');
+        const svg = printContainerRef.current?.querySelector<SVGElement>('.barcode-svg');
         if (svg) {
           svg.innerHTML = '';
           JsBarcode(svg, displayValue, {
@@ -676,7 +828,7 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
           });
         }
       } else {
-        const canvas = printContainerRef.current?.querySelector<HTMLCanvasElement>('.print-qr-canvas');
+        const canvas = printContainerRef.current?.querySelector<HTMLCanvasElement>('.qr-canvas');
         if (canvas) {
           QRCode.toCanvas(canvas, displayValue, {
             width: 150,
@@ -698,10 +850,6 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
     }, 100);
   };
 
-  const displayValue = label.barcodeType === 'QR Code' && label.hcfUniqueId 
-    ? label.hcfUniqueId 
-    : label.barcodeValue;
-
   return (
     <>
       <div className="modal-overlay" onClick={onClose}>
@@ -718,9 +866,11 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
           <div className="modal-body barcode-label-preview-body">
             {/* Label Preview */}
             <div className="barcode-label-preview-container">
-              {/* Top: HCF Name */}
+              {/* Top: Company Name */}
               <div className="barcode-label-preview-top">
-                <div className="barcode-label-preview-hcf-name">{label.hcfName || '-'}</div>
+                <div className="barcode-label-preview-company-name">
+                  {label.companyName && label.companyName !== 'Unknown' ? label.companyName.toUpperCase() : ''}
+                </div>
               </div>
 
               {/* Main Content: Left (QR/Barcode) and Right (Color Block + Info) */}
@@ -736,7 +886,7 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
                   </div>
                 </div>
 
-                {/* Right: Waste Color Block + Barcode Number + HCF Unique ID */}
+                {/* Right: Waste Color Block + Sequence Number + HCF Unique ID */}
                 <div className="barcode-label-preview-right">
                   {/* Waste Color Block */}
                   <div 
@@ -751,19 +901,25 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
                     {label.colorBlock.toUpperCase()}
                   </div>
 
-                  {/* Barcode Number */}
-                  <div className="barcode-label-preview-barcode-number">{label.barcodeValue}</div>
+                  {/* Sequence Number - Display as 13 digits */}
+                  <div className="barcode-label-preview-barcode-number">
+                    {label.sequenceNumber 
+                      ? label.sequenceNumber.toString().padStart(13, '0') 
+                      : (label.barcodeValue || '0').padStart(13, '0')}
+                  </div>
 
-                  {/* HCF Unique ID */}
-                  {label.hcfUniqueId && (
-                    <div className="barcode-label-preview-hcf-unique-id">{label.hcfUniqueId}</div>
-                  )}
+                  {/* HCF Unique ID - Always show */}
+                  <div className="barcode-label-preview-hcf-unique-id">
+                    {label.hcfUniqueId || '-'}
+                  </div>
                 </div>
               </div>
 
               {/* Bottom: Hospital Name */}
               <div className="barcode-label-preview-bottom">
-                <div className="barcode-label-preview-hospital-name">{label.hcfName || '-'}</div>
+                <div className="barcode-label-preview-hospital-name">
+                  {label.hcfName ? label.hcfName.toUpperCase() : ''}
+                </div>
               </div>
             </div>
           </div>
@@ -785,30 +941,32 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
 
       {/* Hidden print container */}
       <div className="print-container" ref={printContainerRef}>
-        <div className="print-label-single">
-          {/* Top: HCF Name */}
-          <div className="print-label-top">
-            <div className="print-label-hcf-name">{label.hcfName || '-'}</div>
+        <div className="barcode-label-preview-container">
+          {/* Top: Company Name */}
+          <div className="barcode-label-preview-top">
+            <div className="barcode-label-preview-company-name">
+              {label.companyName && label.companyName !== 'Unknown' ? label.companyName.toUpperCase() : ''}
+            </div>
           </div>
 
           {/* Main Content */}
-          <div className="print-label-main">
+          <div className="barcode-label-preview-main">
             {/* Left: QR Code / Barcode */}
-            <div className="print-label-left">
-              <div className="print-label-code-container">
+            <div className="barcode-label-preview-left">
+              <div className="barcode-label-preview-code-container">
                 {label.barcodeType === 'QR Code' ? (
-                  <canvas className="print-qr-canvas" width="150" height="150"></canvas>
+                  <canvas className="qr-canvas" width="150" height="150"></canvas>
                 ) : (
-                  <svg className="print-barcode-svg"></svg>
+                  <svg className="barcode-svg"></svg>
                 )}
               </div>
             </div>
 
-            {/* Right: Waste Color Block + Barcode Number + HCF Unique ID */}
-            <div className="print-label-right">
+            {/* Right: Waste Color Block + Sequence Number + HCF Unique ID */}
+            <div className="barcode-label-preview-right">
               {/* Waste Color Block */}
               <div 
-                className={`print-label-color-block print-label-color-block--${label.colorBlock.toLowerCase()}`}
+                className={`barcode-label-preview-color-block barcode-label-preview-color-block--${label.colorBlock.toLowerCase()}`}
                 style={{
                   backgroundColor: label.colorBlock === 'Yellow' ? '#FFFF00' : 
                                   label.colorBlock === 'Red' ? '#FF0000' :
@@ -819,19 +977,25 @@ const ViewBarcodeModal = ({ label, onClose }: ViewBarcodeModalProps) => {
                 {label.colorBlock.toUpperCase()}
               </div>
 
-              {/* Barcode Number */}
-              <div className="print-label-barcode-number">{label.barcodeValue}</div>
+              {/* Sequence Number - Display as 13 digits */}
+              <div className="barcode-label-preview-barcode-number">
+                {label.sequenceNumber 
+                  ? label.sequenceNumber.toString().padStart(13, '0') 
+                  : (label.barcodeValue || '0').padStart(13, '0')}
+              </div>
 
-              {/* HCF Unique ID */}
-              {label.hcfUniqueId && (
-                <div className="print-label-hcf-unique-id">{label.hcfUniqueId}</div>
-              )}
+              {/* HCF Unique ID - Always show */}
+              <div className="barcode-label-preview-hcf-unique-id">
+                {label.hcfUniqueId || '-'}
+              </div>
             </div>
           </div>
 
           {/* Bottom: Hospital Name */}
-          <div className="print-label-bottom">
-            <div className="print-label-hospital-name">{label.hcfName || '-'}</div>
+          <div className="barcode-label-preview-bottom">
+            <div className="barcode-label-preview-hospital-name">
+              {label.hcfName ? label.hcfName.toUpperCase() : ''}
+            </div>
           </div>
         </div>
       </div>
@@ -854,69 +1018,90 @@ const ModifyBarcodeModal = ({ label, onClose, onSave }: ModifyBarcodeModalProps)
     onSave({ status });
   };
 
+  // Format sequence number as 13 digits
+  const formattedSequenceNumber = label.sequenceNumber 
+    ? label.sequenceNumber.toString().padStart(13, '0') 
+    : (label.barcodeValue || '').padStart(13, '0');
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">Edit Barcode Label Status</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay bg-filter-modal-overlay" onClick={onClose}>
+      <div className="modal-content bg-filter-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-filter-modal-header">
+          <div className="bg-filter-modal-titlewrap">
+            <div className="bg-filter-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 className="bg-filter-modal-title">Edit Barcode Label Status</h2>
+              <p className="bg-filter-modal-subtitle">Update the status of this barcode label</p>
+            </div>
+          </div>
+          <button className="bg-filter-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
-        <form className="modal-body" onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label>Barcode Number</label>
+        <form id="edit-barcode-form" className="bg-filter-modal-body" onSubmit={handleSubmit}>
+          <div className="bg-filter-form-group">
+            <label htmlFor="edit-barcode-number">BARCODE NUMBER</label>
             <input 
+              id="edit-barcode-number"
               type="text" 
-              value={label.barcodeType === 'QR Code' && label.hcfUniqueId 
-                ? label.hcfUniqueId 
-                : label.barcodeValue} 
+              value={formattedSequenceNumber}
               disabled 
-              className="form-input" 
+              className="bg-filter-select" 
+              style={{ cursor: 'not-allowed' }}
             />
           </div>
-          <div className="form-field">
-            <label>HCF Code</label>
+          <div className="bg-filter-form-group">
+            <label htmlFor="edit-hcf-code">HCF CODE</label>
             <input 
+              id="edit-hcf-code"
               type="text" 
               value={label.hcfCode} 
               disabled 
-              className="form-input" 
+              className="bg-filter-select"
+              style={{ cursor: 'not-allowed' }}
             />
           </div>
-          <div className="form-field">
-            <label>HCF Name</label>
+          <div className="bg-filter-form-group">
+            <label htmlFor="edit-hcf-name">HCF NAME</label>
             <input 
+              id="edit-hcf-name"
               type="text" 
               value={label.hcfName || '-'} 
               disabled 
-              className="form-input" 
+              className="bg-filter-select"
+              style={{ cursor: 'not-allowed' }}
             />
           </div>
-          <div className="form-field">
-            <label>Status <span className="required">*</span></label>
+          <div className="bg-filter-form-group">
+            <label htmlFor="edit-status">STATUS <span style={{ color: '#ef4444' }}>*</span></label>
             <select
+              id="edit-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as 'Active' | 'Inactive')}
-              className="form-select"
+              className="bg-filter-select"
               required
             >
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn--primary">
-              Save Changes
-            </button>
-          </div>
         </form>
+        <div className="bg-filter-modal-footer">
+          <button type="button" className="bg-link-btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" form="edit-barcode-form" className="bg-filter-btn-primary">
+            Save Changes
+          </button>
+        </div>
       </div>
     </div>
   );

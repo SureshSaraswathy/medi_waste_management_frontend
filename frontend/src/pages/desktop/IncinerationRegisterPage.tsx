@@ -802,11 +802,13 @@ const IncinerationFormModal = ({
                 className="ra-assignment-select"
               >
                 <option value="">Select Equipment</option>
-                {equipment.map((eq) => (
-                  <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
-                    {eq.equipmentCode} - {eq.equipmentName}
-                  </option>
-                ))}
+                {equipment
+                  .filter((eq) => eq.equipmentType && eq.equipmentType.toLowerCase() === 'incinerators')
+                  .map((eq) => (
+                    <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
+                      {eq.equipmentCode} - {eq.equipmentName}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="ra-assignment-form-group">

@@ -3339,6 +3339,11 @@ const UserFormModal = ({ user, roles, companies, users, viewMode = false, onClos
               <button type="button" className="btn btn--cancel" onClick={handleCancel}>
               Cancel
             </button>
+          {currentStep > 1 && (
+            <button type="button" className="btn btn--cancel" onClick={handleBack} disabled={loading}>
+              Back
+            </button>
+          )}
           {currentStep < 6 ? (
             <button 
               type="button" 

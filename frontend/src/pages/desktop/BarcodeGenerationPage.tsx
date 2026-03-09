@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { hcfService, HcfResponse } from '../../services/hcfService';
@@ -25,6 +25,7 @@ interface BarcodeLabel {
   barcodeValue: string;
   hcfUniqueId?: string; // HCFUniqueID for display
   createdAt: string;
+  status?: 'Active' | 'Inactive' | 'Collected' | 'Deleted';
 }
 
 type ColorBlock = 'Yellow' | 'Red' | 'White' | 'Blue';
@@ -33,6 +34,7 @@ type BarcodeType = 'Barcode' | 'QR Code';
 const BarcodeGenerationPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -55,7 +57,7 @@ const BarcodeGenerationPage = () => {
   const [hcfs, setHcfs] = useState<HcfResponse[]>([]);
   const [filteredHcfs, setFilteredHcfs] = useState<HcfResponse[]>([]);
   const [labels, setLabels] = useState<BarcodeLabel[]>([]);
-  const [summary, setSummary] = useState({ total: 0, barcodes: 0, qrCodes: 0 });
+  const [globalSummary, setGlobalSummary] = useState({ total: 0, barcodes: 0, qrCodes: 0, collected: 0, deactivated: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -167,6 +169,7 @@ const BarcodeGenerationPage = () => {
             barcodeValue: apiLabel.barcodeValue, // Backend now generates correct format
             hcfUniqueId, // Add HCFUniqueID for display
             createdAt: apiLabel.createdOn,
+            status: apiLabel.status || 'Active',
           };
         })
       );
@@ -189,7 +192,7 @@ const BarcodeGenerationPage = () => {
   const loadSummary = useCallback(async () => {
     try {
       const data = await barcodeLabelService.getSummary();
-      setSummary(data);
+      setGlobalSummary(data);
     } catch (err: any) {
       console.error('Failed to load summary:', err);
     }
@@ -215,6 +218,12 @@ const BarcodeGenerationPage = () => {
 
   // Generate labels using backend API
   const handleGenerate = async () => {
+    // Validate end sequence is greater than start sequence
+    if (formData.endSequence <= formData.startSequence) {
+      setError('End Sequence must be greater than Start Sequence.');
+      return;
+    }
+    
     // Calculate count from start and end sequence
     const count = formData.endSequence - formData.startSequence + 1;
     
@@ -308,14 +317,14 @@ const BarcodeGenerationPage = () => {
         const svgElements = container.querySelectorAll<SVGElement>('.barcode-svg');
         const canvasElements = container.querySelectorAll<HTMLCanvasElement>('.qr-canvas');
 
-        // Generate barcodes
+        // Generate barcodes - encode sequence number
         svgElements.forEach((svg, index) => {
           const label = allGeneratedLabels[index];
           if (label && label.barcodeType === 'Barcode') {
             try {
               // Clear previous content
               svg.innerHTML = '';
-              JsBarcode(svg, label.barcodeValue, {
+              JsBarcode(svg, label.sequenceNumber.toString(), {
                 format: 'CODE128',
                 width: 2,
                 height: 50,
@@ -328,11 +337,11 @@ const BarcodeGenerationPage = () => {
           }
         });
 
-        // Generate QR codes
+        // Generate QR codes - encode sequence number
         canvasElements.forEach((canvas, index) => {
           const label = allGeneratedLabels[index];
           if (label && label.barcodeType === 'QR Code') {
-            QRCode.toCanvas(canvas, label.barcodeValue, {
+            QRCode.toCanvas(canvas, label.sequenceNumber.toString(), {
               width: 150,
               margin: 2,
               color: {
@@ -360,14 +369,13 @@ const BarcodeGenerationPage = () => {
       const svgElements = container.querySelectorAll<SVGElement>('.barcode-svg');
       const canvasElements = container.querySelectorAll<HTMLCanvasElement>('.qr-canvas');
 
-      // Generate barcodes
+      // Generate barcodes - encode sequence number
       svgElements.forEach((svg, index) => {
         const label = allGeneratedLabels[index];
         if (label && label.barcodeType === 'Barcode') {
           try {
             svg.innerHTML = '';
-            const displayValue = label.hcfUniqueId || label.barcodeValue;
-            JsBarcode(svg, displayValue, {
+            JsBarcode(svg, label.sequenceNumber.toString(), {
               format: 'CODE128',
               width: 2,
               height: 50,
@@ -380,12 +388,11 @@ const BarcodeGenerationPage = () => {
         }
       });
 
-      // Generate QR codes
+      // Generate QR codes - encode sequence number
       canvasElements.forEach((canvas, index) => {
         const label = allGeneratedLabels[index];
         if (label && label.barcodeType === 'QR Code') {
-          const displayValue = label.hcfUniqueId || label.barcodeValue;
-          QRCode.toCanvas(canvas, displayValue, {
+          QRCode.toCanvas(canvas, label.sequenceNumber.toString(), {
             width: 150,
             margin: 2,
             color: {
@@ -407,22 +414,34 @@ const BarcodeGenerationPage = () => {
 
 
   // Filter labels - client-side filtering
-  const filteredLabels = labels.filter(label => {
-    // Search filter
-    const matchesSearch = 
-      label.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      label.hcfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      label.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      label.barcodeValue.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Advanced filters
-    const matchesCompany = !filters.companyId || label.companyId === filters.companyId;
-    const matchesHcf = !filters.hcfId || label.hcfCode === filters.hcfId;
-    const matchesType = !filters.barcodeType || label.barcodeType === filters.barcodeType;
-    const matchesColor = !filters.colorBlock || label.colorBlock === filters.colorBlock;
-    
-    return matchesSearch && matchesCompany && matchesHcf && matchesType && matchesColor;
-  });
+  const filteredLabels = useMemo(() => {
+    return labels.filter(label => {
+      // Search filter
+      const matchesSearch = 
+        label.hcfCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        label.hcfName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        label.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        label.barcodeValue.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Advanced filters
+      const matchesCompany = !filters.companyId || label.companyId === filters.companyId;
+      const matchesHcf = !filters.hcfId || label.hcfCode === filters.hcfId;
+      const matchesType = !filters.barcodeType || label.barcodeType === filters.barcodeType;
+      const matchesColor = !filters.colorBlock || label.colorBlock === filters.colorBlock;
+      
+      return matchesSearch && matchesCompany && matchesHcf && matchesType && matchesColor;
+    });
+  }, [labels, searchQuery, filters]);
+
+  // Calculate summary from filtered labels
+  const summary = useMemo(() => {
+    const total = filteredLabels.length;
+    const barcodes = filteredLabels.filter(l => l.barcodeType === 'Barcode').length;
+    const qrCodes = filteredLabels.filter(l => l.barcodeType === 'QR Code').length;
+    const collected = filteredLabels.filter(l => l.status === 'Collected').length;
+    const deactivated = filteredLabels.filter(l => l.status === 'Inactive').length;
+    return { total, barcodes, qrCodes, collected, deactivated };
+  }, [filteredLabels]);
 
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
@@ -582,19 +601,39 @@ const BarcodeGenerationPage = () => {
                 <div className="barcode-summary-stats">
                   <div className="barcode-summary-stat">
                     <span className="barcode-summary-stat-value">{summary.total}</span>
-                    <span className="barcode-summary-stat-label">Total Labels</span>
+                    <span className="barcode-summary-stat-label">Total Labels Generated</span>
                   </div>
                   <div className="barcode-summary-stat">
                     <span className="barcode-summary-stat-value">{summary.barcodes}</span>
-                    <span className="barcode-summary-stat-label">Barcodes</span>
+                    <span className="barcode-summary-stat-label">Total Barcodes</span>
                   </div>
                   <div className="barcode-summary-stat">
                     <span className="barcode-summary-stat-value">{summary.qrCodes}</span>
-                    <span className="barcode-summary-stat-label">QR Codes</span>
+                    <span className="barcode-summary-stat-label">Total QR Codes</span>
+                  </div>
+                  <div className="barcode-summary-stat">
+                    <span className="barcode-summary-stat-value">{summary.collected}</span>
+                    <span className="barcode-summary-stat-label">Collected Barcodes</span>
+                  </div>
+                  <div className="barcode-summary-stat">
+                    <span className="barcode-summary-stat-value">{summary.deactivated}</span>
+                    <span className="barcode-summary-stat-label">Deactivated Barcodes</span>
                   </div>
                 </div>
                 <div className="barcode-summary-actions">
-                  <Link to="/transaction/barcode-list" className="barcode-view-list-btn">
+                  <button 
+                    onClick={() => {
+                      // Build URL with current search and filter params
+                      const params = new URLSearchParams();
+                      // Combine searchQuery and filters.hcfId (which is HCF Code) into search param
+                      const searchValue = searchQuery || filters.hcfId || '';
+                      if (searchValue) params.append('search', searchValue);
+                      if (filters.barcodeType) params.append('barcodeType', filters.barcodeType);
+                      if (filters.colorBlock) params.append('colorBlock', filters.colorBlock);
+                      navigate(`/transaction/barcode-list?${params.toString()}`);
+                    }}
+                    className="barcode-view-list-btn"
+                  >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect>
                       <line x1="7" y1="8" x2="7" y2="16"></line>
@@ -603,7 +642,7 @@ const BarcodeGenerationPage = () => {
                       <line x1="19" y1="8" x2="19" y2="16"></line>
                     </svg>
                     View All Labels
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -649,23 +688,47 @@ const BarcodeGenerationPage = () => {
       {/* Hidden print container */}
       <div className="print-container" ref={printContainerRef}>
         {allGeneratedLabels.map((label) => (
-          <div key={label.id} className="print-label">
-            <div className="print-label-header">
-              <div className={`print-color-block-square print-color-block-square--${label.colorBlock.toLowerCase()}`}>
-                {label.colorBlock.toUpperCase()}
+          <div key={label.id} className="barcode-label-preview-container">
+            {/* Top: Company Name */}
+            <div className="barcode-label-preview-top">
+              <div className="barcode-label-preview-company-name">{label.companyName || '-'}</div>
+            </div>
+
+            {/* Main Content: Left (QR/Barcode) and Right (Color Block + Info) */}
+            <div className="barcode-label-preview-main">
+              {/* Left: QR Code / Barcode */}
+              <div className="barcode-label-preview-left">
+                <div className="barcode-label-preview-code-container">
+                  {label.barcodeType === 'QR Code' ? (
+                    <canvas className="qr-canvas" width="150" height="150"></canvas>
+                  ) : (
+                    <svg className="barcode-svg"></svg>
+                  )}
+                </div>
               </div>
-              <div className="print-sequence-text">HCFUniqueID: {label.hcfUniqueId || label.barcodeValue}</div>
+
+              {/* Right: Waste Color Block + Sequence Number + HCF Unique ID */}
+              <div className="barcode-label-preview-right">
+                {/* Waste Color Block */}
+                <div 
+                  className={`barcode-label-preview-color-block barcode-label-preview-color-block--${label.colorBlock.toLowerCase()}`}
+                >
+                  {label.colorBlock.toUpperCase()}
+                </div>
+
+                {/* Sequence Number */}
+                <div className="barcode-label-preview-barcode-number">{label.sequenceNumber}</div>
+
+                {/* HCF Unique ID */}
+                {label.hcfUniqueId && (
+                  <div className="barcode-label-preview-hcf-unique-id">{label.hcfUniqueId}</div>
+                )}
+              </div>
             </div>
-            <div className="print-barcode-container">
-              {label.barcodeType === 'QR Code' ? (
-                <canvas className="qr-canvas" width="150" height="150"></canvas>
-              ) : (
-                <svg className="barcode-svg"></svg>
-              )}
-              <div className="print-barcode-value">{label.hcfUniqueId || label.barcodeValue}</div>
-            </div>
-            <div className="print-label-footer">
-              <div className="print-type-label">{label.barcodeType === 'QR Code' ? 'QR Code' : 'Bar Code'}</div>
+
+            {/* Bottom: Hospital Name */}
+            <div className="barcode-label-preview-bottom">
+              <div className="barcode-label-preview-hospital-name">{label.hcfName || '-'}</div>
             </div>
           </div>
         ))}
@@ -710,6 +773,36 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
     ? hcfs.filter(hcf => hcf.companyId === formData.companyId)
     : hcfs;
   
+  const [lastSequence, setLastSequence] = useState<number | null>(null);
+  const [sequenceError, setSequenceError] = useState<string>('');
+  
+  // Load last sequence number on mount and auto-populate start sequence
+  useEffect(() => {
+    const loadLastSequence = async () => {
+      try {
+        const lastSeq = await barcodeLabelService.getLastSequence();
+        setLastSequence(lastSeq);
+        // Auto-populate start sequence with last sequence + 1 if current value is less than or equal to last sequence
+        if (lastSeq !== null && formData.startSequence <= lastSeq) {
+          setFormData(prev => ({ ...prev, startSequence: lastSeq + 1 }));
+        }
+      } catch (err) {
+        console.error('Failed to load last sequence:', err);
+        setLastSequence(0);
+      }
+    };
+    loadLastSequence();
+  }, []); // Only on mount
+  
+  // Validate end sequence
+  useEffect(() => {
+    if (formData.endSequence <= formData.startSequence) {
+      setSequenceError('End Sequence must be greater than Start Sequence.');
+    } else {
+      setSequenceError('');
+    }
+  }, [formData.startSequence, formData.endSequence]);
+  
   // Calculate label count from sequence range
   const labelCount = formData.endSequence >= formData.startSequence 
     ? formData.endSequence - formData.startSequence + 1 
@@ -732,15 +825,10 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
     return `${first5Chars}${pincode}${stateCode}${hcfType}${last5Chars}`;
   };
   
-  // Generate preview barcode value
+  // Generate preview barcode value - both Barcode and QR Code use sequence number (13 digits)
   const previewBarcodeValue = (() => {
-    if (formData.barcodeType === 'Barcode') {
-      // For Barcode: 13-digit numeric code
-      return formData.startSequence ? formData.startSequence.toString().padStart(13, '0') : '';
-    } else {
-      // For QR Code: HCFUniqueID
-      return selectedHcf ? generateHCFUniqueID(selectedHcf) : '';
-    }
+    // Both Barcode and QR Code encode the same sequence number, displayed as 13 digits
+    return formData.startSequence ? formData.startSequence.toString().padStart(13, '0') : '0000000000000';
   })();
 
   // Handle HCF code input - find matching HCF
@@ -838,7 +926,7 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
             </div>
           </div>
 
-          {/* COMPANY and PREFIX Section */}
+          {/* COMPANY Section */}
           <div className="bg-generate-form-section">
             <div className="bg-generate-form-grid">
               <div className="bg-generate-form-group">
@@ -859,20 +947,6 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                   ))}
                 </select>
               </div>
-              {formData.barcodeType === 'QR Code' && (
-                <div className="bg-generate-form-group">
-                  <label className="bg-generate-form-label">
-                    PREFIX <span className="bg-required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.prefix}
-                    onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
-                    required
-                    className="bg-generate-input"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -886,11 +960,22 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                 <input
                   type="number"
                   value={formData.startSequence}
-                  onChange={(e) => setFormData({ ...formData, startSequence: parseInt(e.target.value) || 1 })}
+                  onChange={(e) => {
+                    const newStart = parseInt(e.target.value) || (lastSequence !== null ? lastSequence + 1 : 1);
+                    const minValue = lastSequence !== null ? lastSequence + 1 : 1;
+                    if (newStart >= minValue) {
+                      setFormData({ ...formData, startSequence: newStart });
+                    }
+                  }}
                   required
-                  min={1}
+                  min={lastSequence !== null ? lastSequence + 1 : 1}
                   className="bg-generate-input"
                 />
+                {lastSequence !== null && (
+                  <div className="bg-generate-help-text" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Last generated: {lastSequence} (Auto-set to {lastSequence + 1})
+                  </div>
+                )}
               </div>
               <div className="bg-generate-form-group">
                 <label className="bg-generate-form-label">
@@ -899,31 +984,29 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                 <input
                   type="number"
                   value={formData.endSequence}
-                  onChange={(e) => setFormData({ ...formData, endSequence: parseInt(e.target.value) || 1 })}
+                  onChange={(e) => {
+                    const newEnd = parseInt(e.target.value) || formData.startSequence + 1;
+                    if (newEnd > formData.startSequence) {
+                      setFormData({ ...formData, endSequence: newEnd });
+                    }
+                  }}
                   required
-                  min={formData.startSequence}
-                  className="bg-generate-input"
+                  min={formData.startSequence + 1}
+                  className={`bg-generate-input ${sequenceError ? 'bg-generate-input--error' : ''}`}
+                  style={sequenceError ? { borderColor: '#ef4444' } : {}}
                 />
+                {sequenceError && (
+                  <div className="bg-generate-error-text" style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
+                    {sequenceError}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* HCF CODE and NAME Section */}
+          {/* HCF NAME and CODE Section */}
           <div className="bg-generate-form-section">
             <div className="bg-generate-form-grid">
-              <div className="bg-generate-form-group">
-                <label className="bg-generate-form-label">
-                  HCF CODE <span className="bg-required">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.hcfCode}
-                  onChange={(e) => handleHcfCodeChange(e.target.value)}
-                  required
-                  placeholder="e.g., MH01"
-                  className="bg-generate-input"
-                />
-              </div>
               <div className="bg-generate-form-group">
                 <label className="bg-generate-form-label">
                   HCF NAME <span className="bg-required">*</span>
@@ -942,6 +1025,19 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  HCF CODE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.hcfCode}
+                  onChange={(e) => handleHcfCodeChange(e.target.value)}
+                  required
+                  placeholder="e.g., MH01"
+                  className="bg-generate-input"
+                />
               </div>
             </div>
           </div>
@@ -1006,7 +1102,7 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                   }}
                 ></div>
                 <div className="bg-preview-barcode-value">
-                  {previewBarcodeValue || (formData.barcodeType === 'Barcode' ? '0000000000000' : 'HCFUniqueID')}
+                  {previewBarcodeValue}
                 </div>
               </div>
               <div className="bg-preview-count">
@@ -1048,8 +1144,8 @@ const PreviewLabelModal = ({ labels, totalCount, printContainerRef, onClose, onP
   useEffect(() => {
     if (!firstLabel) return;
 
-    // Use HCFUniqueID for QR Code, barcodeValue (13-digit numeric) for Barcode
-    const displayValue = firstLabel.hcfUniqueId || firstLabel.barcodeValue;
+    // Encode sequence number for both Barcode and QR Code
+    const displayValue = firstLabel.sequenceNumber.toString();
 
     if (firstLabel.barcodeType === 'Barcode' && previewBarcodeRef.current) {
       try {
@@ -1093,25 +1189,47 @@ const PreviewLabelModal = ({ labels, totalCount, printContainerRef, onClose, onP
 
         <div className="preview-content">
           {firstLabel && (
-            <div className="preview-label-single">
-              <div className="preview-label-single-header">
-                <div className="preview-label-seq-label">HCFUniqueID:</div>
-                <div className="preview-label-seq-number">{firstLabel.hcfUniqueId || firstLabel.barcodeValue}</div>
+            <div className="barcode-label-preview-container">
+              {/* Top: Company Name */}
+              <div className="barcode-label-preview-top">
+                <div className="barcode-label-preview-company-name">{firstLabel.companyName || '-'}</div>
               </div>
-              <div className="preview-label-single-body">
-                <div className="preview-label-single-color-text">{firstLabel.colorBlock.toUpperCase()}</div>
-                <div className="preview-label-single-barcode-container">
-                  {firstLabel.barcodeType === 'Barcode' ? (
-                    <svg ref={previewBarcodeRef} className="preview-barcode-svg"></svg>
-                  ) : (
-                    <canvas ref={previewQrRef} className="preview-qr-canvas"></canvas>
+
+              {/* Main Content: Left (QR/Barcode) and Right (Color Block + Info) */}
+              <div className="barcode-label-preview-main">
+                {/* Left: QR Code / Barcode */}
+                <div className="barcode-label-preview-left">
+                  <div className="barcode-label-preview-code-container">
+                    {firstLabel.barcodeType === 'QR Code' ? (
+                      <canvas ref={previewQrRef} className="barcode-label-preview-qr"></canvas>
+                    ) : (
+                      <svg ref={previewBarcodeRef} className="barcode-label-preview-barcode"></svg>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Waste Color Block + Sequence Number + HCF Unique ID */}
+                <div className="barcode-label-preview-right">
+                  {/* Waste Color Block */}
+                  <div 
+                    className={`barcode-label-preview-color-block barcode-label-preview-color-block--${firstLabel.colorBlock.toLowerCase()}`}
+                  >
+                    {firstLabel.colorBlock.toUpperCase()}
+                  </div>
+
+                  {/* Sequence Number */}
+                  <div className="barcode-label-preview-barcode-number">{firstLabel.sequenceNumber}</div>
+
+                  {/* HCF Unique ID */}
+                  {firstLabel.hcfUniqueId && (
+                    <div className="barcode-label-preview-hcf-unique-id">{firstLabel.hcfUniqueId}</div>
                   )}
                 </div>
-                <div className="preview-label-single-barcode-value">{firstLabel.hcfUniqueId || firstLabel.barcodeValue}</div>
-                <div className="preview-label-single-type-badge">{firstLabel.barcodeType}</div>
               </div>
-              <div className="preview-label-single-footer">
-                <div className="preview-label-single-footer-text">{firstLabel.barcodeType === 'QR Code' ? 'QR CODE' : 'BAR CODE'}</div>
+
+              {/* Bottom: Hospital Name */}
+              <div className="barcode-label-preview-bottom">
+                <div className="barcode-label-preview-hospital-name">{firstLabel.hcfName || '-'}</div>
               </div>
             </div>
           )}

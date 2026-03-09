@@ -168,23 +168,42 @@ const WasteCollectionPage = () => {
     setBarcodeLookupResult(null);
 
     try {
-      const lookupResult = await wasteCollectionService.lookupBarcode(barcode);
-      setBarcodeLookupResult(lookupResult);
-      
-      // Check if already collected today
+      // Check if already collected (any status, any date)
       const existingCollection = collections.find(
-        c => c.barcode === barcode && c.collectionDate === selectedDate
+        c => c.barcode === barcode
       );
       
       if (existingCollection) {
-        toast.error(`Barcode ${barcode} has already been collected on ${selectedDate}`);
+        // Barcode already collected - show details page with status
+        toast(`Barcode ${barcode} has already been collected. Status: ${existingCollection.status}`, {
+          icon: 'ℹ️',
+          duration: 4000,
+        });
+        setSelectedCollection(existingCollection);
+        setShowDetailModal(true);
         setBarcodeLookupResult(null);
-      } else {
-        // Open collection modal with pre-filled data
-        setShowCollectionModal(true);
+        return;
       }
+
+      const lookupResult = await wasteCollectionService.lookupBarcode(barcode);
+      setBarcodeLookupResult(lookupResult);
+      
+      // Open collection modal with pre-filled data
+      setShowCollectionModal(true);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to lookup barcode';
+      // Extract meaningful error message
+      let errorMessage = 'Failed to lookup barcode';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Check for specific error messages
+        if (err.message.includes('not found')) {
+          errorMessage = `Barcode "${barcode}" not found. Please verify the barcode and ensure it has been generated in the Barcode Generation module.`;
+        } else if (err.message.includes('Invalid')) {
+          errorMessage = `Invalid barcode format: "${barcode}". Barcode must be alphanumeric and at least 5 characters long.`;
+        } else {
+          errorMessage = err.message;
+        }
+      }
       toast.error(errorMessage);
       setBarcodeLookupResult(null);
     } finally {

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { vehicleWasteCollectionService, VehicleWasteCollectionResponse, CreateVehicleWasteCollectionRequest, UpdateVehicleWasteCollectionRequest } from '../../services/vehicleWasteCollectionService';
 import { fleetService, FleetResponse } from '../../services/fleetService';
+import { routeAssignmentService, RouteAssignmentResponse } from '../../services/routeAssignmentService';
 import PageHeader from '../../components/layout/PageHeader';
 import './vehicleWasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
@@ -51,6 +52,7 @@ const VehicleWasteCollectionPage = () => {
   // Master data
   const [vehicles, setVehicles] = useState<FleetResponse[]>([]);
   const [collections, setCollections] = useState<VehicleWasteCollection[]>([]);
+  const [routeAssignments, setRouteAssignments] = useState<RouteAssignmentResponse[]>([]);
 
   // Form state
   const [formData, setFormData] = useState<CreateVehicleWasteCollectionRequest & { editingId?: string; editingStatus?: 'Draft' | 'Submitted' | 'Verified' }>({
@@ -74,6 +76,17 @@ const VehicleWasteCollectionPage = () => {
     } catch (err: any) {
       console.error('Failed to load vehicles:', err);
       setError('Failed to load vehicles');
+    }
+  }, []);
+
+  // Load route assignments for the selected date
+  const loadRouteAssignments = useCallback(async (date: string) => {
+    try {
+      const assignments = await routeAssignmentService.getAllRouteAssignments(undefined, date);
+      setRouteAssignments(assignments);
+    } catch (err: any) {
+      console.error('Failed to load route assignments:', err);
+      setRouteAssignments([]);
     }
   }, []);
 
@@ -125,6 +138,13 @@ const VehicleWasteCollectionPage = () => {
   useEffect(() => {
     loadVehicles();
   }, [loadVehicles]);
+
+  // Load route assignments when collection date changes
+  useEffect(() => {
+    if (formData.collectionDate) {
+      loadRouteAssignments(formData.collectionDate);
+    }
+  }, [formData.collectionDate, loadRouteAssignments]);
 
   // Load collections when dependencies are ready
   useEffect(() => {
@@ -704,11 +724,28 @@ const VehicleWasteCollectionPage = () => {
                       disabled={!!formData.editingId}
                     >
                       <option value="">Select Vehicle</option>
-                      {vehicles.filter(v => v.status === 'Active').map((vehicle) => (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.vehicleNum}
-                        </option>
-                      ))}
+                      {vehicles
+                        .filter(v => {
+                          // Only show active vehicles
+                          if (v.status !== 'Active') return false;
+                          
+                          // If editing, always show the selected vehicle
+                          if (formData.editingId && v.id === formData.vehicleId) return true;
+                          
+                          // For new records, only show vehicles assigned to routes on the collection date
+                          if (!formData.editingId && formData.collectionDate) {
+                            const assignedVehicleIds = routeAssignments.map(ra => ra.vehicleId);
+                            return assignedVehicleIds.includes(v.id);
+                          }
+                          
+                          // If no date selected, show all active vehicles
+                          return true;
+                        })
+                        .map((vehicle) => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.vehicleNum}
+                          </option>
+                        ))}
                     </select>
                     <svg className="vwc-select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="6 9 12 15 18 9"></polyline>

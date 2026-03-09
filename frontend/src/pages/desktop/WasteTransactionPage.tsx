@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
@@ -59,6 +59,11 @@ const WasteTransactionPage = () => {
   const [hcfs, setHcfs] = useState<HcfResponse[]>([]);
   const [filteredHcfs, setFilteredHcfs] = useState<HcfResponse[]>([]);
   const [transactions, setTransactions] = useState<WasteTransaction[]>([]);
+  
+  // HCF dropdown search state
+  const [hcfSearchQuery, setHcfSearchQuery] = useState('');
+  const [hcfDropdownOpen, setHcfDropdownOpen] = useState(false);
+  const hcfDropdownRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [formData, setFormData] = useState<CreateWasteTransactionRequest & { editingId?: string; blueBagCount?: number; blueWeightKg?: number | null }>({
@@ -162,10 +167,16 @@ const WasteTransactionPage = () => {
     }
   }, [selectedDate, statusFilter, companies]);
 
-  // Filter HCFs by company
+  // Filter HCFs by company and sort alphabetically by short name
   useEffect(() => {
     if (formData.companyId) {
-      const filtered = hcfs.filter(hcf => hcf.companyId === formData.companyId);
+      const filtered = hcfs
+        .filter(hcf => hcf.companyId === formData.companyId)
+        .sort((a, b) => {
+          const aShortName = (a.hcfShortName || a.hcfName || '').toLowerCase();
+          const bShortName = (b.hcfShortName || b.hcfName || '').toLowerCase();
+          return aShortName.localeCompare(bShortName);
+        });
       setFilteredHcfs(filtered);
       if (formData.hcfId && !filtered.find(h => h.id === formData.hcfId)) {
         setFormData(prev => ({ ...prev, hcfId: '' }));
@@ -175,6 +186,38 @@ const WasteTransactionPage = () => {
       setFormData(prev => ({ ...prev, hcfId: '' }));
     }
   }, [formData.companyId, hcfs]);
+
+  // Filter HCFs by search query
+  const searchableHcfs = useMemo(() => {
+    if (!hcfSearchQuery.trim()) {
+      return filteredHcfs;
+    }
+    const query = hcfSearchQuery.toLowerCase().trim();
+    return filteredHcfs.filter(hcf => {
+      const shortName = (hcf.hcfShortName || '').toLowerCase();
+      const code = (hcf.hcfCode || '').toLowerCase();
+      const name = (hcf.hcfName || '').toLowerCase();
+      return shortName.includes(query) || code.includes(query) || name.includes(query);
+    });
+  }, [filteredHcfs, hcfSearchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (hcfDropdownRef.current && !hcfDropdownRef.current.contains(event.target as Node)) {
+        setHcfDropdownOpen(false);
+        setHcfSearchQuery('');
+      }
+    };
+
+    if (hcfDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [hcfDropdownOpen]);
 
   // Auto-load weights from Waste Collection when HCF and Pickup Date are selected
   useEffect(() => {
@@ -380,6 +423,8 @@ const WasteTransactionPage = () => {
       blueWeightKg: null,
       notes: null,
     });
+    setHcfDropdownOpen(false);
+    setHcfSearchQuery('');
   };
 
   // Open form for editing
@@ -772,20 +817,86 @@ const WasteTransactionPage = () => {
 
                   <div className="wt-form-group">
                     <label className="wt-form-label">HCF <span className="wt-required">*</span></label>
-                    <select
-                      className="wt-form-input wt-form-input--hcf"
-                      value={formData.hcfId}
-                      onChange={(e) => setFormData({ ...formData, hcfId: e.target.value })}
-                      required
-                      disabled={!formData.companyId || !isFormEditable}
-                    >
-                      <option value="">e.g., SET12</option>
-                      {filteredHcfs.map((hcf) => (
-                        <option key={hcf.id} value={hcf.id}>
-                          {hcf.hcfCode}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="wt-hcf-dropdown-wrapper" ref={hcfDropdownRef}>
+                      <button
+                        type="button"
+                        className="wt-form-input wt-form-input--hcf wt-hcf-dropdown-button"
+                        onClick={() => {
+                          if (formData.companyId && isFormEditable) {
+                            setHcfDropdownOpen(!hcfDropdownOpen);
+                          }
+                        }}
+                        disabled={!formData.companyId || !isFormEditable}
+                      >
+                        <span className="wt-hcf-dropdown-value">
+                          {formData.hcfId
+                            ? (() => {
+                                const selectedHcf = filteredHcfs.find(h => h.id === formData.hcfId);
+                                return selectedHcf
+                                  ? `${selectedHcf.hcfShortName || selectedHcf.hcfName || ''} - ${selectedHcf.hcfCode}`
+                                  : 'Select HCF';
+                              })()
+                            : filteredHcfs.length === 0
+                            ? 'Select Company first'
+                            : 'Select HCF'}
+                        </span>
+                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M1 1L6 6L11 1" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      {hcfDropdownOpen && formData.companyId && (
+                        <div className="wt-hcf-dropdown-menu">
+                          <div className="wt-hcf-dropdown-search">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="11" cy="11" r="8"></circle>
+                              <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input
+                              type="text"
+                              placeholder="Search HCF..."
+                              value={hcfSearchQuery}
+                              onChange={(e) => setHcfSearchQuery(e.target.value)}
+                              className="wt-hcf-dropdown-search-input"
+                              autoFocus
+                            />
+                            {hcfSearchQuery && (
+                              <button
+                                type="button"
+                                className="wt-hcf-dropdown-search-clear"
+                                onClick={() => setHcfSearchQuery('')}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                          <div className="wt-hcf-dropdown-list">
+                            {searchableHcfs.length === 0 ? (
+                              <div className="wt-hcf-dropdown-empty">No HCF found</div>
+                            ) : (
+                              searchableHcfs.map((hcf) => (
+                                <button
+                                  key={hcf.id}
+                                  type="button"
+                                  className={`wt-hcf-dropdown-item ${hcf.id === formData.hcfId ? 'wt-hcf-dropdown-item--selected' : ''}`}
+                                  onClick={() => {
+                                    setFormData({ ...formData, hcfId: hcf.id });
+                                    setHcfDropdownOpen(false);
+                                    setHcfSearchQuery('');
+                                  }}
+                                >
+                                  <span className="wt-hcf-dropdown-item-text">
+                                    {hcf.hcfShortName || hcf.hcfName || ''} - {hcf.hcfCode}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="wt-form-group">
@@ -967,11 +1078,19 @@ const WasteTransactionPage = () => {
 
       {/* Detail Modal */}
       {showDetailModal && selectedTransaction && (
-        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
-          <div className="modal-content modal-content--large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Transaction Details</h2>
-              <button className="modal-close-btn" onClick={() => setShowDetailModal(false)}>
+        <div className="wt-form-modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="wt-form-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="wt-form-modal-header">
+              <div className="wt-form-header-left">
+                <div className="wt-form-header-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </div>
+                <h2 className="wt-form-modal-title">Transaction Details</h2>
+              </div>
+              <button className="wt-form-modal-close" onClick={() => setShowDetailModal(false)}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -979,13 +1098,14 @@ const WasteTransactionPage = () => {
               </button>
             </div>
 
-            <div className="transaction-details">
+            <div className="wt-form-body">
+              <div className="transaction-details">
               <div className="detail-section">
                 <h3>Basic Information</h3>
                 <div className="detail-grid">
                   <div className="detail-item">
                     <label>Pickup Date</label>
-                    <span>{new Date(selectedTransaction.pickupDate).toLocaleDateString()}</span>
+                    <span>{formatDate(selectedTransaction.pickupDate)}</span>
                   </div>
                   <div className="detail-item">
                     <label>Company</label>
@@ -1074,53 +1194,60 @@ const WasteTransactionPage = () => {
               {selectedTransaction.notes && (
                 <div className="detail-section">
                   <h3>Notes</h3>
-                  <p>{selectedTransaction.notes}</p>
+              <p>{selectedTransaction.notes}</p>
                 </div>
               )}
+              </div>
+            </div>
 
-              <div className="modal-footer">
-                {selectedTransaction.status === 'Draft' && (
-                  <>
-                    <button
-                      className="btn btn--secondary"
-                      onClick={() => { handleEdit(selectedTransaction); setShowDetailModal(false); }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn--primary"
-                      onClick={() => handleStatusChange(selectedTransaction.id, 'submit')}
-                      disabled={loading}
-                    >
-                      Submit
-                    </button>
-                  </>
-                )}
-                {selectedTransaction.status === 'Submitted' && (
+            {/* Detail Modal Footer */}
+            <div className="wt-form-modal-footer">
+              {selectedTransaction.status === 'Draft' && (
+                <>
                   <button
-                    className="btn btn--primary"
-                    onClick={() => handleStatusChange(selectedTransaction.id, 'verify')}
+                    type="button"
+                    className="wt-form-btn wt-form-btn--cancel"
+                    onClick={() => { handleEdit(selectedTransaction); setShowDetailModal(false); }}
                     disabled={loading}
                   >
-                    Verify
+                    Edit
                   </button>
-                )}
-                {selectedTransaction.status === 'Draft' && (
                   <button
-                    className="btn btn--danger"
+                    type="button"
+                    className="wt-form-btn wt-form-btn--create"
+                    onClick={() => handleStatusChange(selectedTransaction.id, 'submit')}
+                    disabled={loading}
+                  >
+                    Submit
+                  </button>
+                  <button
+                    type="button"
+                    className="wt-form-btn wt-form-btn--danger"
                     onClick={() => handleDelete(selectedTransaction.id)}
                     disabled={loading}
                   >
                     Delete
                   </button>
-                )}
+                </>
+              )}
+              {selectedTransaction.status === 'Submitted' && (
                 <button
-                  className="btn btn--secondary"
-                  onClick={() => setShowDetailModal(false)}
+                  type="button"
+                  className="wt-form-btn wt-form-btn--create"
+                  onClick={() => handleStatusChange(selectedTransaction.id, 'verify')}
+                  disabled={loading}
                 >
-                  Close
+                  Verify
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                className="wt-form-btn wt-form-btn--cancel"
+                onClick={() => setShowDetailModal(false)}
+                disabled={loading}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

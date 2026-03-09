@@ -18,12 +18,13 @@ export interface BarcodeLabelResponse {
   id: string;
   hcfCode: string;
   hcfId: string;
+  hcfName?: string;
   companyId: string;
   sequenceNumber: number;
   barcodeValue: string;
   barcodeType: 'Barcode' | 'QR Code';
   colorBlock: 'Yellow' | 'Red' | 'White' | 'Blue';
-  status: 'Active' | 'Inactive' | 'Deleted';
+  status: 'Active' | 'Inactive' | 'Collected' | 'Deleted';
   createdBy?: string | null;
   createdOn: string;
 }
@@ -59,6 +60,8 @@ export interface BarcodeSummaryResponse {
   total: number;
   barcodes: number;
   qrCodes: number;
+  collected: number;
+  deactivated: number;
 }
 
 export interface LastSequenceResponse {

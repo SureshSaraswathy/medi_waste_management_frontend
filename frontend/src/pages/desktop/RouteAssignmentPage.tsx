@@ -218,10 +218,10 @@ const RouteAssignmentPage = () => {
       // Filter active users only
       const activeUsers = mappedUsers.filter((u) => u.status === 'Active');
       
-      // Filter by role name
-      setDrivers(activeUsers.filter((u) => u.roleName === 'Driver'));
-      setPickers(activeUsers.filter((u) => u.roleName === 'Picker'));
-      setSupervisors(activeUsers.filter((u) => u.roleName === 'Supervisor'));
+      // Filter by role name (case-insensitive)
+      setDrivers(activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'driver'));
+      setPickers(activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'picker'));
+      setSupervisors(activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'supervisor'));
     } catch (err) {
       console.error('Error loading users:', err);
       setDrivers([]);
@@ -818,6 +818,7 @@ const RouteAssignmentPage = () => {
           pickers={pickers}
           supervisors={supervisors}
           selectedDate={selectedDate}
+          assignments={assignments}
           onLoadUsers={loadUsers}
           onClose={() => {
             setShowModal(false);
@@ -840,6 +841,7 @@ interface AssignmentFormModalProps {
   pickers: User[];
   supervisors: User[];
   selectedDate: string;
+  assignments: RouteAssignment[];
   onLoadUsers: (companyId?: string) => Promise<void>;
   onClose: () => void;
   onSave: (data: Partial<RouteAssignment>) => void;
@@ -854,6 +856,7 @@ const AssignmentFormModal = ({
   pickers,
   supervisors,
   selectedDate,
+  assignments,
   onLoadUsers,
   onClose,
   onSave,
@@ -934,6 +937,38 @@ const AssignmentFormModal = ({
       }
     }
     
+    // Validate picker assignment - prevent same picker on same date
+    if (formData.pickerId) {
+      const existingPickerAssignment = assignments.find(
+        (a) => 
+          a.pickerId === formData.pickerId && 
+          a.assignmentDate === localDate &&
+          (!assignment || a.id !== assignment.id) // Exclude current assignment if editing
+      );
+      
+      if (existingPickerAssignment) {
+        const pickerName = pickers.find(p => p.id === formData.pickerId)?.userName || 'Picker';
+        alert(`Picker is already assigned to another route for the selected date.`);
+        return;
+      }
+    }
+    
+    // Validate supervisor assignment - prevent same supervisor on same date
+    if (formData.supervisorId) {
+      const existingSupervisorAssignment = assignments.find(
+        (a) => 
+          a.supervisorId === formData.supervisorId && 
+          a.assignmentDate === localDate &&
+          (!assignment || a.id !== assignment.id) // Exclude current assignment if editing
+      );
+      
+      if (existingSupervisorAssignment) {
+        const supervisorName = supervisors.find(s => s.id === formData.supervisorId)?.userName || 'Supervisor';
+        alert(`Supervisor is already assigned to another route for the selected date.`);
+        return;
+      }
+    }
+    
     // Include assignmentDate in formData
     const submitData = { ...formData, assignmentDate: localDate };
     onSave(submitData);
@@ -969,182 +1004,182 @@ const AssignmentFormModal = ({
           </button>
         </div>
 
-        {/* Form - match template layout */}
+        {/* Form - match filter template layout */}
         <form className="ra-assignment-form" onSubmit={handleSubmit}>
           <div className="ra-assignment-form-grid">
-            {/* Left Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="company">
-                  Company Name <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="company"
-                  value={formData.companyId || ''}
-                  onChange={async (e) => {
-                    const companyId = e.target.value;
-                    setFormData({ ...formData, companyId, routeId: '', vehicleId: '', driverId: '', pickerId: null, supervisorId: null });
-                    if (companyId) {
-                      await onLoadUsers(companyId);
-                    }
-                  }}
-                  required
-                  disabled={!!assignment || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="assignment-date">
-                  Date <span className="ra-required">*</span>
-                </label>
-                <input
-                  id="assignment-date"
-                  type="date"
-                  value={localDate}
-                  onChange={(e) => {
-                    const selectedDateValue = e.target.value;
-                    const today = getTodayDate();
-                    const tomorrow = getTomorrowDate();
-                    
-                    if (selectedDateValue !== today && selectedDateValue !== tomorrow) {
-                      alert('Route assignment can only be created for today or the next day.');
-                      return;
-                    }
-                    
-                    setLocalDate(selectedDateValue);
-                    setFormData({ ...formData, assignmentDate: selectedDateValue });
-                  }}
-                  min={getTodayDate()}
-                  max={getTomorrowDate()}
-                  disabled={!!assignment || isReadOnly}
-                  className="ra-assignment-input"
-                  placeholder="dd-mm-yyyy"
-                />
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="vehicle">
-                  Vehicle <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="vehicle"
-                  value={formData.vehicleId || ''}
-                  onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
-                  required
-                  disabled={!formData.companyId || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Vehicle</option>
-                  {filteredVehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.vehicleNum}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="picker">Picker</label>
-                <select
-                  id="picker"
-                  value={formData.pickerId || ''}
-                  onChange={(e) => setFormData({ ...formData, pickerId: e.target.value || null })}
-                  disabled={!formData.companyId || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Picker (Optional)</option>
-                  {filteredPickers.map((picker) => (
-                    <option key={picker.id} value={picker.id}>
-                      {picker.employeeCode ? `${picker.employeeCode} – ${picker.userName}` : picker.userName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Row 1: Company | Route */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company Name <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyId || ''}
+                onChange={async (e) => {
+                  const companyId = e.target.value;
+                  setFormData({ ...formData, companyId, routeId: '', vehicleId: '', driverId: '', pickerId: null, supervisorId: null });
+                  if (companyId) {
+                    await onLoadUsers(companyId);
+                  }
+                }}
+                required
+                disabled={!!assignment || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="route">
+                Route <span className="ra-required">*</span>
+              </label>
+              <select
+                id="route"
+                value={formData.routeId || ''}
+                onChange={(e) => setFormData({ ...formData, routeId: e.target.value })}
+                required
+                disabled={!formData.companyId || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Route</option>
+                {filteredRoutes.map((route) => (
+                  <option key={route.id} value={route.id}>
+                    {route.routeCode} - {route.routeName}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Right Column */}
-            <div className="ra-assignment-form-col">
-              <div className="ra-assignment-form-group">
-                <label htmlFor="route">
-                  Route <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="route"
-                  value={formData.routeId || ''}
-                  onChange={(e) => setFormData({ ...formData, routeId: e.target.value })}
-                  required
-                  disabled={!formData.companyId || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Route</option>
-                  {filteredRoutes.map((route) => (
-                    <option key={route.id} value={route.id}>
-                      {route.routeCode} - {route.routeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="driver">
-                  Driver <span className="ra-required">*</span>
-                </label>
-                <select
-                  id="driver"
-                  value={formData.driverId || ''}
-                  onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-                  required
-                  disabled={!formData.companyId || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Driver</option>
-                  {filteredDrivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.employeeCode ? `${driver.employeeCode} – ${driver.userName}` : driver.userName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="supervisor">Supervisor</label>
-                <select
-                  id="supervisor"
-                  value={formData.supervisorId || ''}
-                  onChange={(e) => setFormData({ ...formData, supervisorId: e.target.value || null })}
-                  disabled={!formData.companyId || isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="">Select Supervisor (Optional)</option>
-                  {filteredSupervisors.map((supervisor) => (
-                    <option key={supervisor.id} value={supervisor.id}>
-                      {supervisor.employeeCode ? `${supervisor.employeeCode} – ${supervisor.userName}` : supervisor.userName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="ra-assignment-form-group">
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={formData.status || 'Draft'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  disabled={isReadOnly}
-                  className="ra-assignment-select"
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Assigned">Assigned</option>
-                  {assignment && (
-                    <>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                    </>
-                  )}
-                </select>
-              </div>
+            {/* Row 2: Date | Vehicle */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="assignment-date">
+                Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="assignment-date"
+                type="date"
+                value={localDate}
+                onChange={(e) => {
+                  const selectedDateValue = e.target.value;
+                  const today = getTodayDate();
+                  const tomorrow = getTomorrowDate();
+                  
+                  if (selectedDateValue !== today && selectedDateValue !== tomorrow) {
+                    alert('Route assignment can only be created for today or the next day.');
+                    return;
+                  }
+                  
+                  setLocalDate(selectedDateValue);
+                  setFormData({ ...formData, assignmentDate: selectedDateValue });
+                }}
+                min={getTodayDate()}
+                max={getTomorrowDate()}
+                disabled={!!assignment || isReadOnly}
+                className="ra-assignment-input"
+                placeholder="dd-mm-yyyy"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="vehicle">
+                Vehicle <span className="ra-required">*</span>
+              </label>
+              <select
+                id="vehicle"
+                value={formData.vehicleId || ''}
+                onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
+                required
+                disabled={!formData.companyId || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Vehicle</option>
+                {filteredVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.vehicleNum}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Row 3: Driver | Picker */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="driver">
+                Driver <span className="ra-required">*</span>
+              </label>
+              <select
+                id="driver"
+                value={formData.driverId || ''}
+                onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
+                required
+                disabled={!formData.companyId || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Driver</option>
+                {filteredDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.userName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="picker">Picker</label>
+              <select
+                id="picker"
+                value={formData.pickerId || ''}
+                onChange={(e) => setFormData({ ...formData, pickerId: e.target.value || null })}
+                disabled={!formData.companyId || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Picker (Optional)</option>
+                {filteredPickers.map((picker) => (
+                  <option key={picker.id} value={picker.id}>
+                    {picker.userName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Row 4: Supervisor | Status */}
+            <div className="ra-assignment-form-group">
+              <label htmlFor="supervisor">Supervisor</label>
+              <select
+                id="supervisor"
+                value={formData.supervisorId || ''}
+                onChange={(e) => setFormData({ ...formData, supervisorId: e.target.value || null })}
+                disabled={!formData.companyId || isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Supervisor (Optional)</option>
+                {filteredSupervisors.map((supervisor) => (
+                  <option key={supervisor.id} value={supervisor.id}>
+                    {supervisor.userName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Draft'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                disabled={isReadOnly}
+                className="ra-assignment-select"
+              >
+                <option value="Draft">Draft</option>
+                <option value="Assigned">Assigned</option>
+                {assignment && (
+                  <>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </>
+                )}
+              </select>
             </div>
           </div>
 

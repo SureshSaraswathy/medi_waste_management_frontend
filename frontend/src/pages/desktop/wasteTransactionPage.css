@@ -282,6 +282,148 @@
   padding-right: 36px;
 }
 
+/* HCF Searchable Dropdown */
+.wt-hcf-dropdown-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.wt-hcf-dropdown-button {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.wt-hcf-dropdown-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.wt-hcf-dropdown-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-hcf-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wt-hcf-dropdown-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.wt-hcf-dropdown-search svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.wt-hcf-dropdown-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #1e293b;
+  padding: 0;
+}
+
+.wt-hcf-dropdown-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.wt-hcf-dropdown-search-clear {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: color 0.2s;
+}
+
+.wt-hcf-dropdown-search-clear:hover {
+  color: #1e293b;
+}
+
+.wt-hcf-dropdown-list {
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.wt-hcf-dropdown-item {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1e293b;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.wt-hcf-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.wt-hcf-dropdown-item:hover {
+  background: #f8fafc;
+}
+
+.wt-hcf-dropdown-item--selected {
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+.wt-hcf-dropdown-item--selected:hover {
+  background: #dbeafe;
+}
+
+.wt-hcf-dropdown-item-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-hcf-dropdown-empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
 .wt-form-checkbox-label {
   display: flex;
   align-items: center;
@@ -471,6 +613,15 @@
 
 .wt-form-btn--create:hover:not(:disabled) {
   background: #1e293b;
+}
+
+.wt-form-btn--danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.wt-form-btn--danger:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
 .wt-form-btn:disabled {
@@ -688,7 +839,7 @@
 
 /* Detail Modal */
 .transaction-details {
-  padding: 20px;
+  padding: 0;
 }
 
 .detail-section {
