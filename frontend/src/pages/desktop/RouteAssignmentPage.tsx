@@ -230,6 +230,76 @@ const RouteAssignmentPage = () => {
     }
   }, []);
 
+  // Load users for companies that have assignments (for displaying in table)
+  const loadUsersForAssignments = useCallback(async (assignmentCompanyIds: string[]): Promise<{ drivers: User[]; pickers: User[]; supervisors: User[] }> => {
+    try {
+      const allDrivers: User[] = [];
+      const allPickers: User[] = [];
+      const allSupervisors: User[] = [];
+
+      // Get unique company IDs from assignments
+      const uniqueCompanyIds = [...new Set(assignmentCompanyIds)];
+
+      // Load users for each company that has assignments
+      for (const companyId of uniqueCompanyIds) {
+        try {
+          // Load roles first to map role IDs to role names
+          const apiRoles = await roleService.getAllRoles(companyId, true);
+          
+          // Load users for the company
+          const apiUsers = await userService.getUsersByCompany(companyId);
+          
+          // Map to User interface with role names
+          const mappedUsers: User[] = apiUsers.map((u: UserResponse) => {
+            const role = apiRoles.find((r: RoleResponse) => r.roleId === u.userRoleId);
+            return {
+              id: u.userId,
+              userName: u.userName,
+              employeeCode: u.employeeCode,
+              companyId: u.companyId,
+              status: u.status,
+              userRoleId: u.userRoleId,
+              roleName: role?.roleName || null,
+            };
+          });
+          
+          // Filter active users only
+          const activeUsers = mappedUsers.filter((u) => u.status === 'Active');
+          
+          // Filter by role name (case-insensitive) and add to arrays
+          allDrivers.push(...activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'driver'));
+          allPickers.push(...activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'picker'));
+          allSupervisors.push(...activeUsers.filter((u) => u.roleName && u.roleName.toLowerCase() === 'supervisor'));
+        } catch (err) {
+          console.error(`Error loading users for company ${companyId}:`, err);
+          // Continue with other companies
+        }
+      }
+
+      // Update state
+      setDrivers(prev => {
+        const existingIds = new Set(prev.map(u => u.id));
+        const newDrivers = allDrivers.filter(u => !existingIds.has(u.id));
+        return [...prev, ...newDrivers];
+      });
+      setPickers(prev => {
+        const existingIds = new Set(prev.map(u => u.id));
+        const newPickers = allPickers.filter(u => !existingIds.has(u.id));
+        return [...prev, ...newPickers];
+      });
+      setSupervisors(prev => {
+        const existingIds = new Set(prev.map(u => u.id));
+        const newSupervisors = allSupervisors.filter(u => !existingIds.has(u.id));
+        return [...prev, ...newSupervisors];
+      });
+
+      return { drivers: allDrivers, pickers: allPickers, supervisors: allSupervisors };
+    } catch (err) {
+      console.error('Error loading users for assignments:', err);
+      return { drivers: [], pickers: [], supervisors: [] };
+    }
+  }, []);
+
   // Load assignments
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -241,14 +311,29 @@ const RouteAssignmentPage = () => {
         statusFilter !== 'all' ? statusFilter : undefined
       );
 
+      // Extract company IDs from assignments to load users
+      const assignmentCompanyIds = apiAssignments.map((a: RouteAssignmentResponse) => a.companyId);
+      let loadedUsers = { drivers: drivers, pickers: pickers, supervisors: supervisors };
+      
+      if (assignmentCompanyIds.length > 0) {
+        // Load users for companies that have assignments
+        const fetchedUsers = await loadUsersForAssignments(assignmentCompanyIds);
+        // Use fetched users if available, otherwise use existing state
+        loadedUsers = {
+          drivers: fetchedUsers.drivers.length > 0 ? [...drivers, ...fetchedUsers.drivers.filter(d => !drivers.find(existing => existing.id === d.id))] : drivers,
+          pickers: fetchedUsers.pickers.length > 0 ? [...pickers, ...fetchedUsers.pickers.filter(p => !pickers.find(existing => existing.id === p.id))] : pickers,
+          supervisors: fetchedUsers.supervisors.length > 0 ? [...supervisors, ...fetchedUsers.supervisors.filter(s => !supervisors.find(existing => existing.id === s.id))] : supervisors,
+        };
+      }
+
       // Map backend response to frontend format with names
       const mappedAssignments: RouteAssignment[] = await Promise.all(
         apiAssignments.map(async (apiAssignment: RouteAssignmentResponse) => {
           const route = routes.find(r => r.id === apiAssignment.routeId);
           const vehicle = vehicles.find(v => v.id === apiAssignment.vehicleId);
-          const driver = drivers.find(d => d.id === apiAssignment.driverId);
-          const picker = apiAssignment.pickerId ? pickers.find(p => p.id === apiAssignment.pickerId) : null;
-          const supervisor = apiAssignment.supervisorId ? supervisors.find(s => s.id === apiAssignment.supervisorId) : null;
+          const driver = loadedUsers.drivers.find(d => d.id === apiAssignment.driverId);
+          const picker = apiAssignment.pickerId ? loadedUsers.pickers.find(p => p.id === apiAssignment.pickerId) : null;
+          const supervisor = apiAssignment.supervisorId ? loadedUsers.supervisors.find(s => s.id === apiAssignment.supervisorId) : null;
           const company = companies.find(c => c.id === apiAssignment.companyId);
 
           return {
@@ -284,7 +369,7 @@ const RouteAssignmentPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, statusFilter, routes, vehicles, drivers, pickers, supervisors, companies]);
+  }, [selectedDate, statusFilter, routes, vehicles, drivers, pickers, supervisors, companies, loadUsersForAssignments]);
 
   // Initialize data
   useEffect(() => {
@@ -315,7 +400,7 @@ const RouteAssignmentPage = () => {
 
   // Load assignments when dependencies are ready
   useEffect(() => {
-    if (routes.length > 0 && vehicles.length > 0) {
+    if (routes.length > 0 && vehicles.length > 0 && companies.length > 0) {
       loadAssignments();
     }
   }, [selectedDate, statusFilter, routes, vehicles, drivers, pickers, supervisors, companies, loadAssignments]);

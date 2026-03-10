@@ -1125,6 +1125,16 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
     user.userRoleId && executiveRoleIds.includes(user.userRoleId) && user.status === 'Active'
   );
 
+  // Get Field Executive role IDs
+  const fieldExecutiveRoleIds = roles
+    .filter(role => role.roleName && role.roleName.toLowerCase() === 'field executive')
+    .map(role => role.roleId);
+
+  // Filter users with Field Executive role
+  const fieldExecutiveUsers = users.filter(user => 
+    user.userRoleId && fieldExecutiveRoleIds.includes(user.userRoleId) && user.status === 'Active'
+  );
+
   // Get company name for users
   const getUserDisplayName = (user: UserResponse): string => {
     const company = companies.find(c => c.id === user.companyId);
@@ -2549,7 +2559,7 @@ const HCFFormModal = ({ hcf, companies, areas, states, pcbZones, categories, rou
                           className="form-select"
                         >
                           <option value="">Select User</option>
-                          {users.filter(u => u.status === 'Active').map((user) => (
+                          {fieldExecutiveUsers.map((user) => (
                             <option key={user.userId} value={user.userId}>
                               {getUserDisplayName(user)}
                             </option>

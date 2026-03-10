@@ -803,7 +803,7 @@ const IncinerationFormModal = ({
               >
                 <option value="">Select Equipment</option>
                 {equipment
-                  .filter((eq) => eq.equipmentType && eq.equipmentType.toLowerCase() === 'incinerators')
+                  .filter((eq) => eq.equipmentType && eq.equipmentType.toLowerCase() === 'incinerator')
                   .map((eq) => (
                     <option key={eq.id} value={eq.id} title={`${eq.equipmentCode} - ${eq.equipmentName}`}>
                       {eq.equipmentCode} - {eq.equipmentName}

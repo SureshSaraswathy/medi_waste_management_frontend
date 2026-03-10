@@ -596,13 +596,13 @@ const FinanceYearFormModal = ({ financeYear, onClose, onSave }: FinanceYearFormM
         const generatedFinYear = `${year}-${endYearShort.toString().padStart(2, '0')}`;
         setFinYear(generatedFinYear);
 
-        // Generate Start Date (01-Apr-YYYY)
-        const startDateObj = new Date(year, 3, 1); // Month 3 = April (0-indexed)
-        setStartDate(startDateObj.toISOString().split('T')[0]);
+        // Generate Start Date (01-Apr-YYYY) - Format as YYYY-MM-DD without timezone conversion
+        const startDateStr = `${year}-04-01`;
+        setStartDate(startDateStr);
 
-        // Generate End Date (31-Mar-YYYY+1)
-        const endDateObj = new Date(year + 1, 2, 31); // Month 2 = March (0-indexed)
-        setEndDate(endDateObj.toISOString().split('T')[0]);
+        // Generate End Date (31-Mar-YYYY+1) - Format as YYYY-MM-DD without timezone conversion
+        const endDateStr = `${year + 1}-03-31`;
+        setEndDate(endDateStr);
       }
     } else {
       setFinYear('');

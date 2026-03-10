@@ -10,6 +10,7 @@ import NotificationBell from '../../components/NotificationBell';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import PageHeader from '../../components/layout/PageHeader';
+import toast from 'react-hot-toast';
 import './barcodeGenerationPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -74,6 +75,7 @@ const BarcodeGenerationPage = () => {
     prefix: 'HCF',
     startSequence: 1,
     endSequence: 10,
+    bagCount: 10,
     barcodeType: 'Barcode' as BarcodeType,
     colorBlock: 'White' as ColorBlock,
     count: 1,
@@ -218,17 +220,17 @@ const BarcodeGenerationPage = () => {
 
   // Generate labels using backend API
   const handleGenerate = async () => {
-    // Validate end sequence is greater than start sequence
-    if (formData.endSequence <= formData.startSequence) {
-      setError('End Sequence must be greater than Start Sequence.');
+    // Validate bag count
+    if (!formData.bagCount || formData.bagCount < 1) {
+      setError('Please enter a valid bag count (minimum 1).');
       return;
     }
     
-    // Calculate count from start and end sequence
-    const count = formData.endSequence - formData.startSequence + 1;
+    // Calculate count from bag count (end sequence is auto-calculated)
+    const count = formData.bagCount;
     
     if (!formData.companyId || !formData.hcfId || count < 1) {
-      setError('Please select company, HCF, and enter valid sequence range');
+      setError('Please select company, HCF, and enter valid bag count');
       return;
     }
 
@@ -243,6 +245,11 @@ const BarcodeGenerationPage = () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Show loading indicator
+      const loadingToast = toast.loading('Generating labels...', {
+        duration: Infinity,
+      });
 
       // Call backend API to generate labels (backend expects count, not sequence range)
       const apiLabels = await barcodeLabelService.generateLabels({
@@ -269,13 +276,20 @@ const BarcodeGenerationPage = () => {
           barcodeType: apiLabel.barcodeType,
           colorBlock: apiLabel.colorBlock,
           barcodeValue: apiLabel.barcodeValue, // Backend generates correct format
-          hcfUniqueId: formData.barcodeType === 'QR Code' ? hcfUniqueId : undefined, // Add HCFUniqueID for QR Code
+          hcfUniqueId: hcfUniqueId, // Always include HCFUniqueID for all colors and types
           createdAt: apiLabel.createdOn,
         };
       });
 
-      // Update labels list
-      await loadLabels();
+      // Update labels list and summary
+      await Promise.all([loadLabels(), loadSummary()]);
+
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      toast.success(`${newLabels.length} label(s) generated successfully`, {
+        icon: '✓',
+        duration: 3000,
+      });
 
       // Show preview - Only show first label as sample, not all labels
       setPreviewLabels(newLabels.slice(0, 1)); // Only first label for preview
@@ -293,6 +307,7 @@ const BarcodeGenerationPage = () => {
         prefix: 'HCF',
         startSequence: 1,
         endSequence: 10,
+        bagCount: 10,
         barcodeType: 'Barcode',
         colorBlock: 'White',
         count: 1,
@@ -300,6 +315,9 @@ const BarcodeGenerationPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate labels';
       setError(errorMessage);
+      toast.error(`Error: ${errorMessage}`, {
+        duration: 5000,
+      });
       console.error('Error generating labels:', err);
     } finally {
       setLoading(false);
@@ -719,10 +737,8 @@ const BarcodeGenerationPage = () => {
                 {/* Sequence Number */}
                 <div className="barcode-label-preview-barcode-number">{label.sequenceNumber}</div>
 
-                {/* HCF Unique ID */}
-                {label.hcfUniqueId && (
-                  <div className="barcode-label-preview-hcf-unique-id">{label.hcfUniqueId}</div>
-                )}
+                {/* HCF Unique ID - Always display for all colors */}
+                <div className="barcode-label-preview-hcf-unique-id">{label.hcfUniqueId || '-'}</div>
               </div>
             </div>
 
@@ -748,6 +764,7 @@ interface GenerateLabelModalProps {
     prefix: string;
     startSequence: number;
     endSequence: number;
+    bagCount: number;
     barcodeType: BarcodeType;
     colorBlock: ColorBlock;
     count: number;
@@ -759,6 +776,7 @@ interface GenerateLabelModalProps {
     prefix: string;
     startSequence: number;
     endSequence: number;
+    bagCount: number;
     barcodeType: BarcodeType;
     colorBlock: ColorBlock;
     count: number;
@@ -774,7 +792,6 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
     : hcfs;
   
   const [lastSequence, setLastSequence] = useState<number | null>(null);
-  const [sequenceError, setSequenceError] = useState<string>('');
   
   // Load last sequence number on mount and auto-populate start sequence
   useEffect(() => {
@@ -784,7 +801,9 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
         setLastSequence(lastSeq);
         // Auto-populate start sequence with last sequence + 1 if current value is less than or equal to last sequence
         if (lastSeq !== null && formData.startSequence <= lastSeq) {
-          setFormData(prev => ({ ...prev, startSequence: lastSeq + 1 }));
+          const newStart = lastSeq + 1;
+          const newEnd = newStart + formData.bagCount - 1;
+          setFormData(prev => ({ ...prev, startSequence: newStart, endSequence: newEnd }));
         }
       } catch (err) {
         console.error('Failed to load last sequence:', err);
@@ -793,15 +812,6 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
     };
     loadLastSequence();
   }, []); // Only on mount
-  
-  // Validate end sequence
-  useEffect(() => {
-    if (formData.endSequence <= formData.startSequence) {
-      setSequenceError('End Sequence must be greater than Start Sequence.');
-    } else {
-      setSequenceError('');
-    }
-  }, [formData.startSequence, formData.endSequence]);
   
   // Calculate label count from sequence range
   const labelCount = formData.endSequence >= formData.startSequence 
@@ -926,7 +936,7 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
             </div>
           </div>
 
-          {/* COMPANY Section */}
+          {/* Row 1: COMPANY */}
           <div className="bg-generate-form-section">
             <div className="bg-generate-form-grid">
               <div className="bg-generate-form-group">
@@ -950,61 +960,7 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
             </div>
           </div>
 
-          {/* SEQUENCE Section */}
-          <div className="bg-generate-form-section">
-            <div className="bg-generate-form-grid">
-              <div className="bg-generate-form-group">
-                <label className="bg-generate-form-label">
-                  START SEQUENCE <span className="bg-required">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.startSequence}
-                  onChange={(e) => {
-                    const newStart = parseInt(e.target.value) || (lastSequence !== null ? lastSequence + 1 : 1);
-                    const minValue = lastSequence !== null ? lastSequence + 1 : 1;
-                    if (newStart >= minValue) {
-                      setFormData({ ...formData, startSequence: newStart });
-                    }
-                  }}
-                  required
-                  min={lastSequence !== null ? lastSequence + 1 : 1}
-                  className="bg-generate-input"
-                />
-                {lastSequence !== null && (
-                  <div className="bg-generate-help-text" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                    Last generated: {lastSequence} (Auto-set to {lastSequence + 1})
-                  </div>
-                )}
-              </div>
-              <div className="bg-generate-form-group">
-                <label className="bg-generate-form-label">
-                  END SEQUENCE <span className="bg-required">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.endSequence}
-                  onChange={(e) => {
-                    const newEnd = parseInt(e.target.value) || formData.startSequence + 1;
-                    if (newEnd > formData.startSequence) {
-                      setFormData({ ...formData, endSequence: newEnd });
-                    }
-                  }}
-                  required
-                  min={formData.startSequence + 1}
-                  className={`bg-generate-input ${sequenceError ? 'bg-generate-input--error' : ''}`}
-                  style={sequenceError ? { borderColor: '#ef4444' } : {}}
-                />
-                {sequenceError && (
-                  <div className="bg-generate-error-text" style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
-                    {sequenceError}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* HCF NAME and CODE Section */}
+          {/* Row 2: HCF NAME | HCF CODE */}
           <div className="bg-generate-form-section">
             <div className="bg-generate-form-grid">
               <div className="bg-generate-form-group">
@@ -1038,6 +994,90 @@ const GenerateLabelModal = ({ companies, hcfs, formData, setFormData, onClose, o
                   placeholder="e.g., MH01"
                   className="bg-generate-input"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: START SEQUENCE | NO OF BAG COUNT | END SEQUENCE */}
+          <div className="bg-generate-form-section">
+            <div className="bg-generate-form-grid">
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  START SEQUENCE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.startSequence}
+                  onChange={(e) => {
+                    const newStart = parseInt(e.target.value) || (lastSequence !== null ? lastSequence + 1 : 1);
+                    const minValue = lastSequence !== null ? lastSequence + 1 : 1;
+                    if (newStart >= minValue) {
+                      const newEnd = newStart + formData.bagCount - 1;
+                      setFormData({ ...formData, startSequence: newStart, endSequence: newEnd });
+                    }
+                  }}
+                  required
+                  min={lastSequence !== null ? lastSequence + 1 : 1}
+                  className="bg-generate-input"
+                />
+                {lastSequence !== null && (
+                  <div className="bg-generate-help-text" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Last generated: {lastSequence} (Auto-set to {lastSequence + 1})
+                  </div>
+                )}
+              </div>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  NO OF BAG COUNT <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.bagCount}
+                  onChange={(e) => {
+                    const inputValue = e.target.value.trim();
+                    // Allow empty input while typing
+                    if (inputValue === '') {
+                      setFormData({ ...formData, bagCount: 0, endSequence: formData.startSequence });
+                      return;
+                    }
+                    // Only allow numeric input
+                    const numericValue = inputValue.replace(/[^0-9]/g, '');
+                    if (numericValue !== '') {
+                      const newBagCount = parseInt(numericValue, 10);
+                      if (newBagCount > 0) {
+                        const newEnd = formData.startSequence + newBagCount - 1;
+                        setFormData({ ...formData, bagCount: newBagCount, endSequence: newEnd });
+                      } else {
+                        setFormData({ ...formData, bagCount: 0, endSequence: formData.startSequence });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Ensure minimum value of 1 on blur
+                    const value = parseInt(e.target.value, 10) || 1;
+                    const newEnd = formData.startSequence + value - 1;
+                    setFormData({ ...formData, bagCount: value, endSequence: newEnd });
+                  }}
+                  required
+                  placeholder="Enter bag count"
+                  className="bg-generate-input"
+                />
+              </div>
+              <div className="bg-generate-form-group">
+                <label className="bg-generate-form-label">
+                  END SEQUENCE <span className="bg-required">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.endSequence}
+                  readOnly
+                  required
+                  className="bg-generate-input bg-generate-input--readonly"
+                  style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                />
+                <div className="bg-generate-help-text" style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  Auto-calculated from Start Sequence + Bag Count
+                </div>
               </div>
             </div>
           </div>
@@ -1220,10 +1260,8 @@ const PreviewLabelModal = ({ labels, totalCount, printContainerRef, onClose, onP
                   {/* Sequence Number */}
                   <div className="barcode-label-preview-barcode-number">{firstLabel.sequenceNumber}</div>
 
-                  {/* HCF Unique ID */}
-                  {firstLabel.hcfUniqueId && (
-                    <div className="barcode-label-preview-hcf-unique-id">{firstLabel.hcfUniqueId}</div>
-                  )}
+                  {/* HCF Unique ID - Always display for all colors */}
+                  <div className="barcode-label-preview-hcf-unique-id">{firstLabel.hcfUniqueId || '-'}</div>
                 </div>
               </div>
 
