@@ -6,6 +6,8 @@ export interface Agreement {
   agreementNum: string;
   contractID: string;
   contractNum?: string;
+  companyName?: string;
+  hcfName?: string;
   agreementDate: string;
   status: 'Draft' | 'Generated' | 'Signed';
 }

@@ -400,6 +400,20 @@
   cursor: not-allowed;
 }
 
+.action-btn--terminate {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.action-btn--terminate:hover {
+  background: #fecaca;
+}
+
+.action-btn--terminate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .agreement-actions {
@@ -839,9 +853,32 @@
 }
 
 .agreement-page {
-  min-height: 100%;
-  padding: 40px;
+  min-height: auto;
+  padding: 0;
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-bottom: 40px;
   background: #ffffff;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+/* Add stamp space marker after approximately 10 lines */
+.agreement-clauses-section > div:nth-child(10)::after {
+  content: '';
+  display: block;
+  height: 100px; /* Space for stamp */
+  margin-top: 20px;
+  border-top: 2px dashed #cbd5e1; /* Visual marker for stamp area */
+  opacity: 0.3;
+}
+
+/* Print styles - hide stamp marker in print */
+@media print {
+  .agreement-clauses-section > div:nth-child(10)::after {
+    border-top: none;
+    height: 100px;
+  }
 }
 
 /* Stamp Paper Mode */
@@ -919,12 +956,17 @@
   font-weight: 700;
 }
 
-/* Agreement Header */
+/* Agreement Header - Fixed at top */
 .agreement-header-section {
+  position: relative;
   text-align: center;
-  margin-bottom: 32px;
+  padding: 20px 0;
   padding-bottom: 24px;
+  margin-bottom: 0;
   border-bottom: 2px solid #1e293b;
+  background: #ffffff;
+  box-sizing: border-box;
+  height: auto;
 }
 
 .agreement-main-title {
@@ -932,20 +974,33 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  margin-top: 0;
   color: #0f172a;
 }
 
 .agreement-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   font-size: 14px;
   color: #475569;
 }
 
 .agreement-meta p {
   margin: 0;
+  line-height: 1.5;
+}
+
+/* Agreement Content - Starts after header */
+.agreement-content {
+  margin-top: 30px; /* Space after header */
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 100%;
+  overflow: visible;
+  min-height: auto;
 }
 
 /* Agreement Sections */
@@ -953,6 +1008,12 @@
   margin-bottom: 24px;
   page-break-inside: avoid;
   break-inside: avoid;
+}
+
+/* Add space after 10 lines for stamp */
+.agreement-clauses-section {
+  position: relative;
+  margin-bottom: 120px; /* Space for stamp at bottom */
 }
 
 /* WHEREAS Section */
@@ -1177,9 +1238,45 @@
   .agreement-page {
     page-break-after: always;
     break-after: page;
-    padding: 20mm;
+    padding: 0;
+    padding-left: 20mm;
+    padding-right: 20mm;
+    padding-top: 10mm;
+    padding-bottom: 20mm;
     min-height: 297mm; /* A4 height */
     width: 210mm; /* A4 width */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .agreement-header-section {
+    position: relative;
+    padding: 0;
+    padding-bottom: 8mm;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    height: auto;
+    max-height: 25%; /* Header should take up top portion */
+  }
+
+  .agreement-main-title {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .agreement-meta {
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .agreement-content {
+    margin-top: 8mm; /* Space after header for PDF */
+    padding-top: 0;
+    flex: 1;
+    overflow: visible;
+    min-height: 0;
   }
 
   .agreement-page:last-child {
@@ -1259,4 +1356,149 @@
   .witness-block {
     flex-direction: column;
   }
+}
+
+/* Terminate Agreement Modal */
+.agreement-terminate-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.agreement-terminate-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.agreement-terminate-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.agreement-terminate-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agreement-terminate-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  border-radius: 8px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.agreement-terminate-modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.agreement-terminate-modal-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.agreement-terminate-modal-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.agreement-terminate-modal-body {
+  padding: 24px;
+  flex: 1;
+}
+
+.agreement-terminate-message {
+  margin: 0;
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.agreement-terminate-message strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.agreement-terminate-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.agreement-terminate-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.agreement-terminate-btn--cancel {
+  background: #ffffff;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.agreement-terminate-btn--cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.agreement-terminate-btn--terminate {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.agreement-terminate-btn--terminate:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.agreement-terminate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -20,6 +20,7 @@ import CompanyMasterPage from './pages/desktop/CompanyMasterPage';
 import StateMasterPage from './pages/desktop/StateMasterPage';
 import DistrictMasterPage from './pages/desktop/DistrictMasterPage';
 import EquipmentMasterPage from './pages/desktop/EquipmentMasterPage';
+import PlaceholderMasterPage from './pages/desktop/PlaceholderMasterPage';
 import FinanceYearMasterPage from './pages/desktop/FinanceYearMasterPage';
 import AreaMasterPage from './pages/desktop/AreaMasterPage';
 import CategoryMasterPage from './pages/desktop/CategoryMasterPage';
@@ -61,6 +62,7 @@ import ComplianceRegisterPage from './pages/desktop/ComplianceRegisterPage';
 import ContractMasterPage from './pages/desktop/ContractMasterPage';
 import AgreementPage from './pages/desktop/AgreementPage';
 import AgreementClausePage from './pages/desktop/AgreementClausePage';
+import AgreementTemplatePage from './pages/desktop/AgreementTemplatePage';
 import UserCreatePage from './pages/desktop/UserCreatePage';
 import ReportPage from './pages/desktop/ReportPage';
 import BillingFinanceReportPage from './pages/desktop/BillingFinanceReportPage';
@@ -509,6 +511,16 @@ const AppWithDashboard = () => {
         }
       />
       <Route
+        path="/commercial-agreements/agreement-template"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['AGREEMENT_TEMPLATE_VIEW', 'AGREEMENT_TEMPLATE_CREATE', 'AGREEMENT_TEMPLATE_EDIT', 'AGREEMENT_TEMPLATE_DELETE']}>
+              <AgreementTemplatePage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/compliance-training"
         element={
           <ProtectedRoute>
@@ -594,6 +606,16 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['EQUIPMENT_VIEW', 'EQUIPMENT_CREATE', 'EQUIPMENT_EDIT', 'EQUIPMENT_DELETE']}>
               <EquipmentMasterPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master/placeholder-master"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['PLACEHOLDER_MASTER_VIEW', 'PLACEHOLDER_MASTER_CREATE', 'PLACEHOLDER_MASTER_EDIT', 'PLACEHOLDER_MASTER_DELETE']}>
+              <PlaceholderMasterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }

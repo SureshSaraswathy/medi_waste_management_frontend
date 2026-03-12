@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 export interface AgreementClause {
   id: string;
   agreementClauseID: string;
-  agreementID: string;
+  agreementTemplateId: string;
+  agreementTemplateName?: string;
   pointNum: string;
   pointTitle: string;
   pointText: string;
@@ -12,7 +13,7 @@ export interface AgreementClause {
 }
 
 interface AdvancedFilters {
-  agreementID: string;
+  agreementTemplateId: string;
   pointNum: string;
   pointTitle: string;
   status: string;
@@ -36,7 +37,7 @@ export const useAgreementClauseFilters = ({
       // Search query filter
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || 
-        clause.agreementID.toLowerCase().includes(searchLower) ||
+        (clause.agreementTemplateName && clause.agreementTemplateName.toLowerCase().includes(searchLower)) ||
         clause.pointNum.toLowerCase().includes(searchLower) ||
         clause.pointTitle.toLowerCase().includes(searchLower) ||
         clause.pointText.toLowerCase().includes(searchLower);
@@ -45,16 +46,18 @@ export const useAgreementClauseFilters = ({
       const matchesStatus = statusFilter === 'All' || clause.status === statusFilter;
 
       // Advanced filters
-      const matchesAgreementID = !advancedFilters.agreementID || clause.agreementID === advancedFilters.agreementID;
+      const matchesAgreementTemplate = !advancedFilters.agreementTemplateId || clause.agreementTemplateId === advancedFilters.agreementTemplateId;
       const matchesPointNum = !advancedFilters.pointNum || clause.pointNum.toLowerCase().includes(advancedFilters.pointNum.toLowerCase());
       const matchesPointTitle = !advancedFilters.pointTitle || clause.pointTitle.toLowerCase().includes(advancedFilters.pointTitle.toLowerCase());
       const matchesAdvancedStatus = !advancedFilters.status || advancedFilters.status === 'All' || clause.status === advancedFilters.status;
 
-      return matchesSearch && matchesStatus && matchesAgreementID && matchesPointNum && matchesPointTitle && matchesAdvancedStatus;
+      return matchesSearch && matchesStatus && matchesAgreementTemplate && matchesPointNum && matchesPointTitle && matchesAdvancedStatus;
     }).sort((a, b) => {
-      // Sort by agreement ID first, then by sequence number
-      if (a.agreementID !== b.agreementID) {
-        return a.agreementID.localeCompare(b.agreementID);
+      // Sort by template name first, then by sequence number
+      const templateA = a.agreementTemplateName || a.agreementTemplateId;
+      const templateB = b.agreementTemplateName || b.agreementTemplateId;
+      if (templateA !== templateB) {
+        return templateA.localeCompare(templateB);
       }
       return a.sequenceNo - b.sequenceNo;
     });

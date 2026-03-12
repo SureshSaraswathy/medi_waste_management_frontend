@@ -5,7 +5,8 @@ import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { Contract } from '../../hooks/useContractFilters';
 import { contractService, ContractResponse } from '../../services/contractService';
 import { companyService } from '../../services/companyService';
-import { hcfService } from '../../services/hcfService';
+import { hcfService, HcfResponse } from '../../services/hcfService';
+import { agreementTemplateService } from '../../services/agreementTemplateService';
 import PageHeader from '../../components/layout/PageHeader';
 import './contractMasterPage.css';
 import '../desktop/dashboardPage.css';
@@ -23,6 +24,13 @@ interface HCF {
   hcfCode: string;
   hcfName: string;
   companyId: string;
+}
+
+interface AgreementTemplate {
+  id: string;
+  templateCode: string;
+  templateName: string;
+  status: 'Active' | 'Inactive';
 }
 
 interface AdvancedFilters {
@@ -45,6 +53,7 @@ const ContractMasterPage = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [hcfs, setHcfs] = useState<HCF[]>([]);
+  const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
   const [filteredHcfs, setFilteredHcfs] = useState<HCF[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +100,23 @@ const ContractMasterPage = () => {
     }
   }, []);
 
+  // Load Agreement Templates
+  const loadAgreementTemplates = useCallback(async () => {
+    try {
+      const data = await agreementTemplateService.getAllAgreementTemplates();
+      setAgreementTemplates(data
+        .filter(t => t.status === 'Active')
+        .map(t => ({
+          id: t.id,
+          templateCode: t.templateCode,
+          templateName: t.templateName,
+          status: t.status,
+        })));
+    } catch (err: any) {
+      console.error('Failed to load agreement templates:', err);
+    }
+  }, []);
+
   // Load contracts
   const loadContracts = useCallback(async () => {
     try {
@@ -112,6 +138,7 @@ const ContractMasterPage = () => {
             companyID: contract.companyId,
             hcfName: hcf?.hcfName || 'Unknown',
             hcfID: contract.hcfId,
+            agreementTemplateId: contract.agreementTemplateId,
             startDate: contract.startDate,
             endDate: contract.endDate,
             billingType: contract.billingType,
@@ -133,10 +160,10 @@ const ContractMasterPage = () => {
   // Initial load
   useEffect(() => {
     const initialize = async () => {
-      await Promise.all([loadCompanies(), loadHcfs()]);
+      await Promise.all([loadCompanies(), loadHcfs(), loadAgreementTemplates()]);
     };
     initialize();
-  }, [loadCompanies, loadHcfs]);
+  }, [loadCompanies, loadHcfs, loadAgreementTemplates]);
 
   // Load contracts when companies and HCFs are available
   useEffect(() => {
@@ -213,18 +240,24 @@ const ContractMasterPage = () => {
       setError(null);
 
       if (editingContract) {
-        await contractService.updateContract(editingContract.id, {
-          contractNum: data.contractNum,
+        const updateData: any = {
           startDate: data.startDate,
           endDate: data.endDate,
           billingType: data.billingType as 'Bed' | 'Kg' | 'Lumpsum',
           status: data.status as 'Draft' | 'Active' | 'Expired',
-        });
+        };
+        
+        // Only include agreementTemplateId if contract status is Draft
+        if (editingContract.status === 'Draft' && data.agreementTemplateId) {
+          updateData.agreementTemplateId = data.agreementTemplateId;
+        }
+        
+        await contractService.updateContract(editingContract.id, updateData);
       } else {
         await contractService.createContract({
-          contractNum: data.contractNum!,
           companyId: data.companyID!,
           hcfId: data.hcfID!,
+          agreementTemplateId: data.agreementTemplateId!,
           startDate: data.startDate!,
           endDate: data.endDate!,
           billingType: data.billingType as 'Bed' | 'Kg' | 'Lumpsum',
@@ -489,6 +522,7 @@ const ContractMasterPage = () => {
           contract={editingContract}
           companies={companies}
           hcfs={filteredHcfs}
+          agreementTemplates={agreementTemplates}
           saving={saving}
           onClose={() => {
             setShowModal(false);
@@ -531,17 +565,19 @@ interface ContractFormModalProps {
   contract: Contract | null;
   companies: Company[];
   hcfs: HCF[];
+  agreementTemplates: AgreementTemplate[];
   saving: boolean;
   onClose: () => void;
   onSave: (data: Partial<Contract>) => void;
 }
 
-const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave }: ContractFormModalProps) => {
+const ContractFormModal = ({ contract, companies, hcfs, agreementTemplates, saving, onClose, onSave }: ContractFormModalProps) => {
   const [formData, setFormData] = useState<Partial<Contract>>(
     contract || {
-      contractNum: '',
+      contractNum: '', // Auto-generated by backend
       companyID: '',
       hcfID: '',
+      agreementTemplateId: '',
       startDate: '',
       endDate: '',
       billingType: 'Bed',
@@ -549,14 +585,74 @@ const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave 
     }
   );
 
+  // Update form data when contract prop changes
+  useEffect(() => {
+    if (contract) {
+      setFormData({
+        contractNum: contract.contractNum,
+        companyID: contract.companyID,
+        hcfID: contract.hcfID,
+        agreementTemplateId: contract.agreementTemplateId || '',
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+        billingType: contract.billingType as 'Bed' | 'Kg' | 'Lumpsum',
+        status: contract.status,
+      });
+    } else {
+      setFormData({
+        contractNum: '',
+        companyID: '',
+        hcfID: '',
+        agreementTemplateId: '',
+        startDate: '',
+        endDate: '',
+        billingType: 'Bed',
+        status: 'Draft',
+      });
+    }
+  }, [contract]);
+
+  // Load HCF details when HCF is selected to get billingType
+  useEffect(() => {
+    if (formData.hcfID && !contract) {
+      const loadHcfDetails = async () => {
+        try {
+          const hcfDetails = await hcfService.getHcfById(formData.hcfID);
+          if (hcfDetails && hcfDetails.billingType) {
+            // Map HCF billingType to Contract billingType
+            // HCF billingType might be "Bed-wise", "Kg-wise", "Lumpsum" etc.
+            let contractBillingType: 'Bed' | 'Kg' | 'Lumpsum' = 'Bed';
+            const hcfBillingType = hcfDetails.billingType.toLowerCase();
+            if (hcfBillingType.includes('bed')) {
+              contractBillingType = 'Bed';
+            } else if (hcfBillingType.includes('kg') || hcfBillingType.includes('weight')) {
+              contractBillingType = 'Kg';
+            } else if (hcfBillingType.includes('lumpsum') || hcfBillingType.includes('lump')) {
+              contractBillingType = 'Lumpsum';
+            }
+            setFormData(prev => ({ ...prev, billingType: contractBillingType }));
+          }
+        } catch (err) {
+          console.error('Error loading HCF details:', err);
+        }
+      };
+      
+      loadHcfDetails();
+    }
+  }, [formData.hcfID, contract]);
+
   const handleCompanyChange = (companyId: string) => {
-    setFormData({ ...formData, companyID: companyId, hcfID: '' });
+    setFormData({ ...formData, companyID: companyId, hcfID: '', billingType: 'Bed' });
+  };
+
+  const handleHcfChange = (hcfId: string) => {
+    setFormData({ ...formData, hcfID: hcfId });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.contractNum || !formData.companyID || !formData.hcfID || !formData.startDate || !formData.endDate) {
+    if (!formData.companyID || !formData.hcfID || !formData.agreementTemplateId || !formData.startDate || !formData.endDate) {
       toast.error('Please complete the required fields.');
       return;
     }
@@ -574,11 +670,28 @@ const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave 
     : [];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{contract ? 'Edit Contract' : 'Add Contract'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">{contract ? 'Edit Contract' : 'Add Contract'}</h2>
+              <p className="ra-assignment-modal-subtitle">
+                {contract ? 'Update contract details' : 'Create a new contract record.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -586,107 +699,169 @@ const ContractFormModal = ({ contract, companies, hcfs, saving, onClose, onSave 
           </button>
         </div>
 
-        <form className="contract-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Contract Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Contract Number *</label>
-                <input
-                  type="text"
-                  value={formData.contractNum || ''}
-                  onChange={(e) => setFormData({ ...formData, contractNum: e.target.value })}
-                  required
-                  disabled={saving}
-                  placeholder="e.g., CONTRACT-2024-001"
-                />
-              </div>
-              <div className="form-group">
-                <label>Company *</label>
-                <select
-                  value={formData.companyID || ''}
-                  onChange={(e) => handleCompanyChange(e.target.value)}
-                  required
-                  disabled={saving || !!contract}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyCode} - {company.companyName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>HCF *</label>
-                <select
-                  value={formData.hcfID || ''}
-                  onChange={(e) => setFormData({ ...formData, hcfID: e.target.value })}
-                  required
-                  disabled={saving || !formData.companyID}
-                >
-                  <option value="">Select HCF</option>
-                  {filteredHcfsForCompany.map((hcf) => (
-                    <option key={hcf.id} value={hcf.id}>
-                      {hcf.hcfCode} - {hcf.hcfName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Start Date *</label>
-                <input
-                  type="date"
-                  value={formData.startDate || ''}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  required
-                  disabled={saving}
-                />
-              </div>
-              <div className="form-group">
-                <label>End Date *</label>
-                <input
-                  type="date"
-                  value={formData.endDate || ''}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  required
-                  disabled={saving}
-                />
-              </div>
-              <div className="form-group">
-                <label>Billing Type *</label>
-                <select
-                  value={formData.billingType || 'Bed'}
-                  onChange={(e) => setFormData({ ...formData, billingType: e.target.value as 'Bed' | 'Kg' | 'Lumpsum' })}
-                  required
-                  disabled={saving}
-                >
-                  <option value="Bed">Bed</option>
-                  <option value="Kg">Kg</option>
-                  <option value="Lumpsum">Lumpsum</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={formData.status || 'Draft'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Draft' | 'Active' | 'Expired' })}
-                  disabled={saving}
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Active">Active</option>
-                  <option value="Expired">Expired</option>
-                </select>
-              </div>
+        {/* Form */}
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="contract-num">
+                Contract Number <span className="ra-required">*</span>
+              </label>
+              <input
+                id="contract-num"
+                type="text"
+                value={contract ? (formData.contractNum || '') : 'Auto-generated'}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                title="Contract number is auto-generated"
+              />
+              {!contract && (
+                <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Auto-generated in format: AGR-YYYY-XXXX
+                </small>
+              )}
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company <span className="ra-required">*</span>
+              </label>
+              <select
+                id="company"
+                value={formData.companyID || ''}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                required
+                disabled={saving || !!contract}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.companyCode} - {company.companyName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="hcf">
+                HCF <span className="ra-required">*</span>
+              </label>
+              <select
+                id="hcf"
+                value={formData.hcfID || ''}
+                onChange={(e) => handleHcfChange(e.target.value)}
+                required
+                disabled={saving || !formData.companyID || !!contract}
+                className="ra-assignment-select"
+              >
+                <option value="">Select HCF</option>
+                {filteredHcfsForCompany.map((hcf) => (
+                  <option key={hcf.id} value={hcf.id}>
+                    {hcf.hcfCode} - {hcf.hcfName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="agreement-template">
+                Agreement Template <span className="ra-required">*</span>
+              </label>
+              <select
+                id="agreement-template"
+                value={formData.agreementTemplateId || ''}
+                onChange={(e) => setFormData({ ...formData, agreementTemplateId: e.target.value })}
+                required
+                disabled={saving || (!!contract && contract.status !== 'Draft')}
+                className="ra-assignment-select"
+                style={(!!contract && contract.status !== 'Draft') ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                title={!!contract && contract.status !== 'Draft' ? 'Agreement Template can only be changed when contract status is Draft' : ''}
+              >
+                <option value="">Select Agreement Template</option>
+                {agreementTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.templateCode} – {template.templateName}
+                  </option>
+                ))}
+              </select>
+              {!!contract && contract.status !== 'Draft' && (
+                <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Agreement Template can only be changed when contract status is Draft
+                </small>
+              )}
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="start-date">
+                Start Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="start-date"
+                type="date"
+                value={formData.startDate || ''}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                required
+                disabled={saving}
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="end-date">
+                End Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="end-date"
+                type="date"
+                value={formData.endDate || ''}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                required
+                disabled={saving}
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="billing-type">
+                Billing Type <span className="ra-required">*</span>
+              </label>
+              <select
+                id="billing-type"
+                value={formData.billingType || 'Bed'}
+                onChange={(e) => setFormData({ ...formData, billingType: e.target.value as 'Bed' | 'Kg' | 'Lumpsum' })}
+                required
+                disabled={saving || (!!formData.hcfID && !contract)}
+                className="ra-assignment-select"
+                style={formData.hcfID && !contract ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+              >
+                <option value="Bed">Bed</option>
+                <option value="Kg">Kg</option>
+                <option value="Lumpsum">Lumpsum</option>
+              </select>
+              {formData.hcfID && !contract && (
+                <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Auto-filled from HCF billing type
+                </small>
+              )}
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                value={formData.status || 'Draft'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Draft' | 'Active' | 'Expired' })}
+                disabled={saving}
+                className="ra-assignment-select"
+              >
+                <option value="Draft">Draft</option>
+                <option value="Active">Active</option>
+                <option value="Expired">Expired</option>
+              </select>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? 'Saving...' : (contract ? 'Update' : 'Add')} Contract
+            <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary" disabled={saving}>
+              {saving ? 'Saving...' : (contract ? 'Update' : 'Save')}
             </button>
           </div>
         </form>

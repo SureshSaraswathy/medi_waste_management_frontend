@@ -12,6 +12,7 @@ export interface ContractResponse {
   contractNum: string;
   companyId: string;
   hcfId: string;
+  agreementTemplateId: string;
   startDate: string;
   endDate: string;
   billingType: 'Bed' | 'Kg' | 'Lumpsum';
@@ -23,9 +24,9 @@ export interface ContractResponse {
 }
 
 export interface CreateContractRequest {
-  contractNum: string;
   companyId: string;
   hcfId: string;
+  agreementTemplateId: string;
   startDate: string;
   endDate: string;
   billingType: 'Bed' | 'Kg' | 'Lumpsum';
@@ -33,11 +34,11 @@ export interface CreateContractRequest {
 }
 
 export interface UpdateContractRequest {
-  contractNum?: string;
   startDate?: string;
   endDate?: string;
   billingType?: 'Bed' | 'Kg' | 'Lumpsum';
   status?: 'Draft' | 'Active' | 'Expired';
+  agreementTemplateId?: string;
 }
 
 const getAuthToken = (): string | null => {

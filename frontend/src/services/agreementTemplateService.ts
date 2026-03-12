@@ -6,15 +6,12 @@ interface ApiResponse<T> {
   message: string;
 }
 
-export interface AgreementClauseResponse {
+export interface AgreementTemplateResponse {
   id: string;
-  agreementClauseID: string;
-  agreementTemplateId: string;
-  agreementTemplateName?: string;
-  pointNum: string;
-  pointTitle: string;
-  pointText: string;
-  sequenceNo: number;
+  templateCode: string;
+  templateName: string;
+  agreementCategory: string | null;
+  templateDescription: string | null;
   status: 'Active' | 'Inactive';
   createdBy: string | null;
   createdOn: string;
@@ -22,25 +19,18 @@ export interface AgreementClauseResponse {
   modifiedOn: string;
 }
 
-export interface CreateAgreementClauseRequest {
-  agreementTemplateId: string;
-  pointNum: string;
-  pointTitle: string;
-  pointText: string;
-  sequenceNo: number;
-}
-
-export interface UpdateAgreementClauseRequest {
-  pointNum?: string;
-  pointTitle?: string;
-  pointText?: string;
-  sequenceNo?: number;
+export interface CreateAgreementTemplateRequest {
+  templateName: string;
+  agreementCategory?: string;
+  templateDescription?: string;
   status?: 'Active' | 'Inactive';
 }
 
-export interface ReorderClauseRequest {
-  clauseId: string;
-  newSequenceNo: number;
+export interface UpdateAgreementTemplateRequest {
+  templateName?: string;
+  agreementCategory?: string;
+  templateDescription?: string;
+  status?: 'Active' | 'Inactive';
 }
 
 const getAuthToken = (): string | null => {
@@ -103,60 +93,43 @@ const apiRequest = async <T>(
   return response.json();
 };
 
-export const agreementClauseService = {
-  getAllClauses: async (
-    agreementTemplateId?: string,
-    status?: string
-  ): Promise<AgreementClauseResponse[]> => {
-    let url = '/agreement-clauses';
-    const params = new URLSearchParams();
-    if (agreementTemplateId) {
-      params.append('agreementTemplateId', agreementTemplateId);
-    }
-    if (status) {
-      params.append('status', status);
-    }
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-    
-    const response = await apiRequest<ApiResponse<AgreementClauseResponse[]>>(url, {
+export const agreementTemplateService = {
+  getAllAgreementTemplates: async (): Promise<AgreementTemplateResponse[]> => {
+    const response = await apiRequest<ApiResponse<AgreementTemplateResponse[]>>('/agreement-templates', {
       method: 'GET',
     });
     return response.data;
   },
 
-  getClauseById: async (clauseId: string): Promise<AgreementClauseResponse> => {
-    const response = await apiRequest<ApiResponse<AgreementClauseResponse>>(`/agreement-clauses/${clauseId}`, {
+  getAgreementTemplateById: async (templateId: string): Promise<AgreementTemplateResponse> => {
+    const response = await apiRequest<ApiResponse<AgreementTemplateResponse>>(`/agreement-templates/${templateId}`, {
       method: 'GET',
     });
     return response.data;
   },
 
-  createClause: async (data: CreateAgreementClauseRequest): Promise<AgreementClauseResponse> => {
-    const response = await apiRequest<ApiResponse<AgreementClauseResponse>>('/agreement-clauses', {
+  createAgreementTemplate: async (data: CreateAgreementTemplateRequest): Promise<AgreementTemplateResponse> => {
+    const response = await apiRequest<ApiResponse<AgreementTemplateResponse>>('/agreement-templates', {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return response.data;
   },
 
-  updateClause: async (
-    clauseId: string,
-    data: UpdateAgreementClauseRequest
-  ): Promise<AgreementClauseResponse> => {
-    const response = await apiRequest<ApiResponse<AgreementClauseResponse>>(`/agreement-clauses/${clauseId}`, {
+  updateAgreementTemplate: async (
+    templateId: string,
+    data: UpdateAgreementTemplateRequest
+  ): Promise<AgreementTemplateResponse> => {
+    const response = await apiRequest<ApiResponse<AgreementTemplateResponse>>(`/agreement-templates/${templateId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
     return response.data;
   },
 
-  reorderClause: async (clauseId: string, newSequenceNo: number): Promise<AgreementClauseResponse> => {
-    const response = await apiRequest<ApiResponse<AgreementClauseResponse>>(`/agreement-clauses/${clauseId}/reorder`, {
-      method: 'PATCH',
-      body: JSON.stringify({ newSequenceNo }),
+  deleteAgreementTemplate: async (templateId: string): Promise<void> => {
+    await apiRequest(`/agreement-templates/${templateId}`, {
+      method: 'DELETE',
     });
-    return response.data;
   },
 };

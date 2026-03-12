@@ -4,10 +4,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { Agreement } from '../../hooks/useAgreementFilters';
 import { agreementService } from '../../services/agreementService';
-import { contractService } from '../../services/contractService';
+import { contractService, ContractResponse } from '../../services/contractService';
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
+import { agreementTemplateService } from '../../services/agreementTemplateService';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
+import { placeholderMasterService, PlaceholderMasterResponse } from '../../services/placeholderMasterService';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
 // @ts-ignore - html2pdf.js doesn't have TypeScript definitions
@@ -27,6 +29,23 @@ interface Contract {
   id: string;
   contractID: string;
   contractNum: string;
+  companyId?: string;
+  hcfId?: string;
+  agreementTemplateId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+interface Company {
+  id: string;
+  companyName: string;
+  companyCode: string;
+}
+
+interface HCF {
+  id: string;
+  hcfName: string;
+  hcfCode: string;
 }
 
 const AgreementPage = () => {
@@ -39,10 +58,15 @@ const AgreementPage = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [agreementToTerminate, setAgreementToTerminate] = useState<Agreement | null>(null);
   const [selectedAgreement, setSelectedAgreement] = useState<Agreement | null>(null);
   const [editingAgreement, setEditingAgreement] = useState<Agreement | null>(null);
   const [agreements, setAgreements] = useState<Agreement[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [hcfs, setHcfs] = useState<HCF[]>([]);
+  const [contractDetails, setContractDetails] = useState<Map<string, ContractResponse>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,17 +82,56 @@ const AgreementPage = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
+  // Load companies
+  const loadCompanies = useCallback(async () => {
+    try {
+      const data = await companyService.getAllCompanies(true);
+      setCompanies(data.map(c => ({
+        id: c.id,
+        companyName: c.companyName,
+        companyCode: c.companyCode,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load companies:', err);
+      toast.error(err.message || 'Failed to load companies');
+    }
+  }, []);
+
+  // Load HCFs
+  const loadHcfs = useCallback(async () => {
+    try {
+      const data = await hcfService.getAllHcfs(undefined, true);
+      setHcfs(data.map(h => ({
+        id: h.id,
+        hcfName: h.hcfName,
+        hcfCode: h.hcfCode,
+      })));
+    } catch (err: any) {
+      console.error('Failed to load HCFs:', err);
+      toast.error(err.message || 'Failed to load HCFs');
+    }
+  }, []);
+
   // Load contracts
   const loadContracts = useCallback(async () => {
     try {
       const data = await contractService.getAllContracts();
+      const contractMap = new Map<string, contractService.ContractResponse>();
+      data.forEach(c => contractMap.set(c.id, c));
+      setContractDetails(contractMap);
       setContracts(data.map(c => ({
         id: c.id,
         contractID: c.contractID,
         contractNum: c.contractNum,
+        companyId: c.companyId,
+        hcfId: c.hcfId,
+        agreementTemplateId: c.agreementTemplateId,
+        startDate: c.startDate,
+        endDate: c.endDate,
       })));
     } catch (err: any) {
       console.error('Failed to load contracts:', err);
+      toast.error(err.message || 'Failed to load contracts');
     }
   }, []);
 
@@ -79,38 +142,47 @@ const AgreementPage = () => {
       setError(null);
       const data = await agreementService.getAllAgreements(contractIdParam || undefined);
       
-      const mappedAgreements: Agreement[] = data.map(agreement => {
-        const contract = contracts.find(c => c.id === agreement.contractId);
+      const mappedAgreements: Agreement[] = await Promise.all(data.map(async (agreement) => {
+        const contract = contractDetails.get(agreement.contractId);
+        const company = contract ? companies.find(c => c.id === contract.companyId) : null;
+        const hcf = contract ? hcfs.find(h => h.id === contract.hcfId) : null;
+        
         return {
           id: agreement.id,
           agreementID: agreement.agreementID,
           contractID: agreement.contractId,
           contractNum: contract?.contractNum || '',
+          companyName: company?.companyName || '',
+          hcfName: hcf?.hcfName || '',
           agreementNum: agreement.agreementNum,
           agreementDate: agreement.agreementDate,
           status: agreement.status,
         };
-      });
+      }));
       
       setAgreements(mappedAgreements);
     } catch (err: any) {
       console.error('Failed to load agreements:', err);
-      setError(err.message || 'Failed to load agreements');
+      const errorMessage = err.message || 'Failed to load agreements';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [contractIdParam, contracts]);
+  }, [contractIdParam, contractDetails, companies, hcfs]);
 
   // Initial load
   useEffect(() => {
+    loadCompanies();
+    loadHcfs();
     loadContracts();
-  }, [loadContracts]);
+  }, [loadCompanies, loadHcfs, loadContracts]);
 
   useEffect(() => {
-    if (contracts.length > 0) {
+    if (contracts.length > 0 && companies.length > 0 && hcfs.length > 0) {
       loadAgreements();
     }
-  }, [contracts.length, loadAgreements]);
+  }, [contracts.length, companies.length, hcfs.length, loadAgreements]);
 
   // Filter agreements with search query, status filter, and advanced filters
   const filteredAgreements = useMemo(() => {
@@ -174,16 +246,49 @@ const AgreementPage = () => {
           agreementDate: data.agreementDate,
           status: data.status,
         });
+        toast.success('Agreement updated successfully');
       } else {
         if (!data.contractID) {
           toast.error('Please select a contract');
+          setSaving(false);
           return;
         }
+
+        // Check if an agreement already exists for this contract
+        const existingAgreements = agreements.filter(
+          a => a.contractID === data.contractID && !a.status?.includes('Deleted')
+        );
+
+        if (existingAgreements.length > 0) {
+          // Check if contract has expired
+          const contract = contractDetails.get(data.contractID!);
+          if (contract && contract.endDate) {
+            const contractEndDate = new Date(contract.endDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            contractEndDate.setHours(0, 0, 0, 0);
+
+            if (contractEndDate >= today) {
+              // Contract is still active, don't allow new agreement
+              toast.error('An agreement already exists for this contract. You can only create a new agreement after the contract expires.');
+              setSaving(false);
+              return;
+            }
+            // Contract has expired, allow creating new agreement
+          } else {
+            // Can't determine contract expiry, don't allow
+            toast.error('An agreement already exists for this contract. You can only create a new agreement after the contract expires.');
+            setSaving(false);
+            return;
+          }
+        }
+
         await agreementService.createAgreement({
           contractId: data.contractID!,
           agreementDate: data.agreementDate!,
           status: data.status,
         });
+        toast.success('Agreement created successfully');
       }
 
       setShowFormModal(false);
@@ -191,8 +296,9 @@ const AgreementPage = () => {
       await loadAgreements();
     } catch (err: any) {
       console.error('Failed to save agreement:', err);
-      setError(err.message || 'Failed to save agreement');
-      toast.error(err.message || 'Failed to save agreement');
+      const errorMessage = err.message || 'Failed to save agreement';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -202,6 +308,53 @@ const AgreementPage = () => {
   const handleView = (agreement: Agreement) => {
     setSelectedAgreement(agreement);
     setShowPreviewModal(true);
+  };
+
+  // Handle Download Agreement
+  const handleDownload = async (agreement: Agreement) => {
+    try {
+      const blob = await agreementService.downloadAgreementPDF(agreement.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${agreement.agreementNum}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Agreement downloaded successfully');
+    } catch (err: any) {
+      console.error('Failed to download agreement:', err);
+      toast.error(err.message || 'Failed to download agreement');
+    }
+  };
+
+  // Handle Terminate Agreement Click
+  const handleTerminateClick = (agreement: Agreement, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAgreementToTerminate(agreement);
+    setShowTerminateModal(true);
+  };
+
+  // Handle Terminate Agreement Confirmation
+  const handleTerminateConfirm = async () => {
+    if (!agreementToTerminate) return;
+
+    try {
+      setSaving(true);
+      await agreementService.updateAgreement(agreementToTerminate.id, {
+        status: 'Signed', // Using Signed as terminated status, or we can add a Terminated status
+      });
+      toast.success('Agreement terminated successfully');
+      setShowTerminateModal(false);
+      setAgreementToTerminate(null);
+      await loadAgreements();
+    } catch (err: any) {
+      console.error('Failed to terminate agreement:', err);
+      toast.error(err.message || 'Failed to terminate agreement');
+    } finally {
+      setSaving(false);
+    }
   };
 
 
@@ -219,17 +372,6 @@ const AgreementPage = () => {
   const ActionsCell = ({ agreement }: { agreement: Agreement }) => (
     <>
       <button
-        className="action-btn action-btn--edit"
-        onClick={(e) => handleEdit(agreement, e)}
-        title="Edit Agreement"
-        aria-label={`Edit agreement ${agreement.agreementNum}`}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-        </svg>
-      </button>
-      <button
         className="action-btn action-btn--view"
         onClick={() => handleView(agreement)}
         title="View Agreement"
@@ -240,6 +382,48 @@ const AgreementPage = () => {
           <circle cx="12" cy="12" r="3"></circle>
         </svg>
       </button>
+      {agreement.status === 'Draft' && (
+        <button
+          className="action-btn action-btn--edit"
+          onClick={(e) => handleEdit(agreement, e)}
+          title="Edit Agreement"
+          aria-label={`Edit agreement ${agreement.agreementNum}`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+      )}
+      <button
+        className="action-btn action-btn--download"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleView(agreement);
+        }}
+        title="Download Agreement PDF"
+        aria-label={`Download agreement ${agreement.agreementNum}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
+      {agreement.status !== 'Signed' && (
+        <button
+          className="action-btn action-btn--terminate"
+          onClick={(e) => handleTerminateClick(agreement, e)}
+          title="Terminate Agreement"
+          aria-label={`Terminate agreement ${agreement.agreementNum}`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </button>
+      )}
     </>
   );
 
@@ -395,8 +579,9 @@ const AgreementPage = () => {
               <thead>
                 <tr>
                   <th>AGREEMENT NUMBER</th>
-                  <th>AGREEMENT ID</th>
-                  <th>CONTRACT REFERENCE</th>
+                  <th>CONTRACT NUMBER</th>
+                  <th>COMPANY</th>
+                  <th>HCF</th>
                   <th>AGREEMENT DATE</th>
                   <th>STATUS</th>
                   <th>ACTIONS</th>
@@ -405,7 +590,7 @@ const AgreementPage = () => {
               <tbody>
                 {filteredAgreements.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="empty-message">
+                    <td colSpan={7} className="empty-message">
                       {loading ? 'Loading...' : 'No agreement records found'}
                     </td>
                   </tr>
@@ -426,12 +611,9 @@ const AgreementPage = () => {
                         <td>
                           <span className="agreement-num-cell">{agreement.agreementNum}</span>
                         </td>
-                        <td>{agreement.agreementID}</td>
-                        <td>
-                          {agreement.contractNum 
-                            ? `${agreement.contractID} - ${agreement.contractNum}`
-                            : agreement.contractID}
-                        </td>
+                        <td>{agreement.contractNum || '-'}</td>
+                        <td>{agreement.companyName || '-'}</td>
+                        <td>{agreement.hcfName || '-'}</td>
                         <td>{formatDate(agreement.agreementDate)}</td>
                         <td>
                           <div className="ra-cell-center">
@@ -461,6 +643,9 @@ const AgreementPage = () => {
         <AgreementFormModal
           agreement={editingAgreement}
           contracts={contracts}
+          companies={companies}
+          hcfs={hcfs}
+          contractDetails={contractDetails}
           contractIdParam={contractIdParam}
           saving={saving}
           onClose={() => {
@@ -468,6 +653,7 @@ const AgreementPage = () => {
             setEditingAgreement(null);
           }}
           onSave={handleSave}
+          agreements={agreements}
         />
       )}
 
@@ -506,6 +692,19 @@ const AgreementPage = () => {
           }}
         />
       )}
+
+      {/* Terminate Agreement Modal */}
+      {showTerminateModal && agreementToTerminate && (
+        <TerminateAgreementModal
+          agreement={agreementToTerminate}
+          onClose={() => {
+            setShowTerminateModal(false);
+            setAgreementToTerminate(null);
+          }}
+          onConfirm={handleTerminateConfirm}
+          loading={saving}
+        />
+      )}
     </div>
   );
 };
@@ -514,14 +713,35 @@ const AgreementPage = () => {
 interface AgreementFormModalProps {
   agreement: Agreement | null;
   contracts: Contract[];
+  companies: Company[];
+  hcfs: HCF[];
+  contractDetails: Map<string, ContractResponse>;
   contractIdParam: string | null;
   saving: boolean;
   onClose: () => void;
   onSave: (data: Partial<Agreement>) => void;
+  agreements: Agreement[];
 }
 
-const AgreementFormModal = ({ agreement, contracts, contractIdParam, saving, onClose, onSave }: AgreementFormModalProps) => {
-  const [formData, setFormData] = useState<Partial<Agreement>>(
+const AgreementFormModal = ({ 
+  agreement, 
+  contracts, 
+  companies, 
+  hcfs, 
+  contractDetails,
+  contractIdParam, 
+  saving, 
+  onClose, 
+  onSave,
+  agreements: allAgreements
+}: AgreementFormModalProps) => {
+  const [formData, setFormData] = useState<Partial<Agreement> & {
+    companyName?: string;
+    hcfName?: string;
+    agreementTemplateName?: string;
+    contractStartDate?: string;
+    contractEndDate?: string;
+  }>(
     agreement || {
       contractID: contractIdParam || '',
       agreementNum: '',
@@ -529,6 +749,74 @@ const AgreementFormModal = ({ agreement, contracts, contractIdParam, saving, onC
       status: 'Draft',
     }
   );
+
+  // Auto-populate fields when contract is selected
+  useEffect(() => {
+    const loadContractData = async () => {
+      if (formData.contractID && !agreement) {
+        const contract = contractDetails.get(formData.contractID);
+        if (contract) {
+          const company = companies.find(c => c.id === contract.companyId);
+          const hcf = hcfs.find(h => h.id === contract.hcfId);
+          
+          let templateName = '';
+          if (contract.agreementTemplateId) {
+            try {
+              const template = await agreementTemplateService.getAgreementTemplateById(contract.agreementTemplateId);
+              templateName = `${template.templateCode} – ${template.templateName}`;
+            } catch (err) {
+              console.error('Failed to load agreement template:', err);
+            }
+          }
+          
+          setFormData(prev => ({
+            ...prev,
+            companyName: company?.companyName || '',
+            hcfName: hcf?.hcfName || '',
+            agreementTemplateName: templateName,
+            contractStartDate: contract.startDate,
+            contractEndDate: contract.endDate,
+          }));
+        }
+      }
+    };
+    
+    loadContractData();
+  }, [formData.contractID, contractDetails, companies, hcfs, agreement]);
+
+  // Filter contracts: only show contracts without agreements OR with expired contracts
+  const availableContracts = useMemo(() => {
+    if (agreement) {
+      // When editing, show all contracts (contract selection is disabled anyway)
+      return contracts;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return contracts.filter(contract => {
+      // Check if contract has an existing agreement
+      const existingAgreement = allAgreements.find(
+        a => a.contractID === contract.id
+      );
+
+      if (!existingAgreement) {
+        // No agreement exists, allow selection
+        return true;
+      }
+
+      // Agreement exists, check if contract is expired
+      if (contract.endDate) {
+        const contractEndDate = new Date(contract.endDate);
+        contractEndDate.setHours(0, 0, 0, 0);
+        // Only allow if contract has expired
+        return contractEndDate < today;
+      }
+
+      // Can't determine expiry, don't allow
+      return false;
+    });
+  }, [contracts, allAgreements, agreement]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -542,11 +830,27 @@ const AgreementFormModal = ({ agreement, contracts, contractIdParam, saving, onC
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{agreement ? 'Edit Agreement' : 'Add Agreement'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">{agreement ? 'Edit Agreement' : 'Add Agreement'}</h2>
+              <p className="ra-assignment-modal-subtitle">
+                {agreement ? 'Update agreement details' : 'Create a new agreement record.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -554,69 +858,174 @@ const AgreementFormModal = ({ agreement, contracts, contractIdParam, saving, onC
           </button>
         </div>
 
-        <form className="agreement-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Agreement Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Contract *</label>
-                <select
-                  value={formData.contractID || ''}
-                  onChange={(e) => setFormData({ ...formData, contractID: e.target.value })}
-                  required
-                  disabled={saving || !!contractIdParam || !!agreement}
-                >
-                  <option value="">Select Contract</option>
-                  {contracts.map((contract) => (
+        {/* Form */}
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="contract">
+                Contract <span className="ra-required">*</span>
+              </label>
+              <select
+                id="contract"
+                value={formData.contractID || ''}
+                onChange={(e) => setFormData({ ...formData, contractID: e.target.value })}
+                required
+                disabled={saving || !!contractIdParam || !!agreement}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Contract</option>
+                {availableContracts.map((contract) => {
+                  const existingAgreement = allAgreements.find(a => a.contractID === contract.id);
+                  const contractDetail = contractDetails.get(contract.id);
+                  const isExpired = contractDetail?.endDate 
+                    ? new Date(contractDetail.endDate) < new Date()
+                    : false;
+                  
+                  return (
                     <option key={contract.id} value={contract.id}>
-                      {contract.contractID} - {contract.contractNum}
+                      {contract.contractNum}
+                      {existingAgreement && isExpired ? ' (Expired - Can create new agreement)' : ''}
                     </option>
-                  ))}
-                </select>
-              </div>
-              {agreement && (
-                <div className="form-group">
-                  <label>Agreement Number</label>
-                  <input
-                    type="text"
-                    value={formData.agreementNum || ''}
-                    onChange={(e) => setFormData({ ...formData, agreementNum: e.target.value })}
-                    disabled={saving}
-                    placeholder="Auto-generated if empty"
-                  />
-                </div>
+                  );
+                })}
+              </select>
+              {availableContracts.length === 0 && !agreement && (
+                <small style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', display: 'block' }}>
+                  No available contracts. All contracts already have agreements or are still active.
+                </small>
               )}
-              <div className="form-group">
-                <label>Agreement Date *</label>
-                <input
-                  type="date"
-                  value={formData.agreementDate || ''}
-                  onChange={(e) => setFormData({ ...formData, agreementDate: e.target.value })}
-                  required
-                  disabled={saving}
-                />
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  value={formData.status || 'Draft'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Draft' | 'Generated' | 'Signed' })}
-                  disabled={saving}
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Generated">Generated</option>
-                  <option value="Signed">Signed</option>
-                </select>
-              </div>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="agreement-num">
+                Agreement Number
+              </label>
+              <input
+                id="agreement-num"
+                type="text"
+                value={agreement ? (formData.agreementNum || '') : 'Auto-generated'}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                title="Agreement number is auto-generated"
+              />
+              {!agreement && (
+                <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+                  Auto-generated in format: AGR-YYYY-XXXX
+                </small>
+              )}
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="company">
+                Company
+              </label>
+              <input
+                id="company"
+                type="text"
+                value={formData.companyName || ''}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                placeholder="Auto-filled from contract"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="hcf">
+                HCF
+              </label>
+              <input
+                id="hcf"
+                type="text"
+                value={formData.hcfName || ''}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                placeholder="Auto-filled from contract"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="agreement-template">
+                Agreement Template
+              </label>
+              <input
+                id="agreement-template"
+                type="text"
+                value={formData.agreementTemplateName || ''}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                placeholder="Auto-filled from contract"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="contract-start-date">
+                Contract Start Date
+              </label>
+              <input
+                id="contract-start-date"
+                type="date"
+                value={formData.contractStartDate || ''}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="contract-end-date">
+                Contract End Date
+              </label>
+              <input
+                id="contract-end-date"
+                type="date"
+                value={formData.contractEndDate || ''}
+                disabled={true}
+                readOnly={true}
+                className="ra-assignment-input"
+                style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="agreement-date">
+                Agreement Date <span className="ra-required">*</span>
+              </label>
+              <input
+                id="agreement-date"
+                type="date"
+                value={formData.agreementDate || ''}
+                onChange={(e) => setFormData({ ...formData, agreementDate: e.target.value })}
+                required
+                disabled={saving}
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="status">
+                Status
+              </label>
+              <select
+                id="status"
+                value={formData.status || 'Draft'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Draft' | 'Generated' | 'Signed' })}
+                disabled={saving}
+                className="ra-assignment-select"
+              >
+                <option value="Draft">Draft</option>
+                <option value="Generated">Generated</option>
+                <option value="Signed">Signed</option>
+              </select>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary" disabled={saving}>
-              {saving ? 'Saving...' : (agreement ? 'Update' : 'Add')} Agreement
+            <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary" disabled={saving}>
+              {saving ? 'Saving...' : (agreement ? 'Update' : 'Save')}
             </button>
           </div>
         </form>
@@ -649,15 +1058,28 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
   const [company, setCompany] = useState<CompanyResponse | null>(null);
   const [hcf, setHcf] = useState<HcfResponse | null>(null);
   const [loadingPartyData, setLoadingPartyData] = useState(false);
+  const [placeholders, setPlaceholders] = useState<PlaceholderMasterResponse[]>([]);
   const agreementDocumentRef = useRef<HTMLDivElement>(null);
 
-  // Load agreement clauses
+  // Load agreement clauses from contract's agreement template
   useEffect(() => {
     const loadClauses = async () => {
       try {
         setLoadingClauses(true);
-        // Use agreement.id (UUID) to fetch clauses
-        const data = await agreementClauseService.getAllClauses(agreement.id);
+        // First, get the contract to find the agreement template ID
+        if (!agreement.contractID) {
+          setClauses([]);
+          return;
+        }
+        
+        const contract = await contractService.getContractById(agreement.contractID);
+        if (!contract.agreementTemplateId) {
+          setClauses([]);
+          return;
+        }
+        
+        // Load clauses using the agreement template ID
+        const data = await agreementClauseService.getAllClauses(contract.agreementTemplateId);
         const sortedClauses = data
           .map((c: AgreementClauseResponse) => ({
             id: c.id,
@@ -669,18 +1091,32 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
           }))
           .sort((a, b) => a.sequenceNo - b.sequenceNo);
         setClauses(sortedClauses);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load clauses:', err);
+        toast.error(err.message || 'Failed to load agreement clauses');
         setClauses([]);
       } finally {
         setLoadingClauses(false);
       }
     };
 
-    if (agreement.id) {
+    if (agreement.id && agreement.contractID) {
       loadClauses();
     }
-  }, [agreement.id]);
+  }, [agreement.id, agreement.contractID]);
+
+  // Load placeholders
+  useEffect(() => {
+    const loadPlaceholders = async () => {
+      try {
+        const data = await placeholderMasterService.getAllPlaceholderMasters(true);
+        setPlaceholders(data);
+      } catch (err) {
+        console.error('Failed to load placeholders:', err);
+      }
+    };
+    loadPlaceholders();
+  }, []);
 
   // Load contract, company, and HCF data for dynamic content
   useEffect(() => {
@@ -743,9 +1179,10 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
       };
 
       await html2pdf().set(opt).from(element).save();
+      toast.success('PDF downloaded successfully');
     } catch (error: any) {
       console.error('Failed to generate PDF:', error);
-      toast.error('Failed to generate PDF. Please try again.');
+      toast.error(error.message || 'Failed to generate PDF. Please try again.');
     } finally {
       setGeneratingPDF(false);
     }
@@ -765,6 +1202,149 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
 
   const isNormalContent = (clause: AgreementClause): boolean => {
     return !isWhereasClause(clause) && !hasPointNumber(clause);
+  };
+
+  // Convert snake_case to camelCase for TypeScript property access
+  const snakeToCamel = (str: string): string => {
+    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+  };
+
+  // Get value from object by trying both camelCase and snake_case keys
+  const getValueFromObject = (obj: any, columnName: string): string | null => {
+    if (!obj) return null;
+    
+    // Try camelCase first (TypeScript interface format)
+    const camelCaseKey = snakeToCamel(columnName);
+    if (obj[camelCaseKey] !== undefined && obj[camelCaseKey] !== null) {
+      return String(obj[camelCaseKey]);
+    }
+    
+    // Try original snake_case format
+    if (obj[columnName] !== undefined && obj[columnName] !== null) {
+      return String(obj[columnName]);
+    }
+    
+    // Try with first letter lowercase if it was uppercase
+    const lowerFirst = camelCaseKey.charAt(0).toLowerCase() + camelCaseKey.slice(1);
+    if (obj[lowerFirst] !== undefined && obj[lowerFirst] !== null) {
+      return String(obj[lowerFirst]);
+    }
+    
+    return null;
+  };
+
+  // Replace placeholders in text with actual values
+  const replacePlaceholders = (text: string): string => {
+    if (!text) return text;
+    
+    // If placeholders aren't loaded yet, return text as-is (will be replaced on next render)
+    if (!placeholders || placeholders.length === 0) {
+      return text;
+    }
+    
+    let replacedText = text;
+    
+    // Find all unique placeholders in the format {{PLACEHOLDER_CODE}}
+    const placeholderRegex = /\{\{([A-Z0-9_]+)\}\}/g;
+    const matches = [...text.matchAll(placeholderRegex)];
+    
+    if (matches.length === 0) {
+      return replacedText; // No placeholders found
+    }
+    
+    const uniquePlaceholderCodes = [...new Set(matches.map(m => m[1]))];
+    
+    // Process each unique placeholder
+    for (const placeholderCode of uniquePlaceholderCodes) {
+      // Case-insensitive search for placeholder
+      const placeholder = placeholders.find(p => 
+        p.placeholderCode.toUpperCase() === placeholderCode.toUpperCase()
+      );
+      
+      if (placeholder) {
+        let replacementValue = '';
+        
+        // Map placeholder to actual value based on source table and column
+        try {
+          switch (placeholder.sourceTable.toLowerCase()) {
+            case 'hcfs':
+              if (hcf) {
+                const value = getValueFromObject(hcf, placeholder.sourceColumn);
+                if (value && value.trim() !== '') {
+                  replacementValue = value;
+                } else {
+                  // Debug: Log what we're looking for
+                  console.warn(`Placeholder ${placeholderCode}: Column "${placeholder.sourceColumn}" not found or empty in HCF data`, {
+                    placeholderCode,
+                    sourceTable: placeholder.sourceTable,
+                    sourceColumn: placeholder.sourceColumn,
+                    camelCase: snakeToCamel(placeholder.sourceColumn),
+                    availableKeys: Object.keys(hcf),
+                    hcfSample: {
+                      hcfName: hcf.hcfName,
+                      serviceAddress: hcf.serviceAddress,
+                      hcfCode: hcf.hcfCode
+                    }
+                  });
+                  replacementValue = `[${placeholder.placeholderDescription}]`;
+                }
+              } else {
+                console.warn(`Placeholder ${placeholderCode}: HCF data not loaded`);
+                replacementValue = `[${placeholder.placeholderDescription} - HCF not loaded]`;
+              }
+              break;
+            case 'companies':
+              if (company) {
+                const value = getValueFromObject(company, placeholder.sourceColumn);
+                if (value && value.trim() !== '') {
+                  replacementValue = value;
+                } else {
+                  console.warn(`Placeholder ${placeholderCode}: Column "${placeholder.sourceColumn}" not found or empty in Company data`, {
+                    placeholderCode,
+                    sourceTable: placeholder.sourceTable,
+                    sourceColumn: placeholder.sourceColumn,
+                    camelCase: snakeToCamel(placeholder.sourceColumn),
+                    availableKeys: Object.keys(company),
+                    companySample: {
+                      companyName: company.companyName,
+                      companyCode: company.companyCode
+                    }
+                  });
+                  replacementValue = `[${placeholder.placeholderDescription}]`;
+                }
+              } else {
+                console.warn(`Placeholder ${placeholderCode}: Company data not loaded`);
+                replacementValue = `[${placeholder.placeholderDescription} - Company not loaded]`;
+              }
+              break;
+            default:
+              console.warn(`Placeholder ${placeholderCode}: Unknown table "${placeholder.sourceTable}"`);
+              replacementValue = `[${placeholder.placeholderDescription} - Unknown table: ${placeholder.sourceTable}]`;
+          }
+        } catch (err) {
+          console.error(`Error replacing placeholder ${placeholderCode}:`, err);
+          console.error('Placeholder details:', {
+            code: placeholderCode,
+            sourceTable: placeholder.sourceTable,
+            sourceColumn: placeholder.sourceColumn,
+            hcf: hcf ? 'loaded' : 'not loaded',
+            company: company ? 'loaded' : 'not loaded'
+          });
+          replacementValue = `[${placeholder.placeholderDescription} - Error]`;
+        }
+        
+        // Replace all occurrences of this placeholder in the text
+        const placeholderPattern = new RegExp(`\\{\\{${placeholderCode}\\}\\}`, 'gi'); // Case-insensitive
+        replacedText = replacedText.replace(placeholderPattern, replacementValue);
+      } else {
+        // Placeholder not found
+        console.warn(`Placeholder ${placeholderCode} not found in placeholder master list`);
+        const placeholderPattern = new RegExp(`\\{\\{${placeholderCode}\\}\\}`, 'gi'); // Case-insensitive
+        replacedText = replacedText.replace(placeholderPattern, `[${placeholderCode} - Not Found]`);
+      }
+    }
+    
+    return replacedText;
   };
 
   return (
@@ -887,7 +1467,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
 
               {/* Page 2+ - Main Agreement Content */}
               <div className="agreement-page">
-            {/* Agreement Header */}
+            {/* Agreement Header - Fixed at top */}
             <div className="agreement-header-section">
               <h1 className="agreement-main-title">SERVICE AGREEMENT</h1>
               <div className="agreement-meta">
@@ -896,6 +1476,8 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
               </div>
             </div>
 
+            {/* Agreement Content - Starts after header spacing */}
+            <div className="agreement-content">
             {/* Introduction Section - Show only if first clause is WHEREAS */}
             {clauses.length > 0 && isWhereasClause(clauses[0]) && (
               <div className="agreement-section agreement-intro-section">
@@ -967,25 +1549,25 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                           <div className="whereas-item">
                             <p className="whereas-text">
                               <strong>WHEREAS {whereasIndex === 1 ? '' : String.fromCharCode(64 + whereasIndex) + ') '}</strong>
-                              {clause.pointText}
+                              {replacePlaceholders(clause.pointText)}
                             </p>
                           </div>
                         ) : hasPointNum ? (
                           <div className="clause-item clause-item--numbered">
                             <p className="clause-text">
-                              <strong>{clause.pointNum}.</strong> {clause.pointText}
+                              <strong>{clause.pointNum}.</strong> {replacePlaceholders(clause.pointText)}
                             </p>
                           </div>
                         ) : isNormal ? (
                           <div className="clause-item clause-item--normal">
                             <p className="clause-text">
-                              {clause.pointText}
+                              {replacePlaceholders(clause.pointText)}
                             </p>
                           </div>
                         ) : (
                           <div className="clause-item">
                             <p className="clause-text">
-                              {clause.pointText}
+                              {replacePlaceholders(clause.pointText)}
                             </p>
                           </div>
                         )}
@@ -1044,7 +1626,8 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                 </div>
               </div>
             </div>
-              </div>
+            </div> {/* Close agreement-content */}
+              </div> {/* Close agreement-page */}
               </>
             )}
         </div>
@@ -1172,6 +1755,60 @@ const AdvancedFiltersModal = ({
             }
           >
             Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Terminate Agreement Modal Component
+interface TerminateAgreementModalProps {
+  agreement: Agreement;
+  onClose: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}
+
+const TerminateAgreementModal = ({ agreement, onClose, onConfirm, loading }: TerminateAgreementModalProps) => {
+  return (
+    <div className="agreement-terminate-modal-overlay" onClick={onClose}>
+      <div className="agreement-terminate-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="agreement-terminate-modal-header">
+          <div className="agreement-terminate-header-left">
+            <div className="agreement-terminate-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <h2 className="agreement-terminate-modal-title">Terminate Agreement</h2>
+          </div>
+          <button className="agreement-terminate-modal-close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div className="agreement-terminate-modal-body">
+          <p className="agreement-terminate-message">
+            Are you sure you want to terminate agreement <strong>{agreement.agreementNum}</strong>?
+            <br />
+            <span style={{ fontSize: '13px', color: '#64748b', marginTop: '8px', display: 'block' }}>
+              This action will mark the agreement as terminated (Signed status).
+            </span>
+          </p>
+        </div>
+
+        <div className="agreement-terminate-modal-footer">
+          <button type="button" className="agreement-terminate-btn agreement-terminate-btn--cancel" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button type="button" className="agreement-terminate-btn agreement-terminate-btn--terminate" onClick={onConfirm} disabled={loading}>
+            {loading ? 'Terminating...' : 'Terminate Agreement'}
           </button>
         </div>
       </div>

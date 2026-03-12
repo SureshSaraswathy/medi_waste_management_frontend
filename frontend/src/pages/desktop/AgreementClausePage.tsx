@@ -4,22 +4,24 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { useAgreementClauseFilters, AgreementClause } from '../../hooks/useAgreementClauseFilters';
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
-import { agreementService, AgreementResponse } from '../../services/agreementService';
+import { agreementTemplateService, AgreementTemplateResponse } from '../../services/agreementTemplateService';
+import { placeholderMasterService, PlaceholderMasterResponse } from '../../services/placeholderMasterService';
 import PageHeader from '../../components/layout/PageHeader';
 import './agreementClausePage.css';
 import '../desktop/dashboardPage.css';
+import '../desktop/routeAssignmentPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
 
-interface Agreement {
+interface AgreementTemplate {
   id: string;
-  agreementID: string;
-  agreementNum: string;
-  status: 'Draft' | 'Generated' | 'Signed';
+  templateCode: string;
+  templateName: string;
+  status: 'Active' | 'Inactive';
 }
 
 interface AdvancedFilters {
-  agreementID: string;
+  agreementTemplateId: string;
   pointNum: string;
   pointTitle: string;
   status: string;
@@ -38,7 +40,7 @@ const AgreementClausePage = () => {
   const [saving, setSaving] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({
-    agreementID: '',
+    agreementTemplateId: '',
     pointNum: '',
     pointTitle: '',
     status: '',
@@ -48,49 +50,48 @@ const AgreementClausePage = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  // State variables for agreements and clauses loaded from API
-  const [agreements, setAgreements] = useState<Agreement[]>([]);
+  // State variables for agreement templates and clauses loaded from API
+  const [agreementTemplates, setAgreementTemplates] = useState<AgreementTemplate[]>([]);
   const [clauses, setClauses] = useState<AgreementClause[]>([]);
 
-  // Load agreements from API
-  const loadAgreements = useCallback(async () => {
+  // Load agreement templates from API
+  const loadAgreementTemplates = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await agreementService.getAllAgreements();
-      setAgreements(data.map(a => ({
-        id: a.id,
-        agreementID: a.agreementID,
-        agreementNum: a.agreementNum,
-        status: a.status,
+      const data = await agreementTemplateService.getAllAgreementTemplates();
+      setAgreementTemplates(data.map(t => ({
+        id: t.id,
+        templateCode: t.templateCode,
+        templateName: t.templateName,
+        status: t.status,
       })));
     } catch (err: any) {
-      console.error('Failed to load agreements:', err);
-      setError(err.message || 'Failed to load agreements');
+      console.error('Failed to load agreement templates:', err);
+      setError(err.message || 'Failed to load agreement templates');
     } finally {
       setLoading(false);
     }
   }, []);
 
   // Load clauses from API
-  const loadClauses = useCallback(async (currentAgreements: Agreement[]) => {
+  const loadClauses = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const agreementIdParam = advancedFilters.agreementID 
-        ? currentAgreements.find(a => a.agreementID === advancedFilters.agreementID)?.id 
-        : undefined;
+      const templateIdParam = advancedFilters.agreementTemplateId || undefined;
       const statusParam = statusFilter !== 'All' ? statusFilter : undefined;
       
-      const data = await agreementClauseService.getAllClauses(agreementIdParam, statusParam);
+      const data = await agreementClauseService.getAllClauses(templateIdParam, statusParam);
       
       // Map API response to AgreementClause interface
       const mappedClauses: AgreementClause[] = data.map((clause: AgreementClauseResponse) => {
-        const agreement = currentAgreements.find(a => a.id === clause.agreementId);
+        const template = agreementTemplates.find(t => t.id === clause.agreementTemplateId);
         return {
           id: clause.id,
           agreementClauseID: clause.agreementClauseID,
-          agreementID: agreement?.agreementID || clause.agreementId,
+          agreementTemplateId: clause.agreementTemplateId,
+          agreementTemplateName: template ? `${template.templateCode} – ${template.templateName}` : (clause.agreementTemplateName || clause.agreementTemplateId),
           pointNum: clause.pointNum,
           pointTitle: clause.pointTitle,
           pointText: clause.pointText,
@@ -99,10 +100,12 @@ const AgreementClausePage = () => {
         };
       });
       
-      // Sort by agreement ID and sequence number
+      // Sort by template name and sequence number
       mappedClauses.sort((a, b) => {
-        if (a.agreementID !== b.agreementID) {
-          return a.agreementID.localeCompare(b.agreementID);
+        const templateA = a.agreementTemplateName || a.agreementTemplateId;
+        const templateB = b.agreementTemplateName || b.agreementTemplateId;
+        if (templateA !== templateB) {
+          return templateA.localeCompare(templateB);
         }
         return a.sequenceNo - b.sequenceNo;
       });
@@ -111,22 +114,22 @@ const AgreementClausePage = () => {
     } catch (err: any) {
       console.error('Failed to load clauses:', err);
       setError(err.message || 'Failed to load clauses');
+      toast.error(err.message || 'Failed to load clauses');
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, advancedFilters.agreementID]);
+  }, [statusFilter, advancedFilters.agreementTemplateId, agreementTemplates]);
 
-  // Load agreements on mount
+  // Load agreement templates on mount
   useEffect(() => {
-    loadAgreements();
-  }, [loadAgreements]);
+    loadAgreementTemplates();
+  }, [loadAgreementTemplates]);
 
-  // Load clauses when agreements are loaded or filters change
+  // Load clauses when templates are loaded or filters change
   useEffect(() => {
-    if (agreements.length > 0) {
-      loadClauses(agreements);
-    }
-  }, [agreements.length, statusFilter, advancedFilters.agreementID, loadClauses]);
+    // Load clauses - templates might be empty initially, but clauses can still load
+    loadClauses();
+  }, [loadClauses]);
 
   // Use custom hook for filtering logic
   const { filteredClauses } = useAgreementClauseFilters({
@@ -136,45 +139,21 @@ const AgreementClausePage = () => {
     advancedFilters,
   });
 
-  // Get agreement status for a clause
-  const getAgreementStatus = (agreementID: string): Agreement['status'] | null => {
-    const agreement = agreements.find(a => a.agreementID === agreementID);
-    if (!agreement) {
-      console.warn(`Agreement not found for agreementID: ${agreementID}. Available agreements:`, agreements.map(a => a.agreementID));
-    }
-    return agreement?.status || null;
-  };
-
-  // Check if clause can be edited (only when agreement status is Draft)
-  const canEditClause = (clause: AgreementClause): boolean => {
-    const agreementStatus = getAgreementStatus(clause.agreementID);
-    return agreementStatus === 'Draft';
-  };
-
   // Handle Edit
   const handleEdit = (clause: AgreementClause) => {
-    if (!canEditClause(clause)) {
-      toast.error('Clauses can only be edited when the agreement status is Draft.');
-      return;
-    }
     setEditingClause(clause);
     setShowCreateModal(true);
   };
 
   // Handle Move Up
   const handleMoveUp = async (clause: AgreementClause) => {
-    if (!canEditClause(clause)) {
-      toast.error('Clauses can only be reordered when the agreement status is Draft.');
-      return;
-    }
-    
     // Use all clauses (not filtered) to ensure proper ordering
-    const sameAgreementClauses = clauses.filter(c => c.agreementID === clause.agreementID);
-    const sortedSameAgreementClauses = [...sameAgreementClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
-    const currentIndex = sortedSameAgreementClauses.findIndex(c => c.id === clause.id);
+    const sameTemplateClauses = clauses.filter(c => c.agreementTemplateId === clause.agreementTemplateId);
+    const sortedSameTemplateClauses = [...sameTemplateClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
+    const currentIndex = sortedSameTemplateClauses.findIndex(c => c.id === clause.id);
     
     if (currentIndex > 0) {
-      const prevClause = sortedSameAgreementClauses[currentIndex - 1];
+      const prevClause = sortedSameTemplateClauses[currentIndex - 1];
       try {
         setLoading(true);
         setError(null);
@@ -182,7 +161,7 @@ const AgreementClausePage = () => {
         await agreementClauseService.reorderClause(clause.id, prevClause.sequenceNo);
         await agreementClauseService.reorderClause(prevClause.id, clause.sequenceNo);
         // Reload clauses after reorder
-        await loadClauses(agreements);
+        await loadClauses();
       } catch (err: any) {
         console.error('Failed to reorder clause:', err);
         setError(err.message || 'Failed to reorder clause');
@@ -195,18 +174,13 @@ const AgreementClausePage = () => {
 
   // Handle Move Down
   const handleMoveDown = async (clause: AgreementClause) => {
-    if (!canEditClause(clause)) {
-      toast.error('Clauses can only be reordered when the agreement status is Draft.');
-      return;
-    }
-    
     // Use all clauses (not filtered) to ensure proper ordering
-    const sameAgreementClauses = clauses.filter(c => c.agreementID === clause.agreementID);
-    const sortedSameAgreementClauses = [...sameAgreementClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
-    const currentIndex = sortedSameAgreementClauses.findIndex(c => c.id === clause.id);
+    const sameTemplateClauses = clauses.filter(c => c.agreementTemplateId === clause.agreementTemplateId);
+    const sortedSameTemplateClauses = [...sameTemplateClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
+    const currentIndex = sortedSameTemplateClauses.findIndex(c => c.id === clause.id);
     
-    if (currentIndex < sortedSameAgreementClauses.length - 1) {
-      const nextClause = sortedSameAgreementClauses[currentIndex + 1];
+    if (currentIndex < sortedSameTemplateClauses.length - 1) {
+      const nextClause = sortedSameTemplateClauses[currentIndex + 1];
       try {
         setLoading(true);
         setError(null);
@@ -214,7 +188,7 @@ const AgreementClausePage = () => {
         await agreementClauseService.reorderClause(clause.id, nextClause.sequenceNo);
         await agreementClauseService.reorderClause(nextClause.id, clause.sequenceNo);
         // Reload clauses after reorder
-        await loadClauses(agreements);
+        await loadClauses();
       } catch (err: any) {
         console.error('Failed to reorder clause:', err);
         setError(err.message || 'Failed to reorder clause');
@@ -231,15 +205,15 @@ const AgreementClausePage = () => {
       setSaving(true);
       setError(null);
 
-      // Validate point number uniqueness per agreement
-      if (data.pointNum && data.agreementID) {
+      // Validate point number uniqueness per template
+      if (data.pointNum && data.agreementTemplateId) {
         const existingClause = clauses.find(
-          c => c.agreementID === data.agreementID && 
+          c => c.agreementTemplateId === data.agreementTemplateId && 
           c.pointNum === data.pointNum && 
           c.id !== editingClause?.id
         );
         if (existingClause) {
-          throw new Error(`Point number ${data.pointNum} already exists for this agreement.`);
+          throw new Error(`Point number ${data.pointNum} already exists for this agreement template.`);
         }
       }
 
@@ -252,17 +226,11 @@ const AgreementClausePage = () => {
         });
       } else {
         const maxSeq = clauses
-          .filter(c => c.agreementID === data.agreementID)
+          .filter(c => c.agreementTemplateId === data.agreementTemplateId)
           .reduce((max, c) => Math.max(max, c.sequenceNo), 0);
         
-        // Find agreement by agreementID to get the UUID
-        const agreement = agreements.find(a => a.agreementID === data.agreementID);
-        if (!agreement) {
-          throw new Error('Agreement not found');
-        }
-        
         await agreementClauseService.createClause({
-          agreementId: agreement.id,
+          agreementTemplateId: data.agreementTemplateId!,
           pointNum: data.pointNum!,
           pointTitle: data.pointTitle!,
           pointText: data.pointText!,
@@ -273,7 +241,7 @@ const AgreementClausePage = () => {
       setShowCreateModal(false);
       setEditingClause(null);
       // Reload clauses after save
-      await loadClauses(agreements);
+      await loadClauses();
     } catch (err: any) {
       console.error('Failed to save clause:', err);
       setError(err.message || 'Failed to save clause');
@@ -311,39 +279,21 @@ const AgreementClausePage = () => {
 
   // Actions component
   const ActionsCell = ({ clause }: { clause: AgreementClause }) => {
-    const agreementStatus = getAgreementStatus(clause.agreementID);
-    const canEdit = agreementStatus === 'Draft';
-    // Use all clauses (not filtered) to find index for same agreement to ensure proper ordering
-    const sameAgreementClauses = clauses.filter(c => c.agreementID === clause.agreementID);
+    // Use all clauses (not filtered) to find index for same template to ensure proper ordering
+    const sameTemplateClauses = clauses.filter(c => c.agreementTemplateId === clause.agreementTemplateId);
     // Sort by sequenceNo to ensure correct order
-    const sortedSameAgreementClauses = [...sameAgreementClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
-    const currentIndex = sortedSameAgreementClauses.findIndex(c => c.id === clause.id);
-    const canMoveUp = canEdit && currentIndex > 0;
-    const canMoveDown = canEdit && currentIndex < sortedSameAgreementClauses.length - 1;
-
-    // Create tooltip messages
-    const editTooltip = canEdit 
-      ? "Edit Clause" 
-      : `Edit only available when agreement status is Draft. Current status: ${agreementStatus || 'Unknown'}`;
-    const moveUpTooltip = canMoveUp 
-      ? "Move Up" 
-      : !canEdit 
-        ? `Move Up only available when agreement status is Draft. Current status: ${agreementStatus || 'Unknown'}`
-        : "Already at the top";
-    const moveDownTooltip = canMoveDown 
-      ? "Move Down" 
-      : !canEdit 
-        ? `Move Down only available when agreement status is Draft. Current status: ${agreementStatus || 'Unknown'}`
-        : "Already at the bottom";
+    const sortedSameTemplateClauses = [...sameTemplateClauses].sort((a, b) => a.sequenceNo - b.sequenceNo);
+    const currentIndex = sortedSameTemplateClauses.findIndex(c => c.id === clause.id);
+    const canMoveUp = currentIndex > 0;
+    const canMoveDown = currentIndex < sortedSameTemplateClauses.length - 1;
 
     return (
       <div className="clause-action-buttons" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
         <button
           className="action-btn action-btn--edit"
           onClick={() => handleEdit(clause)}
-          title={editTooltip}
+          title="Edit Clause"
           aria-label={`Edit clause ${clause.pointTitle}`}
-          disabled={!canEdit}
           type="button"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -355,7 +305,7 @@ const AgreementClausePage = () => {
           className="action-btn action-btn--up"
           onClick={() => handleMoveUp(clause)}
           disabled={!canMoveUp}
-          title={moveUpTooltip}
+          title={canMoveUp ? "Move Up" : "Already at the top"}
           aria-label={`Move clause ${clause.pointTitle} up`}
           type="button"
         >
@@ -367,7 +317,7 @@ const AgreementClausePage = () => {
           className="action-btn action-btn--down"
           onClick={() => handleMoveDown(clause)}
           disabled={!canMoveDown}
-          title={moveDownTooltip}
+          title={canMoveDown ? "Move Down" : "Already at the bottom"}
           aria-label={`Move clause ${clause.pointTitle} down`}
           type="button"
         >
@@ -543,7 +493,7 @@ const AgreementClausePage = () => {
               <table className="route-assignment-table">
                 <thead>
                   <tr>
-                    <th>Agreement ID</th>
+                    <th>Agreement Template Name</th>
                     <th>Sequence</th>
                     <th>Point Number</th>
                     <th>Point Title</th>
@@ -554,13 +504,10 @@ const AgreementClausePage = () => {
                 </thead>
                 <tbody>
                   {filteredClauses.map((clause) => {
-                    const agreement = agreements.find(a => a.agreementID === clause.agreementID);
                     return (
                       <tr key={clause.id}>
                         <td className="clause-agreement-cell">
-                          {agreement 
-                            ? `${clause.agreementID} - ${agreement.agreementNum}`
-                            : clause.agreementID}
+                          {clause.agreementTemplateName || clause.agreementTemplateId}
                         </td>
                         <td className="ra-cell-center">
                           <span className="sequence-cell">{clause.sequenceNo}</span>
@@ -593,7 +540,7 @@ const AgreementClausePage = () => {
       {showCreateModal && (
         <ClauseFormModal
           clause={editingClause}
-          agreements={agreements}
+          agreementTemplates={agreementTemplates}
           clauses={clauses}
           saving={saving}
           onClose={() => {
@@ -609,12 +556,12 @@ const AgreementClausePage = () => {
         <AdvancedFiltersModal
           statusFilter={statusFilter}
           advancedFilters={advancedFilters}
-          agreements={agreements}
+          agreementTemplates={agreementTemplates}
           onClose={() => setShowAdvancedFilters(false)}
           onClear={() => {
             setStatusFilter('All');
             setAdvancedFilters({
-              agreementID: '',
+              agreementTemplateId: '',
               pointNum: '',
               pointTitle: '',
               status: '',
@@ -635,17 +582,17 @@ const AgreementClausePage = () => {
 // Clause Form Modal
 interface ClauseFormModalProps {
   clause: AgreementClause | null;
-  agreements: Agreement[];
+  agreementTemplates: AgreementTemplate[];
   clauses: AgreementClause[];
   saving: boolean;
   onClose: () => void;
   onSave: (data: Partial<AgreementClause>) => void;
 }
 
-const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave }: ClauseFormModalProps) => {
+const ClauseFormModal = ({ clause, agreementTemplates, clauses, saving, onClose, onSave }: ClauseFormModalProps) => {
   const [formData, setFormData] = useState<Partial<AgreementClause>>(
     clause || {
-      agreementID: '',
+      agreementTemplateId: '',
       pointNum: '',
       pointTitle: '',
       pointText: '',
@@ -654,18 +601,43 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
     }
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [placeholders, setPlaceholders] = useState<PlaceholderMasterResponse[]>([]);
+  const [loadingPlaceholders, setLoadingPlaceholders] = useState(false);
 
-  const validatePointNumber = (pointNum: string, agreementID: string): boolean => {
-    if (!pointNum || !agreementID) return true; // Allow empty during editing
+  // Load placeholders when modal opens
+  useEffect(() => {
+    const loadPlaceholders = async () => {
+      try {
+        setLoadingPlaceholders(true);
+        const data = await placeholderMasterService.getAllPlaceholderMasters(true);
+        setPlaceholders(data);
+      } catch (err) {
+        console.error('Failed to load placeholders:', err);
+      } finally {
+        setLoadingPlaceholders(false);
+      }
+    };
+    loadPlaceholders();
+  }, []);
+
+  const handlePlaceholderClick = (placeholderCode: string) => {
+    const placeholderText = `{{${placeholderCode}}}`;
+    const currentText = formData.pointText || '';
+    const newText = currentText + (currentText ? ' ' : '') + placeholderText;
+    setFormData({ ...formData, pointText: newText });
+  };
+
+  const validatePointNumber = (pointNum: string, agreementTemplateId: string): boolean => {
+    if (!pointNum || !agreementTemplateId) return true; // Allow empty during editing
     
     const existingClause = clauses.find(
-      c => c.agreementID === agreementID && 
+      c => c.agreementTemplateId === agreementTemplateId && 
       c.pointNum === pointNum && 
       c.id !== clause?.id
     );
     
     if (existingClause) {
-      setValidationError(`Point number ${pointNum} already exists for this agreement.`);
+      setValidationError(`Point number ${pointNum} already exists for this agreement template.`);
       return false;
     }
     
@@ -675,25 +647,25 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
 
   const handlePointNumChange = (value: string) => {
     setFormData({ ...formData, pointNum: value });
-    if (formData.agreementID) {
-      validatePointNumber(value, formData.agreementID);
+    if (formData.agreementTemplateId) {
+      validatePointNumber(value, formData.agreementTemplateId);
     }
   };
 
-  const handleAgreementChange = (value: string) => {
-    setFormData({ ...formData, agreementID: value, pointNum: '' });
+  const handleTemplateChange = (value: string) => {
+    setFormData({ ...formData, agreementTemplateId: value, pointNum: '' });
     setValidationError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.agreementID || !formData.pointText || !formData.pointNum) {
+    if (!formData.agreementTemplateId || !formData.pointText || !formData.pointNum) {
       toast.error('Please complete the required fields.');
       return;
     }
 
-    if (!validatePointNumber(formData.pointNum, formData.agreementID)) {
+    if (!validatePointNumber(formData.pointNum, formData.agreementTemplateId)) {
       return;
     }
 
@@ -701,11 +673,28 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">{clause ? 'Edit Agreement Clause' : 'Add Agreement Clause'}</h2>
-          <button className="modal-close-btn" onClick={onClose}>
+    <div className="modal-overlay ra-assignment-modal-overlay" onClick={onClose}>
+      <div className="modal-content ra-assignment-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="ra-assignment-modal-header">
+          <div className="ra-assignment-modal-titlewrap">
+            <div className="ra-assignment-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 className="ra-assignment-modal-title">{clause ? 'Edit Agreement Clause' : 'Add Agreement Clause'}</h2>
+              <p className="ra-assignment-modal-subtitle">
+                {clause ? 'Update clause details' : 'Create a new agreement clause record.'}
+              </p>
+            </div>
+          </div>
+          <button className="ra-assignment-close" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -713,75 +702,157 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
           </button>
         </div>
 
-        <form className="clause-form" onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3 className="form-section-title">Clause Information</h3>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Agreement ID *</label>
-                <select
-                  value={formData.agreementID || ''}
-                  onChange={(e) => handleAgreementChange(e.target.value)}
-                  required
-                  disabled={!!clause || saving}
-                >
-                  <option value="">Select Agreement</option>
-                  {agreements.map((agreement) => (
-                    <option key={agreement.id} value={agreement.agreementID}>
-                      {agreement.agreementID} - {agreement.agreementNum}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Point Number *</label>
-                <input
-                  type="text"
-                  value={formData.pointNum || ''}
-                  onChange={(e) => handlePointNumChange(e.target.value)}
-                  placeholder="e.g., 1, 2, 3"
-                  required
-                  disabled={saving}
-                />
-                {validationError && (
-                  <span className="form-error" style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    {validationError}
-                  </span>
-                )}
-                <p className="form-help-text" style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  Must be unique per agreement
-                </p>
-              </div>
-              <div className="form-group form-group--full">
-                <label>Point Title</label>
-                <input
-                  type="text"
-                  value={formData.pointTitle || ''}
-                  onChange={(e) => setFormData({ ...formData, pointTitle: e.target.value })}
-                  disabled={saving}
-                  placeholder="Optional: For reference only (not printed in PDF)"
-                />
-              </div>
-              <div className="form-group form-group--full">
-                <label>Point Text *</label>
-                <textarea
-                  value={formData.pointText || ''}
-                  onChange={(e) => setFormData({ ...formData, pointText: e.target.value })}
-                  required
-                  disabled={saving}
-                  placeholder="Enter the clause text..."
-                  rows={4}
-                />
-              </div>
+        {/* Form */}
+        <form className="ra-assignment-form" onSubmit={handleSubmit}>
+          <div className="ra-assignment-form-grid">
+            <div className="ra-assignment-form-group">
+              <label htmlFor="agreement-template">
+                Agreement Template <span className="ra-required">*</span>
+              </label>
+              <select
+                id="agreement-template"
+                value={formData.agreementTemplateId || ''}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                required
+                disabled={!!clause || saving}
+                className="ra-assignment-select"
+              >
+                <option value="">Select Agreement Template</option>
+                {agreementTemplates
+                  .filter(t => t.status === 'Active')
+                  .map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.templateCode} – {template.templateName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ra-assignment-form-group">
+              <label htmlFor="point-num">
+                Point Number <span className="ra-required">*</span>
+              </label>
+              <input
+                id="point-num"
+                type="text"
+                value={formData.pointNum || ''}
+                onChange={(e) => handlePointNumChange(e.target.value)}
+                placeholder="e.g., 1, 2, 3"
+                required
+                disabled={saving}
+                className="ra-assignment-input"
+              />
+              {validationError && (
+                <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  {validationError}
+                </span>
+              )}
+              <small style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                Must be unique per agreement template
+              </small>
+            </div>
+            <div className="ra-assignment-form-group" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="point-title">Point Title</label>
+              <input
+                id="point-title"
+                type="text"
+                value={formData.pointTitle || ''}
+                onChange={(e) => setFormData({ ...formData, pointTitle: e.target.value })}
+                disabled={saving}
+                placeholder="Optional: For reference only (not printed in PDF)"
+                className="ra-assignment-input"
+              />
+            </div>
+            <div className="ra-assignment-form-group" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="point-text">
+                Point Text <span className="ra-required">*</span>
+              </label>
+              <textarea
+                id="point-text"
+                value={formData.pointText || ''}
+                onChange={(e) => setFormData({ ...formData, pointText: e.target.value })}
+                required
+                disabled={saving}
+                placeholder="Enter the clause text... Use {{PLACEHOLDER_CODE}} for dynamic fields"
+                rows={4}
+                className="ra-assignment-input"
+                style={{ height: 'auto', minHeight: '100px', resize: 'vertical' }}
+              />
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={saving}>
+          {/* Available Dynamic Fields Section */}
+          <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
+            <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', marginBottom: '12px' }}>
+              Available Dynamic Fields
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+              Click on a placeholder to insert it into the Point Text field. Format: {'{{PLACEHOLDER_CODE}}'}
+            </p>
+            {loadingPlaceholders ? (
+              <div style={{ padding: '12px', textAlign: 'center', color: '#64748b' }}>Loading placeholders...</div>
+            ) : placeholders.length === 0 ? (
+              <div style={{ padding: '12px', textAlign: 'center', color: '#64748b' }}>No active placeholders available</div>
+            ) : (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+                gap: '8px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                padding: '8px',
+                background: '#f8fafc',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {placeholders.map((placeholder) => (
+                  <button
+                    key={placeholder.id}
+                    type="button"
+                    onClick={() => handlePlaceholderClick(placeholder.placeholderCode)}
+                    disabled={saving}
+                    style={{
+                      padding: '8px 12px',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '4px',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      textAlign: 'left',
+                      fontSize: '12px',
+                      transition: 'all 0.2s',
+                      opacity: saving ? 0.6 : 1
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!saving) {
+                        e.currentTarget.style.background = '#f1f5f9';
+                        e.currentTarget.style.borderColor = '#0f172a';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!saving) {
+                        e.currentTarget.style.background = '#ffffff';
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                      }
+                    }}
+                    title={`${placeholder.placeholderDescription} (${placeholder.sourceTable}.${placeholder.sourceColumn})`}
+                  >
+                    <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>
+                      {'{{'}{placeholder.placeholderCode}{'}}'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {placeholder.placeholderDescription}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="ra-assignment-modal-footer">
+            <button type="button" className="ra-assignment-btn ra-assignment-btn--cancel" onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="btn btn--primary" disabled={saving || !!validationError}>
-              {saving ? 'Saving...' : (clause ? 'Update' : 'Add')} Clause
+            <button type="submit" className="ra-assignment-btn ra-assignment-btn--primary" disabled={saving || !!validationError}>
+              {saving ? 'Saving...' : (clause ? 'Update' : 'Save')}
             </button>
           </div>
         </form>
@@ -794,7 +865,7 @@ const ClauseFormModal = ({ clause, agreements, clauses, saving, onClose, onSave 
 interface AdvancedFiltersModalProps {
   statusFilter: string;
   advancedFilters: AdvancedFilters;
-  agreements: Agreement[];
+  agreementTemplates: AgreementTemplate[];
   onClose: () => void;
   onClear: () => void;
   onApply: (payload: { statusFilter: string; advancedFilters: AdvancedFilters }) => void;
@@ -803,7 +874,7 @@ interface AdvancedFiltersModalProps {
 const AdvancedFiltersModal = ({
   statusFilter,
   advancedFilters,
-  agreements,
+  agreementTemplates,
   onClose,
   onClear,
   onApply,
@@ -834,16 +905,16 @@ const AdvancedFiltersModal = ({
         <div className="ra-filter-modal-body">
           <div className="ra-filter-grid">
             <div className="ra-filter-field">
-              <label>Agreement ID</label>
+              <label>Agreement Template</label>
               <select
-                value={draft.agreementID}
-                onChange={(e) => setDraft({ ...draft, agreementID: e.target.value })}
+                value={draft.agreementTemplateId}
+                onChange={(e) => setDraft({ ...draft, agreementTemplateId: e.target.value })}
                 className="ra-filter-select"
               >
-                <option value="">All Agreements</option>
-                {agreements.map((agreement) => (
-                  <option key={agreement.id} value={agreement.agreementID}>
-                    {agreement.agreementID} - {agreement.agreementNum}
+                <option value="">All Templates</option>
+                {agreementTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.templateCode} – {template.templateName}
                   </option>
                 ))}
               </select>
@@ -892,7 +963,7 @@ const AdvancedFiltersModal = ({
             className="ra-link-btn"
             onClick={() => {
               setDraftStatus('All');
-              setDraft({ agreementID: '', pointNum: '', pointTitle: '', status: '' });
+              setDraft({ agreementTemplateId: '', pointNum: '', pointTitle: '', status: '' });
               onClear();
             }}
           >

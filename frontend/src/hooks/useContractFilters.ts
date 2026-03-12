@@ -8,6 +8,7 @@ export interface Contract {
   companyID: string;
   hcfName: string;
   hcfID: string;
+  agreementTemplateId?: string;
   startDate: string;
   endDate: string;
   billingType: string;
