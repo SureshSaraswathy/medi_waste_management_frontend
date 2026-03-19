@@ -1061,6 +1061,66 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
   const [placeholders, setPlaceholders] = useState<PlaceholderMasterResponse[]>([]);
   const agreementDocumentRef = useRef<HTMLDivElement>(null);
 
+  // ---- Dynamic "BETWEEN" paragraph (master-driven) helpers ----
+  const cleanText = (v?: string | null): string => (v ? v.replace(/\s+/g, ' ').trim() : '');
+
+  const getFirstValue = (obj: any, keys: string[]): string => {
+    if (!obj) return '';
+    for (const key of keys) {
+      const raw = obj[key];
+      const cleaned = cleanText(raw);
+      if (cleaned) return cleaned;
+    }
+    return '';
+  };
+
+  const formatOrdinalDate = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    const day = d.getDate();
+    const month = d.toLocaleString('en-IN', { month: 'long' });
+    const year = d.getFullYear();
+
+    const j = day % 10;
+    const k = day % 100;
+    let suffix = 'th';
+    if (j === 1 && k !== 11) suffix = 'st';
+    else if (j === 2 && k !== 12) suffix = 'nd';
+    else if (j === 3 && k !== 13) suffix = 'rd';
+
+    return `${day}${suffix} ${month} ${year}`;
+  };
+
+  const getAgreementCity = (): string => {
+    // We don't have explicit city fields. Best-effort extraction; fallback to Chennai (common case in your sample).
+    const addr = `${cleanText(company?.regdOfficeAddress)} ${cleanText(hcf?.serviceAddress)}`.toLowerCase();
+    if (addr.includes('chennai')) return 'Chennai';
+    return 'Chennai';
+  };
+
+  const firstPartyName = getFirstValue(company, ['companyName']) || '[Company Name]';
+  const firstPartyAddress =
+    getFirstValue(company, ['regdOfficeAddress', 'regd_office_address']) ||
+    getFirstValue(company, ['adminOfficeAddress', 'admin_office_address']) ||
+    getFirstValue(company, ['factoryAddress', 'factory_address']) ||
+    '[Address of the company]';
+  const firstPartyDesignation =
+    getFirstValue(company, ['authPersonDesignation', 'auth_person_designation']) || 'Manager';
+  const firstPartyPersonName =
+    getFirstValue(company, ['authPersonName', 'auth_person_name']) || '[Authorized Person]';
+
+  const secondPartyName = getFirstValue(hcf, ['hcfName']) || '[HCF Name]';
+  const secondPartyAddress =
+    getFirstValue(hcf, ['serviceAddress', 'service_address']) || '[HCF Address]';
+  const secondPartyDesignation =
+    getFirstValue(hcf, ['agrSignAuthDesignation', 'agr_sign_auth_designation']) ||
+    getFirstValue(hcf, ['drDesignation', 'dr_designation']) ||
+    'Proprietor';
+  const secondPartyPersonName =
+    getFirstValue(hcf, ['agrSignAuthName', 'agr_sign_auth_name']) ||
+    getFirstValue(hcf, ['drName', 'dr_name']) ||
+    '[Authorized Person]';
+
   // Load agreement clauses from contract's agreement template
   useEffect(() => {
     const loadClauses = async () => {
@@ -1136,6 +1196,30 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
         
         setCompany(companyData);
         setHcf(hcfData);
+        // Debug: confirm master values exist for PDF rendering
+        console.log('[AgreementPreviewModal] Loaded master data for PDF:', {
+          contractId: agreement.contractID,
+          companyId: contract.companyId,
+          hcfId: contract.hcfId,
+          company: {
+            companyName: companyData?.companyName,
+            regdOfficeAddress: companyData?.regdOfficeAddress,
+            adminOfficeAddress: companyData?.adminOfficeAddress,
+            factoryAddress: companyData?.factoryAddress,
+            authPersonName: companyData?.authPersonName,
+            authPersonDesignation: companyData?.authPersonDesignation,
+          },
+          hcf: {
+            hcfName: hcfData?.hcfName,
+            serviceAddress: hcfData?.serviceAddress,
+            agrSignAuthName: hcfData?.agrSignAuthName,
+            agrSignAuthDesignation: hcfData?.agrSignAuthDesignation,
+            drName: hcfData?.drName,
+          },
+          // Also log possible snake_case keys if API returned them unexpectedly
+          companyKeys: companyData ? Object.keys(companyData) : [],
+          hcfKeys: hcfData ? Object.keys(hcfData) : [],
+        });
       } catch (err) {
         console.error('Failed to load party data:', err);
         // Don't set error state, just leave placeholders
@@ -1157,10 +1241,20 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
       return;
     }
 
+    // Ensure master + clauses are loaded before capturing the DOM,
+    // otherwise we may end up with fallback placeholders like "[Address of the company]".
+    if (loadingPartyData || loadingClauses || !company || !hcf) {
+      toast.error('Please wait until party details are loaded before downloading PDF.');
+      return;
+    }
+
     try {
       setGeneratingPDF(true);
       
       const element = agreementDocumentRef.current;
+      // Important: the document container is scroll-capped for UI. Remove that cap for HTML->canvas capture
+      // so html2pdf can slice the full height into multiple A4 pages when needed.
+      element.classList.add('pdf-export-mode');
       const opt = {
         margin: [10, 10, 10, 10] as [number, number, number, number],
         filename: `${agreement.agreementNum}.pdf`,
@@ -1184,6 +1278,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
       console.error('Failed to generate PDF:', error);
       toast.error(error.message || 'Failed to generate PDF. Please try again.');
     } finally {
+      agreementDocumentRef.current?.classList.remove('pdf-export-mode');
       setGeneratingPDF(false);
     }
   };
@@ -1383,7 +1478,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
               type="button" 
               className="btn btn--primary" 
               onClick={handleDownloadPDF}
-              disabled={generatingPDF}
+              disabled={generatingPDF || loadingClauses || loadingPartyData || !company || !hcf}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -1420,44 +1515,23 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                         <p className="party-intro-text"><strong>BETWEEN</strong></p>
                         <h3 className="party-name">PARTY OF THE FIRST PART</h3>
                         <p className="party-description">
-                          {company ? (
-                            <>
-                              <strong>{company.companyName}</strong>, a company incorporated under the Companies Act, 2013, 
-                              having its registered office at [Address], represented by [Authorized Person], 
-                              hereinafter referred to as the "<strong>Service Provider</strong>" (which expression shall, unless 
-                              repugnant to the context or meaning thereof, be deemed to include its successors 
-                              and assigns).
-                            </>
-                          ) : (
-                            <>
-                              [Company Name], a company incorporated under the Companies Act, 2013, 
-                              having its registered office at [Address], represented by [Authorized Person], 
-                              hereinafter referred to as the "<strong>Service Provider</strong>" (which expression shall, unless 
-                              repugnant to the context or meaning thereof, be deemed to include its successors 
-                              and assigns).
-                            </>
-                          )}
+                          <strong>M/s. {firstPartyName}</strong>, a company incorporated under the Companies Act, 2013,
+                          having its Registered Office at {firstPartyAddress},
+                          represented by its {firstPartyDesignation}, {firstPartyPersonName},
+                          hereinafter referred to as the "<strong>FIRST PARTY</strong>" (which expression shall, unless
+                          repugnant to the context or meaning thereof, be deemed to include its successors
+                          and assigns).
                         </p>
                       </div>
                       <div className="party-section">
                         <p className="party-intro-text"><strong>AND</strong></p>
                         <h3 className="party-name">PARTY OF THE SECOND PART</h3>
                         <p className="party-description">
-                          {hcf ? (
-                            <>
-                              <strong>{hcf.hcfName}</strong>, a healthcare facility located at {hcf.serviceAddress || '[Address]'}, represented by 
-                              {hcf.agrSignAuthName ? ` ${hcf.agrSignAuthName}` : ' [Authorized Person]'}, hereinafter referred to as the "<strong>Client</strong>" (which 
-                              expression shall, unless repugnant to the context or meaning thereof, be 
-                              deemed to include its successors and assigns).
-                            </>
-                          ) : (
-                            <>
-                              [HCF Name], a healthcare facility located at [Address], represented by 
-                              [Authorized Person], hereinafter referred to as the "<strong>Client</strong>" (which 
-                              expression shall, unless repugnant to the context or meaning thereof, be 
-                              deemed to include its successors and assigns).
-                            </>
-                          )}
+                          <strong>{secondPartyName}</strong>, a healthcare facility located at {secondPartyAddress},
+                          represented by its {secondPartyDesignation}, {secondPartyPersonName},
+                          hereinafter referred to as the "<strong>SECOND PARTY</strong>" (which expression shall, unless
+                          repugnant to the context or meaning thereof, be deemed to include its successors
+                          and assigns).
                         </p>
                       </div>
                     </div>
@@ -1470,6 +1544,9 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
             {/* Agreement Header - Fixed at top */}
             <div className="agreement-header-section">
               <h1 className="agreement-main-title">SERVICE AGREEMENT</h1>
+              <p className="agreement-subtitle">
+                FOR COLLECTION, TRANSPORTATION, TREATMENT AND DISPOSAL OF BIOMEDICAL WASTES
+              </p>
               <div className="agreement-meta">
                 <p><strong>Agreement No.:</strong> {agreement.agreementNum}</p>
                 {contractNum && <p><strong>Contract Reference:</strong> {contractNum}</p>}
@@ -1478,36 +1555,27 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
 
             {/* Agreement Content - Starts after header spacing */}
             <div className="agreement-content">
-            {/* Introduction Section - Show only if first clause is WHEREAS */}
-            {clauses.length > 0 && isWhereasClause(clauses[0]) && (
-              <div className="agreement-section agreement-intro-section">
-                <p className="whereas-intro">
-                  This Service Agreement ("Agreement") is made on this <strong>{new Date(agreement.agreementDate).toLocaleDateString('en-IN', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}</strong> between {company ? <strong>{company.companyName}</strong> : '[Company Name]'} (hereinafter referred to as the "<strong>Service Provider</strong>") and {hcf ? <strong>{hcf.hcfName}</strong> : '[HCF Name]'} (hereinafter referred to as the "<strong>Client</strong>"):
-                </p>
-              </div>
-            )}
+            {/* BETWEEN / AND section (dynamic from masters) */}
+            <div className="agreement-section agreement-intro-section">
+              <p className="between-text">
+                This Agreement made and entered into at <strong>{getAgreementCity()}</strong> on this{' '}
+                <strong>{formatOrdinalDate(agreement.agreementDate)}</strong> BETWEEN{' '}
+                <strong>M/s. {firstPartyName}</strong>, incorporated under the Companies Act, 1956 having it&apos;s Registered Office at{' '}
+                <strong> {firstPartyAddress}</strong> represented by its {firstPartyDesignation},{' '}
+                <strong> {firstPartyPersonName}</strong>, hereinafter called the <strong>FIRST PARTY</strong>.
+              </p>
+              <p className="between-and-sep"><strong>AND</strong></p>
+              <p className="between-text">
+                <strong>{secondPartyName}</strong>, <strong>{secondPartyAddress}</strong> represented by its {secondPartyDesignation},{' '}
+                <strong> {secondPartyPersonName}</strong>, hereinafter called the <strong>SECOND PARTY</strong>.
+              </p>
 
-            {/* Introduction text when no clauses exist or first clause is not WHEREAS */}
-            {(clauses.length === 0 || !isWhereasClause(clauses[0])) && (
-              <div className="agreement-section agreement-intro-section">
-                <p className="intro-text">
-                  This Service Agreement ("Agreement") is made on this <strong>{new Date(agreement.agreementDate).toLocaleDateString('en-IN', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}</strong> between {company ? <strong>{company.companyName}</strong> : '[Company Name]'} (hereinafter referred to as the "<strong>Service Provider</strong>") and {hcf ? <strong>{hcf.hcfName}</strong> : '[HCF Name]'} (hereinafter referred to as the "<strong>Client</strong>").
+              {clauses.length > 0 && (
+                <p className="intro-continuation">
+                  The parties agree as follows:
                 </p>
-                {clauses.length > 0 && (
-                  <p className="intro-continuation">
-                    The parties agree as follows:
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
             {/* All Clauses - Rendered in sequenceNo order with appropriate formatting */}
             {clauses.length > 0 && (() => {
@@ -1555,7 +1623,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                         ) : hasPointNum ? (
                           <div className="clause-item clause-item--numbered">
                             <p className="clause-text">
-                              <strong>{clause.pointNum}.</strong> {replacePlaceholders(clause.pointText)}
+                              <strong>{clause.sequenceNo}.</strong> {replacePlaceholders(clause.pointText)}
                             </p>
                           </div>
                         ) : isNormal ? (

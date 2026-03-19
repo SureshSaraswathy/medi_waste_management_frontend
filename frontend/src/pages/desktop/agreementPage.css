@@ -845,6 +845,55 @@
   overflow-y: auto;
 }
 
+.agreement-document.pdf-export-mode {
+  /* The UI container is scroll-capped; remove the cap so html2canvas can
+     render the full document height and html2pdf can slice into pages. */
+  max-height: none !important;
+  overflow-y: visible !important;
+  overflow: visible !important;
+}
+
+.agreement-document.pdf-export-mode .agreement-page {
+  /* Prevent any print-media sizing/flex behavior from breaking the flow
+     during html2pdf capture. */
+  min-height: auto !important;
+  width: auto !important;
+  display: block !important;
+  flex-direction: initial !important;
+  padding-top: 0 !important;
+  padding-left: 40px !important;
+  padding-right: 40px !important;
+  padding-bottom: 40px !important;
+  page-break-after: auto !important;
+  break-after: auto !important;
+}
+
+.agreement-document.pdf-export-mode .agreement-content {
+  /* Bring BETWEEN/AND section closer under the header for proper first-page fit. */
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.agreement-document.pdf-export-mode .agreement-page {
+  /* Neutralize any print-mode min-height/padding that can push content down */
+  min-height: auto !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.agreement-document.pdf-export-mode .agreement-header-section {
+  padding-bottom: 12px !important;
+  margin-bottom: 0 !important;
+}
+
+.agreement-document.pdf-export-mode .between-text {
+  text-align: justify !important;
+}
+
+.agreement-document.pdf-export-mode .between-and-sep {
+  text-align: center !important;
+}
+
 .loading-message {
   padding: 40px;
   text-align: center;
@@ -979,6 +1028,15 @@
   color: #0f172a;
 }
 
+.agreement-subtitle {
+  margin: -8px 0 10px 0; /* visually ties to the title */
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #0f172a;
+}
+
 .agreement-meta {
   display: flex;
   flex-direction: column;
@@ -1008,6 +1066,21 @@
   margin-bottom: 24px;
   page-break-inside: avoid;
   break-inside: avoid;
+}
+
+.between-text {
+  font-size: 14px;
+  text-align: justify;
+  line-height: 1.8;
+  color: #334155;
+  margin: 0 0 12px 0;
+}
+
+.between-and-sep {
+  margin: 0 0 12px 0;
+  text-align: center;
+  color: #0f172a;
+  letter-spacing: 1px;
 }
 
 /* Add space after 10 lines for stamp */
