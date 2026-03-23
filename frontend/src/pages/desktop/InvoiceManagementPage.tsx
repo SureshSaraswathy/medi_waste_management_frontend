@@ -77,6 +77,7 @@ interface HCF {
   companyId: string;
   companyName: string;
   status: 'Active' | 'Inactive';
+  billingType?: string;
   billingOption?: string;
   bedRate?: string;
   kgRate?: string;
@@ -159,6 +160,7 @@ const InvoiceManagementPage = () => {
         companyId: h.companyId,
         companyName: companiesData.find(c => c.id === h.companyId)?.companyName || '',
         status: h.status || 'Active',
+        billingType: h.billingType,
         billingOption: h.billingOption,
         bedRate: h.bedRate,
         kgRate: h.kgRate,
@@ -588,12 +590,15 @@ const InvoiceManagementPage = () => {
         setSuccessMessage('Invoice updated successfully');
       } else {
         // Create new invoice
+        if (!data.billingType) {
+          throw new Error('Billing type is required from HCF master');
+        }
         const createData: CreateInvoiceRequest = {
           companyId: company.id,
           hcfId: hcf.id,
           invoiceDate: data.invoiceDate || new Date().toISOString().split('T')[0],
           dueDate: data.dueDate || new Date().toISOString().split('T')[0],
-          billingType: (data.billingType as any) || 'Monthly',
+          billingType: data.billingType as any,
           billingDays: data.billingDays ? parseInt(data.billingDays as string) : undefined,
           billingOption: (data.billingOption as any) || 'Bed-wise',
           generationType: 'Manual',
@@ -1859,9 +1864,27 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
     ? hcfs.filter(hcf => hcf.companyId === selectedCompanyId)
     : [];
 
+  const mapBillingTypeFromHcf = (raw?: string): string => {
+    if (!raw) return '';
+    const value = raw.trim().toLowerCase();
+    if (value === 'monthly') return 'Monthly';
+    if (value === 'quarterly') return 'Quarterly';
+    if (value === 'yearly') return 'Yearly';
+    return '';
+  };
+
   // Handle company change - enable/disable HCF dropdown
   const handleCompanyChange = (companyName: string) => {
-    setFormData(prev => ({ ...prev, companyName, hcfCode: '', billingOption: '', bedRate: '', kgRate: '', lumpsumAmount: '' }));
+    setFormData(prev => ({
+      ...prev,
+      companyName,
+      hcfCode: '',
+      billingType: '',
+      billingOption: '',
+      bedRate: '',
+      kgRate: '',
+      lumpsumAmount: '',
+    }));
     
     if (companyName) {
       // Company selected - enable HCF dropdown
@@ -1881,8 +1904,6 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
 
   // Handle HCF change - load HCF data and populate form
   const handleHCFChange = (hcfCode: string) => {
-    handleFieldChange('hcfCode', hcfCode);
-    
     if (hcfCode) {
       const selectedHCF = filteredHCFs.find(h => h.hcfCode === hcfCode);
       if (selectedHCF) {
@@ -1901,7 +1922,7 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
 
         // Populate form with HCF data (set default billing option, but user can modify afterward)
         setFormData(prev => {
-          const next: any = { ...prev, billingOption };
+          const next: any = { ...prev, hcfCode, billingType: mapBillingTypeFromHcf(selectedHCF.billingType), billingOption };
 
           if (billingOption === 'Bed-wise') {
             next.bedRate = selectedHCF.bedRate || '';
@@ -1935,6 +1956,8 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
       // Clear HCF-related fields when HCF is cleared
       setFormData(prev => ({
         ...prev,
+        hcfCode: '',
+        billingType: '',
         billingOption: '',
         bedCount: '',
         bedRate: '',
@@ -2324,11 +2347,12 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                   <select
                     id="billingType"
                     value={formData.billingType || ''}
-                    onChange={(e) => handleFieldChange('billingType', e.target.value)}
                     required
+                    disabled
                     className="wp-form-select"
+                    style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                   >
-                    <option value="">Select Billing Type</option>
+                    <option value="">{formData.hcfCode ? 'No billing type in HCF master' : 'Select HCF first'}</option>
                     <option value="Monthly">Monthly</option>
                     <option value="Quarterly">Quarterly</option>
                     <option value="Yearly">Yearly</option>
@@ -2337,6 +2361,9 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </div>
+                <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                  From HCF master (read-only)
+                </small>
               </div>
             </div>
 

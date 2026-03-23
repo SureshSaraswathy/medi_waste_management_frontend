@@ -9,6 +9,7 @@ import {
   postDraftInvoices,
   InvoiceResponse,
 } from '../../services/invoiceService';
+import { notifyError, notifySuccess, notifyWarning } from '../../utils/notify';
 import NotificationBell from '../../components/NotificationBell';
 import { hcfService } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
@@ -51,6 +52,25 @@ const DraftInvoiceBatchEditPage = () => {
     minAmount: '',
     maxAmount: '',
   });
+  const [showPostConfirm, setShowPostConfirm] = useState(false);
+  const [pendingPostCount, setPendingPostCount] = useState(0);
+
+  const toNumber = (value: unknown, fallback = 0): number => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const normalizeStatus = (status?: string): string => {
+    const s = (status || '').toUpperCase();
+    if (s === 'DRAFT') return 'Draft';
+    if (s === 'DUE' || s === 'POSTED') return 'Generated';
+    if (s === 'PARTIAL_PAID') return 'Partially Paid';
+    if (s === 'PAID') return 'Paid';
+    if (s === 'CANCELLED') return 'Cancelled';
+    return status || 'Draft';
+  };
+
+  const isEditableDraft = (invoice: DraftInvoice): boolean => normalizeStatus(invoice.status) === 'Draft';
 
   useEffect(() => {
     if (batchId) {
@@ -83,7 +103,8 @@ const DraftInvoiceBatchEditPage = () => {
 
       const mappedInvoices: DraftInvoice[] = draftInvoices.map(inv => ({
         ...inv,
-        isSelected: true,
+        status: normalizeStatus(inv.status),
+        isSelected: normalizeStatus(inv.status) === 'Draft',
         hasError: (inv.invoiceValue || 0) <= 0,
         originalQuantity: inv.weightInKg || inv.bedCount || 1,
         originalRate: inv.kgRate || inv.bedRate || inv.lumpsumAmount || 0,
@@ -152,12 +173,14 @@ const DraftInvoiceBatchEditPage = () => {
   const applyBulkRate = () => {
     if (!bulkRate || isNaN(Number(bulkRate))) {
       setError('Please enter a valid rate');
+      notifyWarning('Please enter a valid rate');
       return;
     }
 
     const selectedInvoices = invoices.filter(inv => inv.isSelected && !inv.hasError);
     if (selectedInvoices.length === 0) {
       setError('Please select at least one invoice');
+      notifyWarning('Please select at least one draft invoice');
       return;
     }
 
@@ -169,10 +192,12 @@ const DraftInvoiceBatchEditPage = () => {
         loadDraftInvoices();
         setBulkRate('');
         setSuccessMessage(`Updated rate for ${selectedInvoices.length} invoice(s)`);
+        notifySuccess(`Updated rate for ${selectedInvoices.length} invoice(s)`);
         setTimeout(() => setSuccessMessage(null), 3000);
       })
       .catch(err => {
         setError(err.message || 'Failed to update rates');
+        notifyError(err.message || 'Failed to update rates');
       })
       .finally(() => setLoading(false));
   };
@@ -180,12 +205,14 @@ const DraftInvoiceBatchEditPage = () => {
   const applyBulkDueDate = () => {
     if (!bulkDueDate) {
       setError('Please select a due date');
+      notifyWarning('Please select a due date');
       return;
     }
 
     const selectedInvoices = invoices.filter(inv => inv.isSelected && !inv.hasError);
     if (selectedInvoices.length === 0) {
       setError('Please select at least one invoice');
+      notifyWarning('Please select at least one draft invoice');
       return;
     }
 
@@ -197,10 +224,12 @@ const DraftInvoiceBatchEditPage = () => {
         loadDraftInvoices();
         setBulkDueDate('');
         setSuccessMessage(`Updated due date for ${selectedInvoices.length} invoice(s)`);
+        notifySuccess(`Updated due date for ${selectedInvoices.length} invoice(s)`);
         setTimeout(() => setSuccessMessage(null), 3000);
       })
       .catch(err => {
         setError(err.message || 'Failed to update due dates');
+        notifyError(err.message || 'Failed to update due dates');
       })
       .finally(() => setLoading(false));
   };
@@ -249,18 +278,23 @@ const DraftInvoiceBatchEditPage = () => {
     const selectedInvoices = invoices.filter(inv => inv.isSelected && !inv.hasError);
     if (selectedInvoices.length === 0) {
       setError('Please select at least one valid invoice to post');
+      notifyWarning('Please select at least one valid draft invoice to post');
       return;
     }
 
     const hasErrors = selectedInvoices.some(inv => inv.hasError);
     if (hasErrors) {
       setError('Cannot post invoices with errors. Please fix or deselect them.');
+      notifyWarning('Cannot post invoices with errors. Please fix or deselect them.');
       return;
     }
+    setPendingPostCount(selectedInvoices.length);
+    setShowPostConfirm(true);
+  };
 
-    if (!window.confirm(`Are you sure you want to post ${selectedInvoices.length} invoice(s)? This action cannot be undone.`)) {
-      return;
-    }
+  const handleConfirmPost = async () => {
+    const selectedInvoices = invoices.filter(inv => inv.isSelected && !inv.hasError);
+    setShowPostConfirm(false);
 
     setLoading(true);
     setError(null);
@@ -271,6 +305,7 @@ const DraftInvoiceBatchEditPage = () => {
       const result = await postDraftInvoices(invoiceIds, invoiceDate);
       
       setSuccessMessage(`Posted ${result.success} invoice(s) successfully. ${result.failed} failed.`);
+      notifySuccess(`Posted ${result.success} invoice(s) successfully${result.failed ? `, ${result.failed} failed` : ''}.`);
       
       setTimeout(() => {
         navigate('/finance/invoice-management');
@@ -278,26 +313,27 @@ const DraftInvoiceBatchEditPage = () => {
     } catch (err: any) {
       console.error('Error posting invoices:', err);
       setError(err.message || 'Failed to post invoices');
+      notifyError(err.message || 'Failed to post invoices');
     } finally {
       setLoading(false);
     }
   };
 
   const getQuantity = (invoice: DraftInvoice): number => {
-    return invoice.weightInKg || invoice.bedCount || 1;
+    return toNumber(invoice.weightInKg ?? invoice.bedCount, 1);
   };
 
   const getRate = (invoice: DraftInvoice): number => {
-    return invoice.kgRate || invoice.bedRate || invoice.lumpsumAmount || 0;
+    return toNumber(invoice.kgRate ?? invoice.bedRate ?? invoice.lumpsumAmount, 0);
   };
 
   const getDescription = (invoice: DraftInvoice): string => {
     if (invoice.billingOption === 'Weight-wise') {
-      return `Weight-based billing: ${invoice.weightInKg?.toFixed(2)} kg @ ₹${invoice.kgRate?.toFixed(2)}/kg`;
+      return `Weight-based billing: ${toNumber(invoice.weightInKg).toFixed(2)} kg @ ₹${toNumber(invoice.kgRate).toFixed(2)}/kg`;
     } else if (invoice.billingOption === 'Bed-wise') {
-      return `Bed-wise billing: ${invoice.bedCount} beds @ ₹${invoice.bedRate?.toFixed(2)}/bed`;
+      return `Bed-wise billing: ${toNumber(invoice.bedCount)} beds @ ₹${toNumber(invoice.bedRate).toFixed(2)}/bed`;
     } else {
-      return `Lumpsum billing: ₹${invoice.lumpsumAmount?.toFixed(2)}`;
+      return `Lumpsum billing: ₹${toNumber(invoice.lumpsumAmount).toFixed(2)}`;
     }
   };
 
@@ -321,19 +357,19 @@ const DraftInvoiceBatchEditPage = () => {
       }
     }
 
-    if (advancedFilters.status !== 'All') {
+      if (advancedFilters.status !== 'All') {
       if (invoice.hasError && advancedFilters.status !== 'Error') return false;
-      if (!invoice.hasError && invoice.status !== advancedFilters.status) return false;
+      if (!invoice.hasError && normalizeStatus(invoice.status) !== advancedFilters.status) return false;
     }
 
     if (advancedFilters.minAmount) {
       const min = parseFloat(advancedFilters.minAmount);
-      if (invoice.invoiceValue < min) return false;
+      if (toNumber(invoice.invoiceValue) < min) return false;
     }
 
     if (advancedFilters.maxAmount) {
       const max = parseFloat(advancedFilters.maxAmount);
-      if (invoice.invoiceValue > max) return false;
+      if (toNumber(invoice.invoiceValue) > max) return false;
     }
 
     return true;
@@ -344,7 +380,7 @@ const DraftInvoiceBatchEditPage = () => {
   const errorCount = filteredInvoices.filter(inv => inv.hasError).length;
   const totalAmount = filteredInvoices
     .filter(inv => inv.isSelected && !inv.hasError)
-    .reduce((sum, inv) => sum + (inv.invoiceValue || 0), 0);
+    .reduce((sum, inv) => sum + toNumber(inv.invoiceValue), 0);
 
   // Navigation items - same as GenerateInvoicesPage
   const navItemsAll = [
@@ -842,6 +878,7 @@ const DraftInvoiceBatchEditPage = () => {
                             type="checkbox"
                             checked={invoice.isSelected}
                             onChange={() => toggleSelection(invoice.invoiceId)}
+                            disabled={!isEditableDraft(invoice)}
                           />
                         </td>
                         <td>{hcf ? `${hcf.code} - ${hcf.name}` : invoice.hcfId}</td>
@@ -856,6 +893,7 @@ const DraftInvoiceBatchEditPage = () => {
                             className="ra-assignment-input"
                             style={{ width: '80px', textAlign: 'right' }}
                             step="0.01"
+                            disabled={!isEditableDraft(invoice)}
                           />
                         </td>
                         <td style={{ textAlign: 'right' }}>
@@ -866,10 +904,11 @@ const DraftInvoiceBatchEditPage = () => {
                             className="ra-assignment-input"
                             style={{ width: '100px', textAlign: 'right' }}
                             step="0.01"
+                            disabled={!isEditableDraft(invoice)}
                           />
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                          ₹{(invoice.invoiceValue || 0).toFixed(2)}
+                          ₹{toNumber(invoice.invoiceValue).toFixed(2)}
                         </td>
                         <td>
                           <input
@@ -878,6 +917,7 @@ const DraftInvoiceBatchEditPage = () => {
                             onChange={(e) => updateInvoiceField(invoice.invoiceId, 'dueDate', e.target.value)}
                             className="ra-assignment-input"
                             style={{ fontSize: '13px' }}
+                            disabled={!isEditableDraft(invoice)}
                           />
                         </td>
                         <td style={{ textAlign: 'center' }}>
@@ -888,7 +928,7 @@ const DraftInvoiceBatchEditPage = () => {
                               </span>
                             ) : (
                               <span className="status-badge status-badge--draft">
-                                {invoice.status || 'Draft'}
+                                {normalizeStatus(invoice.status)}
                               </span>
                             )}
                           </div>
@@ -962,6 +1002,27 @@ const DraftInvoiceBatchEditPage = () => {
             setShowAdvancedFilters(false);
           }}
         />
+      )}
+
+      {showPostConfirm && (
+        <div className="modal-overlay" onClick={() => setShowPostConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Confirm Post</h2>
+            </div>
+            <div style={{ padding: '20px' }}>
+              Are you sure you want to post {pendingPostCount} invoice(s)? This action cannot be undone.
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn--secondary" onClick={() => setShowPostConfirm(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn--primary" onClick={handleConfirmPost}>
+                Yes, Post
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

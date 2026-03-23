@@ -34,6 +34,7 @@ import { hcfService } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
 // InvoiceCreationMethodModal removed - cards trigger modals directly
 import './invoiceManagementPage.css';
+import { computeManualInvoiceTaxPreview } from '../../utils/invoiceGstCalculation';
 import '../desktop/dashboardPage.css';
 import '../desktop/masterPage.css';
 import '../desktop/routeAssignmentPage.css';
@@ -70,6 +71,9 @@ interface Company {
   companyCode: string;
   companyName: string;
   status: 'Active' | 'Inactive';
+  gstRate?: string | null;
+  state?: string | null;
+  gstin?: string | null;
 }
 
 interface HCF {
@@ -79,10 +83,13 @@ interface HCF {
   companyId: string;
   companyName: string;
   status: 'Active' | 'Inactive';
+  billingType?: string;
   billingOption?: string;
   bedRate?: string;
   kgRate?: string;
   lumpsum?: string;
+  stateCode?: string;
+  isGSTExempt?: boolean;
 }
 
 const GenerateInvoicesPage = () => {
@@ -101,6 +108,8 @@ const GenerateInvoicesPage = () => {
   const [showBatchPreviewModal, setShowBatchPreviewModal] = useState(false);
   const [currentBatch, setCurrentBatch] = useState<BatchPreviewResponse | null>(null);
   const [batches, setBatches] = useState<BatchResponse[]>([]);
+  const [showZeroGeneratedModal, setShowZeroGeneratedModal] = useState(false);
+  const [zeroGeneratedMessage, setZeroGeneratedMessage] = useState('');
   
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -140,6 +149,9 @@ const GenerateInvoicesPage = () => {
         companyCode: c.companyCode,
         companyName: c.companyName,
         status: c.status,
+        gstRate: c.gstRate,
+        state: c.state,
+        gstin: c.gstin,
       }));
       setCompanies(mappedCompanies);
 
@@ -151,10 +163,13 @@ const GenerateInvoicesPage = () => {
         companyId: h.companyId,
         companyName: companiesData.find(c => c.id === h.companyId)?.companyName || '',
         status: h.status || 'Active',
+        billingType: h.billingType,
         billingOption: h.billingOption,
         bedRate: h.bedRate,
         kgRate: h.kgRate,
         lumpsum: h.lumpsum,
+        stateCode: h.stateCode,
+        isGSTExempt: h.isGSTExempt,
       }));
       setHcfs(mappedHcfs);
     } catch (err: any) {
@@ -236,6 +251,19 @@ const GenerateInvoicesPage = () => {
         await updateInvoice(editingInvoice.id, updateData);
         notifyUpdate(loadingToast, 'Invoice updated successfully', 'success');
       } else {
+        if (data.billingOption === 'Bed-wise') {
+          const bd = data.billingDays != null && data.billingDays !== '' ? parseInt(String(data.billingDays), 10) : NaN;
+          if (!Number.isFinite(bd) || bd < 1) {
+            notifyUpdate(loadingToast, 'Billing days is required (minimum 1) for bed-wise invoices.', 'error');
+            setLoading(false);
+            return;
+          }
+        }
+        if (!data.billingType) {
+          notifyUpdate(loadingToast, 'Billing type is required from HCF master.', 'error');
+          setLoading(false);
+          return;
+        }
         // Create new manual invoice as DRAFT
         const createData: CreateInvoiceRequest = {
           companyId: company.id,
@@ -349,6 +377,14 @@ const GenerateInvoicesPage = () => {
       });
 
       setShowGenerateWeightModal(false);
+
+      if (result.invoiceCount === 0) {
+        const msg = 'Zero invoices generated for Weight Based criteria. Please verify date range, HCF setup, and transactions.';
+        setZeroGeneratedMessage(msg);
+        setShowZeroGeneratedModal(true);
+        notifyWarning(msg);
+        return;
+      }
       
       // Reload batches to show new batch in table
       await loadBatches();
@@ -384,6 +420,14 @@ const GenerateInvoicesPage = () => {
       });
 
       setShowGenerateMonthBedModal(false);
+
+      if (result.invoiceCount === 0) {
+        const msg = 'Zero invoices generated for Bed/Lumpsum criteria. Please verify billing month and HCF setup.';
+        setZeroGeneratedMessage(msg);
+        setShowZeroGeneratedModal(true);
+        notifyWarning(msg);
+        return;
+      }
       
       // Reload batches to show new batch in table
       await loadBatches();
@@ -779,6 +823,10 @@ const GenerateInvoicesPage = () => {
                 {/* Filter batches based on search and advanced filters */}
                 {(() => {
                   const filteredBatches = batches.filter(batch => {
+                    // Hide empty staged auto-generated rows created when generation returns zero.
+                    if (batch.totalRecords === 0 && batch.status === 'STAGED' && (batch.type === 'weight' || batch.type === 'bed')) {
+                      return false;
+                    }
                     const typeLabel = batch.type === 'weight' ? 'Weight Based' : batch.type === 'bed' ? 'Bed / Lumpsum' : 'Manual';
                     const searchLower = searchQuery.toLowerCase();
                     
@@ -1046,6 +1094,30 @@ const GenerateInvoicesPage = () => {
           loading={loading}
         />
       )}
+
+      {showZeroGeneratedModal && (
+        <div className="modal-overlay" onClick={() => setShowZeroGeneratedModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">No Invoices Generated</h2>
+              <button className="modal-close-btn" onClick={() => setShowZeroGeneratedModal(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div style={{ padding: '18px 20px', color: '#334155' }}>
+              {zeroGeneratedMessage || 'Zero invoices were generated for the selected criteria.'}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn--primary" onClick={() => setShowZeroGeneratedModal(false)}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1099,9 +1171,27 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
     ? hcfs.filter(hcf => hcf.companyId === selectedCompanyId)
     : [];
 
+  const mapBillingTypeFromHcf = (raw?: string): string => {
+    if (!raw) return '';
+    const value = raw.trim().toLowerCase();
+    if (value === 'monthly') return 'Monthly';
+    if (value === 'quarterly') return 'Quarterly';
+    if (value === 'yearly') return 'Yearly';
+    return '';
+  };
+
   // Handle company change - enable/disable HCF dropdown
   const handleCompanyChange = (companyName: string) => {
-    setFormData(prev => ({ ...prev, companyName, hcfCode: '', billingOption: '', bedRate: '', kgRate: '', lumpsumAmount: '' }));
+    setFormData(prev => ({
+      ...prev,
+      companyName,
+      hcfCode: '',
+      billingType: '',
+      billingOption: '',
+      bedRate: '',
+      kgRate: '',
+      lumpsumAmount: '',
+    }));
     
     if (companyName) {
       // Company selected - enable HCF dropdown
@@ -1121,8 +1211,6 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
 
   // Handle HCF change - load HCF data and populate form
   const handleHCFChange = (hcfCode: string) => {
-    handleFieldChange('hcfCode', hcfCode);
-    
     if (hcfCode) {
       const selectedHCF = filteredHCFs.find(h => h.hcfCode === hcfCode);
       if (selectedHCF) {
@@ -1139,30 +1227,42 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
           billingOption = selectedHCF.billingOption;
         }
 
-        // Populate form with HCF data (set default billing option, but user can modify afterward)
+        // Single state update so hcfCode and billing fields stay in sync
         setFormData(prev => {
-          const next: any = { ...prev, billingOption };
+          const next: any = { ...prev, hcfCode, billingOption, billingType: mapBillingTypeFromHcf(selectedHCF.billingType) };
 
           if (billingOption === 'Bed-wise') {
             next.bedRate = selectedHCF.bedRate || '';
             next.kgRate = '';
             next.weightInKg = '';
             next.lumpsumAmount = '';
+            try {
+              const invD = new Date(prev.invoiceDate || new Date().toISOString().split('T')[0]);
+              const y = invD.getFullYear();
+              const m = invD.getMonth() + 1;
+              const dim = new Date(y, m, 0).getDate();
+              next.billingDays = dim.toString();
+            } catch {
+              next.billingDays = '30';
+            }
           } else if (billingOption === 'Weight-wise') {
             next.kgRate = selectedHCF.kgRate || '';
             next.bedCount = '';
             next.bedRate = '';
+            next.billingDays = '';
             next.lumpsumAmount = '';
           } else if (billingOption === 'Lumpsum') {
             next.lumpsumAmount = selectedHCF.lumpsum || '';
             next.bedCount = '';
             next.bedRate = '';
+            next.billingDays = '';
             next.weightInKg = '';
             next.kgRate = '';
           } else {
             // Unknown/empty billing option from master: clear option-specific fields
             next.bedCount = '';
             next.bedRate = '';
+            next.billingDays = '';
             next.weightInKg = '';
             next.kgRate = '';
             next.lumpsumAmount = '';
@@ -1175,9 +1275,12 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
       // Clear HCF-related fields when HCF is cleared
       setFormData(prev => ({
         ...prev,
+        hcfCode: '',
+        billingType: '',
         billingOption: '',
         bedCount: '',
         bedRate: '',
+        billingDays: '',
         weightInKg: '',
         kgRate: '',
         lumpsumAmount: '',
@@ -1185,69 +1288,65 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
     }
   };
 
-  // Helper function to get financial year from date (same logic as backend)
-  const getFinancialYear = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1; // 1-12
-
-    // Financial year in India: April (4) to March (3)
-    if (month >= 4) {
-      // April to December: Current year to next year
-      const nextYear = (year + 1).toString().slice(-2);
-      return `${year}-${nextYear}`;
-    } else {
-      // January to March: Previous year to current year
-      const prevYear = (year - 1).toString();
-      const currentYear = year.toString().slice(-2);
-      return `${prevYear}-${currentYear}`;
-    }
-  };
-
-  // Helper function to get days in a month
-  const getDaysInMonth = (year: number, month: number): number => {
-    return new Date(year, month, 0).getDate();
-  };
-
-  // Auto-generate invoice number when invoice date changes (for new invoices only)
+  // Recalculate taxable value and GST from Company + HCF masters (preview matches backend manual invoice rules)
   useEffect(() => {
-    if (!invoice && formData.invoiceDate) {
-      try {
-        const invoiceDate = new Date(formData.invoiceDate);
-        const financialYear = getFinancialYear(invoiceDate);
-        const fyParts = financialYear.split('-');
-        const fyShort = `${fyParts[0].slice(-2)}-${fyParts[1]}`;
-        
-        // Generate a preview invoice number (backend will generate the actual one)
-        // Format: INV-000001/YY-YY (sequence will be set by backend)
-        const previewNumber = `INV-XXXXXX/${fyShort}`;
-        
-        // Only set if invoice number is empty or is the preview format
-        if (!formData.invoiceNum || formData.invoiceNum.startsWith('INV-XXXXXX')) {
-          setFormData(prev => ({ ...prev, invoiceNum: previewNumber }));
-        }
-      } catch (error) {
-        console.error('Error generating invoice number preview:', error);
-      }
+    const co = companies.find(c => c.companyName === formData.companyName);
+    const hcfRow = filteredHCFs.find(h => h.hcfCode === formData.hcfCode);
+    if (!co || !hcfRow || !formData.billingOption) {
+      return;
     }
-  }, [formData.invoiceDate, invoice]);
 
-  // Auto-calculate billing days based on invoice date month (only for Monthly billing type)
-  useEffect(() => {
-    if (formData.invoiceDate && formData.billingType === 'Monthly' && formData.billingOption === 'Bed-wise') {
-      try {
-        const invoiceDate = new Date(formData.invoiceDate);
-        const year = invoiceDate.getFullYear();
-        const month = invoiceDate.getMonth() + 1; // 1-12
-        const daysInMonth = getDaysInMonth(year, month);
-        setFormData(prev => ({ ...prev, billingDays: daysInMonth.toString() }));
-      } catch (error) {
-        console.error('Error calculating billing days:', error);
+    const preview = computeManualInvoiceTaxPreview({
+      billingOption: formData.billingOption,
+      bedCount: parseFloat(String(formData.bedCount || '')) || 0,
+      bedRate: parseFloat(String(formData.bedRate || '')) || 0,
+      billingDays: parseInt(String(formData.billingDays || ''), 10) || undefined,
+      weightInKg: parseFloat(String(formData.weightInKg || '')) || 0,
+      kgRate: parseFloat(String(formData.kgRate || '')) || 0,
+      lumpsumAmount: parseFloat(String(formData.lumpsumAmount || '')) || 0,
+      companyGstRate: co.gstRate,
+      companyGstin: co.gstin,
+      companyState: co.state,
+      hcfStateCode: hcfRow.stateCode,
+      isGstExempt: hcfRow.isGSTExempt,
+    });
+
+    const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : '');
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        taxableValue: fmt(preview.taxableValue),
+        igst: fmt(preview.igst),
+        cgst: fmt(preview.cgst),
+        sgst: fmt(preview.sgst),
+        roundOff: fmt(preview.roundOff),
+        invoiceValue: fmt(preview.invoiceValue),
+      };
+      if (
+        prev.taxableValue === next.taxableValue &&
+        prev.igst === next.igst &&
+        prev.cgst === next.cgst &&
+        prev.sgst === next.sgst &&
+        prev.roundOff === next.roundOff &&
+        prev.invoiceValue === next.invoiceValue
+      ) {
+        return prev;
       }
-    } else if (formData.billingOption !== 'Bed-wise') {
-      // Clear billing days if not Bed-wise
-      setFormData(prev => ({ ...prev, billingDays: '' }));
-    }
-  }, [formData.invoiceDate, formData.billingType, formData.billingOption]);
+      return next;
+    });
+  }, [
+    companies,
+    filteredHCFs,
+    formData.companyName,
+    formData.hcfCode,
+    formData.billingOption,
+    formData.bedCount,
+    formData.bedRate,
+    formData.billingDays,
+    formData.weightInKg,
+    formData.kgRate,
+    formData.lumpsumAmount,
+  ]);
 
   // Validate invoice date - check if previous month is closed
   const validateInvoiceDate = (dateString: string): string | null => {
@@ -1311,19 +1410,6 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
       if (field === 'invoiceDate') {
         const error = validateInvoiceDate(value);
         setValidationErrors(prev => ({ ...prev, invoiceDate: error }));
-        
-        // If billing type is Monthly, recalculate billing days
-        if (updatedData.billingType === 'Monthly' && value) {
-          try {
-            const invoiceDate = new Date(value);
-            const year = invoiceDate.getFullYear();
-            const month = invoiceDate.getMonth() + 1;
-            const daysInMonth = getDaysInMonth(year, month);
-            updatedData.billingDays = daysInMonth.toString();
-          } catch (error) {
-            console.error('Error calculating billing days:', error);
-          }
-        }
       }
 
       // Validate due date
@@ -1583,30 +1669,34 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                     </small>
                   )}
                 </div>
-                <div className="wp-form-group">
-                  <label htmlFor="invoiceNum">Invoice Number {invoice && <span className="wp-required">*</span>}</label>
-                  <div className="wp-input-wrapper">
-                    <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                      <polyline points="14 2 14 8 20 8"></polyline>
-                      <line x1="16" y1="13" x2="8" y2="13"></line>
-                      <line x1="16" y1="17" x2="8" y2="17"></line>
-                      <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                    <input
-                      id="invoiceNum"
-                      type="text"
-                      value={formData.invoiceNum || ''}
-                      readOnly
-                      placeholder="Auto-generated by system"
-                      className="wp-form-input"
-                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }}
-                    />
-                  </div>
-                  {!invoice && (
-                    <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
-                      Invoice number will be auto-generated by the system when saved
-                    </small>
+                <div
+                  className="wp-form-group"
+                  style={!invoice ? { visibility: 'hidden', pointerEvents: 'none' as const } : undefined}
+                  aria-hidden={!invoice ? true : undefined}
+                >
+                  {invoice ? (
+                    <>
+                      <label htmlFor="invoiceNum">Invoice Number <span className="wp-required">*</span></label>
+                      <div className="wp-input-wrapper">
+                        <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                          <line x1="16" y1="13" x2="8" y2="13"></line>
+                          <line x1="16" y1="17" x2="8" y2="17"></line>
+                          <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <input
+                          id="invoiceNum"
+                          type="text"
+                          value={formData.invoiceNum || ''}
+                          readOnly
+                          className="wp-form-input"
+                          style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ display: 'block', height: 1 }} />
                   )}
                 </div>
               </div>
@@ -1675,19 +1765,23 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                     <select
                       id="billingType"
                       value={formData.billingType || ''}
-                      onChange={(e) => handleFieldChange('billingType', e.target.value)}
                       required
+                      disabled
                       className="wp-form-select"
+                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                     >
-                      <option value="">Select Billing Type</option>
+                      <option value="">{formData.hcfCode ? 'No billing type in HCF master' : 'Select HCF first'}</option>
                       <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
                       <option value="Yearly">Yearly</option>
-                      <option value="Occasionally">Occasionally</option>
                     </select>
                     <svg className="wp-select-arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                   </div>
+                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                    From HCF master (read-only)
+                  </small>
                 </div>
               </div>
             </div>
@@ -1706,77 +1800,54 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                   </label>
                   <div
                     className="billing-option-group"
-                    style={!formData.hcfCode ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
-                    title={!formData.hcfCode ? 'Select HCF first to enable billing option' : undefined}
+                    style={{
+                      ...(!formData.hcfCode ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+                      ...(formData.hcfCode ? { pointerEvents: 'none' as const, opacity: 0.85 } : {}),
+                    }}
+                    title={!formData.hcfCode ? 'Select HCF first' : 'Billing option comes from HCF master (read-only)'}
                   >
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '14px', userSelect: 'none' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'default', fontSize: '14px', userSelect: 'none' }}>
                       <input
                         type="radio"
                         name="billingOption"
                         value="Bed-wise"
                         checked={formData.billingOption === 'Bed-wise'}
-                        disabled={!formData.hcfCode}
-                        onChange={(e) => {
-                          handleFieldChange('billingOption', e.target.value);
-                          handleFieldChange('weightInKg', '');
-                          handleFieldChange('kgRate', '');
-                          handleFieldChange('lumpsumAmount', '');
-                          const hcf = filteredHCFs.find(h => h.hcfCode === formData.hcfCode);
-                          if (hcf && (!formData.bedRate || String(formData.bedRate).trim() === '')) {
-                            handleFieldChange('bedRate', hcf.bedRate || '');
-                          }
-                        }}
-                        style={{ marginRight: '8px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#3b82f6' }}
+                        disabled
+                        style={{ marginRight: '8px', width: '16px', height: '16px', accentColor: '#3b82f6' }}
                       />
                       <span>Bed-wise</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '14px', userSelect: 'none' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'default', fontSize: '14px', userSelect: 'none' }}>
                       <input
                         type="radio"
                         name="billingOption"
                         value="Weight-wise"
                         checked={formData.billingOption === 'Weight-wise'}
-                        disabled={!formData.hcfCode}
-                        onChange={(e) => {
-                          handleFieldChange('billingOption', e.target.value);
-                          handleFieldChange('bedCount', '');
-                          handleFieldChange('bedRate', '');
-                          handleFieldChange('lumpsumAmount', '');
-                          const hcf = filteredHCFs.find(h => h.hcfCode === formData.hcfCode);
-                          if (hcf && (!formData.kgRate || String(formData.kgRate).trim() === '')) {
-                            handleFieldChange('kgRate', hcf.kgRate || '');
-                          }
-                        }}
-                        style={{ marginRight: '8px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#3b82f6' }}
+                        disabled
+                        style={{ marginRight: '8px', width: '16px', height: '16px', accentColor: '#3b82f6' }}
                       />
                       <span>Weight-wise</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '14px', userSelect: 'none' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'default', fontSize: '14px', userSelect: 'none' }}>
                       <input
                         type="radio"
                         name="billingOption"
                         value="Lumpsum"
                         checked={formData.billingOption === 'Lumpsum'}
-                        disabled={!formData.hcfCode}
-                        onChange={(e) => {
-                          handleFieldChange('billingOption', e.target.value);
-                          handleFieldChange('bedCount', '');
-                          handleFieldChange('bedRate', '');
-                          handleFieldChange('weightInKg', '');
-                          handleFieldChange('kgRate', '');
-                          const hcf = filteredHCFs.find(h => h.hcfCode === formData.hcfCode);
-                          if (hcf && (!formData.lumpsumAmount || String(formData.lumpsumAmount).trim() === '')) {
-                            handleFieldChange('lumpsumAmount', hcf.lumpsum || '');
-                          }
-                        }}
-                        style={{ marginRight: '8px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#3b82f6' }}
+                        disabled
+                        style={{ marginRight: '8px', width: '16px', height: '16px', accentColor: '#3b82f6' }}
                       />
                       <span>Lumpsum</span>
                     </label>
                   </div>
                   {!formData.hcfCode && (
                     <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
-                      Select HCF to enable billing option
+                      Select HCF to load billing option from master
+                    </small>
+                  )}
+                  {formData.hcfCode && (
+                    <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
+                      From HCF master (read-only)
                     </small>
                   )}
                 </div>
@@ -1794,16 +1865,17 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                       </svg>
                       <input
                         id="billingDays"
-                        type="text"
+                        type="number"
+                        min={1}
+                        step={1}
                         value={formData.billingDays || ''}
-                        readOnly
-                        placeholder="Auto-calculated"
+                        onChange={(e) => handleFieldChange('billingDays', e.target.value)}
+                        placeholder="e.g. 31 or 45"
                         className="wp-form-input"
-                        style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                       />
                     </div>
                     <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
-                      Automatically calculated based on invoice date month
+                      Editable; used for bed-wise base amount (no maximum)
                     </small>
                   </div>
                   <div className="wp-form-group">
@@ -1933,7 +2005,7 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                     />
                   </div>
                   <small style={{ display: 'block', marginTop: '4px', color: '#64748b', fontSize: '11px' }}>
-                    Automatically fetched from Company Master
+                    From billing lines × Company GST % (CGST/SGST vs IGST by place of supply)
                   </small>
                 </div>
                 <div className="wp-form-group">
@@ -1947,9 +2019,9 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                       id="igst"
                       type="text"
                       value={formData.igst || ''}
-                      onChange={(e) => handleFieldChange('igst', e.target.value)}
-                      placeholder="Enter IGST"
+                      readOnly
                       className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                     />
                   </div>
                 </div>
@@ -1964,9 +2036,9 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                       id="cgst"
                       type="text"
                       value={formData.cgst || ''}
-                      onChange={(e) => handleFieldChange('cgst', e.target.value)}
-                      placeholder="Enter CGST"
+                      readOnly
                       className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                     />
                   </div>
                 </div>
@@ -1984,9 +2056,9 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                       id="sgst"
                       type="text"
                       value={formData.sgst || ''}
-                      onChange={(e) => handleFieldChange('sgst', e.target.value)}
-                      placeholder="Enter SGST"
+                      readOnly
                       className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                     />
                   </div>
                 </div>
@@ -2001,9 +2073,9 @@ const InvoiceFormModal = ({ invoice, companies, hcfs, onClose, onSave, calculate
                       id="roundOff"
                       type="text"
                       value={formData.roundOff || '0'}
-                      onChange={(e) => handleFieldChange('roundOff', e.target.value)}
-                      placeholder="Enter round off"
+                      readOnly
                       className="wp-form-input"
+                      style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
                     />
                   </div>
                 </div>
@@ -2125,7 +2197,51 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
 
   return (
     <div className="wp-modal-overlay" onClick={onClose}>
-      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="wp-modal-content auto-invoice-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '860px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+      >
+        <style>{`
+          .auto-invoice-modal .auto-invoice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 14px;
+          }
+          .auto-invoice-modal .wp-modal-body {
+            overflow-x: hidden;
+          }
+          .auto-invoice-modal .wp-form-group {
+            margin-bottom: 0 !important;
+          }
+          .auto-invoice-modal .wp-form-input,
+          .auto-invoice-modal .wp-form-select {
+            height: 34px;
+            padding-top: 6px;
+            padding-bottom: 6px;
+          }
+          .auto-invoice-modal .wp-modal-footer {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            z-index: 2;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+          .auto-invoice-modal .wp-modal-footer .wp-btn {
+            white-space: normal;
+            min-width: 120px;
+          }
+          @media (max-width: 768px) {
+            .auto-invoice-modal .auto-invoice-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
         <div className="wp-modal-header">
           <div className="wp-modal-header-left">
             <div className="wp-modal-icon wp-modal-icon--add">
@@ -2143,9 +2259,9 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="wp-modal-body">
-            <div className="wp-form-group">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <div className="wp-modal-body" style={{ overflowY: 'auto', flex: 1, padding: '14px 16px' }}>
+            <div className="wp-form-group" style={{ marginBottom: '10px' }}>
               <label htmlFor="companyId">Company <span className="wp-required">*</span></label>
               <div className="wp-input-wrapper">
                 <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2173,7 +2289,7 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
               </small>
             </div>
 
-            <div className="wp-form-row">
+            <div className="auto-invoice-grid">
               <div className="wp-form-group">
                 <label htmlFor="month">Month <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2214,7 +2330,6 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
                   Weight calculation will use previous month ({monthNames[formData.month === 1 ? 11 : formData.month - 2]} {formData.month === 1 ? formData.year - 1 : formData.year})
                 </small>
               </div>
-
               <div className="wp-form-group">
                 <label htmlFor="year">Year <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2237,9 +2352,6 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
                   Year for the selected month
                 </small>
               </div>
-            </div>
-
-            <div className="wp-form-row">
               <div className="wp-form-group">
                 <label htmlFor="invoiceDate">Invoice Date <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2262,7 +2374,6 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
                   Enter the invoice date
                 </small>
               </div>
-
               <div className="wp-form-group">
                 <label htmlFor="dueDays">Due Days (from invoice date)</label>
                 <div className="wp-input-wrapper">
@@ -2282,12 +2393,12 @@ const GenerateInvoiceWeightModal = ({ companies, hcfs, onClose, onGenerate, load
               </div>
             </div>
           </div>
-          <div className="wp-modal-footer">
+          <div className="wp-modal-footer" style={{ padding: '12px 16px' }}>
             <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={loading}>
               Cancel
             </button>
-            <button type="submit" className="wp-btn wp-btn--save" disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Invoices (Weight Based)'}
+            <button type="submit" className="wp-btn wp-btn--save" disabled={loading} title="Generate invoices (Weight Based)">
+              {loading ? 'Generating...' : 'Generate Invoices'}
             </button>
           </div>
         </form>
@@ -2337,7 +2448,51 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
 
   return (
     <div className="wp-modal-overlay" onClick={onClose}>
-      <div className="wp-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="wp-modal-content auto-invoice-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '860px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+      >
+        <style>{`
+          .auto-invoice-modal .auto-invoice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 14px;
+          }
+          .auto-invoice-modal .wp-modal-body {
+            overflow-x: hidden;
+          }
+          .auto-invoice-modal .wp-form-group {
+            margin-bottom: 0 !important;
+          }
+          .auto-invoice-modal .wp-form-input,
+          .auto-invoice-modal .wp-form-select {
+            height: 34px;
+            padding-top: 6px;
+            padding-bottom: 6px;
+          }
+          .auto-invoice-modal .wp-modal-footer {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
+            z-index: 2;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+          .auto-invoice-modal .wp-modal-footer .wp-btn {
+            white-space: normal;
+            min-width: 120px;
+          }
+          @media (max-width: 768px) {
+            .auto-invoice-modal .auto-invoice-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
         <div className="wp-modal-header">
           <div className="wp-modal-header-left">
             <div className="wp-modal-icon wp-modal-icon--add">
@@ -2355,9 +2510,9 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="wp-modal-body">
-            <div className="wp-form-group">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <div className="wp-modal-body" style={{ overflowY: 'auto', flex: 1, padding: '14px 16px' }}>
+            <div className="wp-form-group" style={{ marginBottom: '10px' }}>
               <label htmlFor="companyId">Company <span className="wp-required">*</span></label>
               <div className="wp-input-wrapper">
                 <svg className="wp-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2385,7 +2540,7 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
               </small>
             </div>
 
-            <div className="wp-form-row">
+            <div className="auto-invoice-grid">
               <div className="wp-form-group">
                 <label htmlFor="month">Month <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2416,7 +2571,6 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
                   Only previous month ({monthNames[previousMonth - 1]} {previousYear}) can be selected
                 </small>
               </div>
-
               <div className="wp-form-group">
                 <label htmlFor="year">Year <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2440,9 +2594,6 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
                   Year is automatically set to previous month's year
                 </small>
               </div>
-            </div>
-
-            <div className="wp-form-row">
               <div className="wp-form-group">
                 <label htmlFor="invoiceDate">Invoice Date <span className="wp-required">*</span></label>
                 <div className="wp-input-wrapper">
@@ -2465,7 +2616,6 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
                   Enter the invoice date
                 </small>
               </div>
-
               <div className="wp-form-group">
                 <label htmlFor="dueDays">Due Days (from invoice date)</label>
                 <div className="wp-input-wrapper">
@@ -2485,12 +2635,12 @@ const GenerateInvoiceMonthModal = ({ companies, onClose, onGenerate, loading, ge
               </div>
             </div>
           </div>
-          <div className="wp-modal-footer">
+          <div className="wp-modal-footer" style={{ padding: '12px 16px' }}>
             <button type="button" className="wp-btn wp-btn--cancel" onClick={onClose} disabled={loading}>
               Cancel
             </button>
-            <button type="submit" className="wp-btn wp-btn--save" disabled={loading}>
-              {loading ? 'Generating...' : `Generate Invoices (${generationMode})`}
+            <button type="submit" className="wp-btn wp-btn--save" disabled={loading} title={`Generate invoices (${generationMode})`}>
+              {loading ? 'Generating...' : 'Generate Invoices'}
             </button>
           </div>
         </form>
