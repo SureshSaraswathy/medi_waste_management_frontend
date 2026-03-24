@@ -47,7 +47,7 @@ const OperationsLogisticsReportPage = () => {
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ),
-      path: '/report/operations-logistics/waste-collection-transactions',
+      path: '/report/collection',
     },
     {
       id: 'missed-collection',
@@ -66,8 +66,8 @@ const OperationsLogisticsReportPage = () => {
     },
     {
       id: 'pcb-zone-waste-generation',
-      title: 'PCB Zone-Wise Waste Generation Report',
-      description: 'Analyze waste generation by PCB zones',
+      title: 'Operator PCB Report (Collection Report)',
+      description: 'Compare collected vs treated PCB quantities',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -77,7 +77,35 @@ const OperationsLogisticsReportPage = () => {
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
       ),
-      path: '/report/operations-logistics/pcb-zone-waste-generation',
+      path: '/report/operator-pcb-collection',
+    },
+    {
+      id: 'pcb-compliance',
+      title: 'PCB Compliance Report',
+      description: 'Generated vs received BMW with compliance differences',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18"></rect>
+          <line x1="7" y1="8" x2="17" y2="8"></line>
+          <line x1="7" y1="12" x2="17" y2="12"></line>
+          <line x1="7" y1="16" x2="17" y2="16"></line>
+        </svg>
+      ),
+      path: '/report/pcb-compliance',
+    },
+    {
+      id: 'waste-collection-summary',
+      title: 'Waste Collection Summary',
+      description: 'Route/HCF/Period/PCB Zone collection with missing report',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18"></rect>
+          <line x1="7" y1="8" x2="17" y2="8"></line>
+          <line x1="7" y1="12" x2="17" y2="12"></line>
+          <line x1="7" y1="16" x2="17" y2="16"></line>
+        </svg>
+      ),
+      path: '/report/waste-collection-summary',
     },
   ];
 

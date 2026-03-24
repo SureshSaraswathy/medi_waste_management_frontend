@@ -72,6 +72,7 @@ const PageHeader = ({
 
   const hasBreadcrumb = !!effectiveBreadcrumbItems?.length;
   const effectiveBreadcrumbOnly = typeof breadcrumbOnly === 'boolean' ? breadcrumbOnly : standard;
+  const isReportRoute = location.pathname.startsWith('/report');
 
   return (
     <header
@@ -79,6 +80,7 @@ const PageHeader = ({
         'dashboard-header page-header top-header app-header',
         standard ? 'app-header--standard' : '',
         standard && hasBreadcrumb ? 'app-header--has-breadcrumb' : '',
+        isReportRoute ? 'report-page-header' : '',
         className || '',
       ].join(' ')}
     >

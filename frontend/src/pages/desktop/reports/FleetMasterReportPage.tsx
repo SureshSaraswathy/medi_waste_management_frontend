@@ -4,6 +4,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fleetService, FleetResponse } from '../../../services/fleetService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportFormat } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './fleetReportPage.css';
 
 interface FleetReportFilters {
@@ -493,6 +497,11 @@ const FleetMasterReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Fleet Master Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         {/* Breadcrumb Navigation */}
         <div className="report-breadcrumb">
@@ -575,7 +584,7 @@ const FleetMasterReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -607,6 +616,17 @@ const FleetMasterReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  reportExportService.exportAuto(filteredFleets as Record<string, any>[], format as ExportFormat, 'Fleet_Master_Report');
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {/* Filter Modal Overlay */}

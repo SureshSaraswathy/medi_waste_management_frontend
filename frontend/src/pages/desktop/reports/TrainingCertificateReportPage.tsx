@@ -5,6 +5,10 @@ import { trainingCertificateService, TrainingCertificateResponse } from '../../.
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportFormat } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './trainingCertificateReportPage.css';
 
 interface TrainingFilters {
@@ -368,6 +372,11 @@ const TrainingCertificateReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Training Certificate Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -450,7 +459,7 @@ const TrainingCertificateReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -480,6 +489,17 @@ const TrainingCertificateReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  reportExportService.exportAuto(filteredCertificates as Record<string, any>[], format as ExportFormat, 'Training_Certificate_Report');
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

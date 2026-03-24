@@ -92,6 +92,12 @@ interface HCF {
   isGSTExempt?: boolean;
 }
 
+/** Normalize batch status from API (avoids blank badges if casing differs). */
+function normalizeBatchStatus(status: unknown): string {
+  if (status == null || status === '') return '';
+  return String(status).trim().toUpperCase();
+}
+
 const GenerateInvoicesPage = () => {
   const { logout, permissions, user } = useAuth();
   const MAX_BULK_PDF = 100;
@@ -823,8 +829,9 @@ const GenerateInvoicesPage = () => {
                 {/* Filter batches based on search and advanced filters */}
                 {(() => {
                   const filteredBatches = batches.filter(batch => {
+                    const batchSt = normalizeBatchStatus(batch.status);
                     // Hide empty staged auto-generated rows created when generation returns zero.
-                    if (batch.totalRecords === 0 && batch.status === 'STAGED' && (batch.type === 'weight' || batch.type === 'bed')) {
+                    if (batch.totalRecords === 0 && batchSt === 'STAGED' && (batch.type === 'weight' || batch.type === 'bed')) {
                       return false;
                     }
                     const typeLabel = batch.type === 'weight' ? 'Weight Based' : batch.type === 'bed' ? 'Bed / Lumpsum' : 'Manual';
@@ -840,7 +847,7 @@ const GenerateInvoicesPage = () => {
                       return false;
                     }
                     
-                    if (advancedFilters.status !== 'All' && batch.status !== advancedFilters.status) {
+                    if (advancedFilters.status !== 'All' && batchSt !== advancedFilters.status) {
                       return false;
                     }
                     
@@ -862,7 +869,7 @@ const GenerateInvoicesPage = () => {
                             <th>DATE</th>
                             <th>TYPE</th>
                             <th style={{ textAlign: 'right' }}>RECORDS</th>
-                            <th style={{ textAlign: 'right' }}>DRAFT INVOICES</th>
+                            <th style={{ textAlign: 'right' }}>Open drafts</th>
                             <th style={{ textAlign: 'center' }}>STATUS</th>
                             <th style={{ textAlign: 'center' }}>ACTION</th>
                           </tr>
@@ -876,6 +883,7 @@ const GenerateInvoicesPage = () => {
                             </tr>
                           ) : (
                             paginatedBatches.map((batch) => {
+                          const batchSt = normalizeBatchStatus(batch.status);
                           const dateStr = new Date(batch.createdAt).toISOString().split('T')[0];
                           const typeLabel = batch.type === 'weight' ? 'Weight Based' : batch.type === 'bed' ? 'Bed / Lumpsum' : 'Manual';
                           
@@ -884,27 +892,28 @@ const GenerateInvoicesPage = () => {
                           let actionLabel = '';
                           let actionHandler: () => void = () => {};
 
-                          if (batch.status === 'STAGED') {
-                            statusLabel = 'Draft';
+                          if (batchSt === 'STAGED') {
+                            // Batch run is staged (not the same wording as invoice DRAFT)
+                            statusLabel = 'Staged';
                             statusColor = '#dbeafe';
                             actionLabel = 'Edit Invoices';
                             actionHandler = () => {
                               // Navigate to draft invoice edit page
                               navigate(`/finance/draft-invoices/${batch.id}`);
                             };
-                          } else if (batch.status === 'PROCESSING') {
+                          } else if (batchSt === 'PROCESSING') {
                             statusLabel = 'Processing';
                             statusColor = '#fef3c7';
                             actionLabel = 'Processing';
                             actionHandler = () => {};
-                          } else if (batch.status === 'POSTED') {
+                          } else if (batchSt === 'POSTED') {
                             statusLabel = 'Posted';
                             statusColor = '#dcfce7';
                             actionLabel = 'View Invoices';
                             actionHandler = () => {
                               navigate('/finance/invoice-management');
                             };
-                          } else if (batch.status === 'FAILED') {
+                          } else if (batchSt === 'FAILED') {
                             statusLabel = 'Failed';
                             statusColor = '#fee2e2';
                             actionLabel = 'Retry';
@@ -917,6 +926,9 @@ const GenerateInvoicesPage = () => {
                                 setError(err.message || 'Failed to load batch preview');
                               }
                             };
+                          } else {
+                            statusLabel = batchSt || 'Unknown';
+                            statusColor = '#e2e8f0';
                           }
 
                               return (
@@ -925,11 +937,11 @@ const GenerateInvoicesPage = () => {
                                   <td>{typeLabel}</td>
                                   <td style={{ textAlign: 'right' }}>{batch.totalRecords}</td>
                                   <td style={{ textAlign: 'right' }}>
-                                    {batch.status === 'STAGED' ? batch.totalRecords : '-'}
+                                    {batchSt === 'STAGED' ? batch.totalRecords : '-'}
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
                                     <div className="ra-cell-center">
-                                      <span className={`status-badge ${statusColor === '#fee2e2' ? 'status-badge--draft' : statusColor === '#fef3c7' ? 'status-badge--in-progress' : statusColor === '#dcfce7' ? 'status-badge--completed' : 'status-badge--draft'}`} style={statusLabel === 'Draft' ? { background: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : statusColor === '#fee2e2' ? { background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : statusColor === '#dcfce7' ? { background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : { background: statusColor, color: '#1e40af', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 }}>
+                                      <span className={`status-badge ${statusColor === '#fee2e2' ? 'status-badge--draft' : statusColor === '#fef3c7' ? 'status-badge--in-progress' : statusColor === '#dcfce7' ? 'status-badge--completed' : 'status-badge--draft'}`} style={statusLabel === 'Staged' ? { background: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : statusColor === '#fee2e2' ? { background: '#fee2e2', color: '#991b1b', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : statusColor === '#dcfce7' ? { background: '#dcfce7', color: '#166534', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 } : { background: statusColor, color: '#1e40af', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 500 }}>
                                         {statusLabel}
                                       </span>
                                     </div>
@@ -937,13 +949,13 @@ const GenerateInvoicesPage = () => {
                                   <td style={{ textAlign: 'center' }}>
                                     <button
                                       onClick={actionHandler}
-                                      disabled={batch.status === 'PROCESSING'}
+                                      disabled={batchSt === 'PROCESSING'}
                                       className="ra-btn ra-btn--sm"
                                       style={{
-                                        background: batch.status === 'PROCESSING' ? '#f1f5f9' : batch.status === 'STAGED' ? '#1e293b' : 'transparent',
-                                        color: batch.status === 'PROCESSING' ? '#94a3b8' : batch.status === 'STAGED' ? 'white' : '#475569',
-                                        border: batch.status === 'STAGED' ? 'none' : '1px solid #cbd5e1',
-                                        cursor: batch.status === 'PROCESSING' ? 'not-allowed' : 'pointer',
+                                        background: batchSt === 'PROCESSING' ? '#f1f5f9' : batchSt === 'STAGED' ? '#1e293b' : 'transparent',
+                                        color: batchSt === 'PROCESSING' ? '#94a3b8' : batchSt === 'STAGED' ? 'white' : '#475569',
+                                        border: batchSt === 'STAGED' ? 'none' : '1px solid #cbd5e1',
+                                        cursor: batchSt === 'PROCESSING' ? 'not-allowed' : 'pointer',
                                       }}
                                     >
                                       {actionLabel === 'Edit Invoices' && (
@@ -2905,7 +2917,7 @@ const AdvancedFiltersModal = ({
                 className="ra-filter-select"
               >
                 <option value="All">All</option>
-                <option value="STAGED">Draft</option>
+                <option value="STAGED">Staged (open drafts)</option>
                 <option value="PROCESSING">Processing</option>
                 <option value="POSTED">Posted</option>
                 <option value="FAILED">Failed</option>

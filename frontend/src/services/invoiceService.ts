@@ -159,10 +159,24 @@ const apiRequest = async <T>(
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_BASE_URL}${endpoint}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (err: unknown) {
+    const isNetworkError =
+      err instanceof TypeError &&
+      (err.message === 'Failed to fetch' || err.message.includes('fetch'));
+    if (isNetworkError) {
+      throw new Error(
+        `Cannot reach the API at ${url}. Check the backend is running, VITE_API_BASE_URL, and CORS for this origin. Use DevTools → Network to see blocked or failed requests.`,
+      );
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -603,4 +617,35 @@ export const postDraftInvoices = async (invoiceIds: string[], invoiceDate: strin
     method: 'POST',
     body: JSON.stringify({ invoiceIds, invoiceDate }),
   });
+};
+
+export interface BulkDownloadHistoryItem {
+  id: string;
+  jobId: string;
+  token: string;
+  filePath: string;
+  createdAt: string;
+  expireAt: string;
+  downloadCount: number;
+  status: 'ACTIVE' | 'EXPIRED' | 'MISSING_FILE';
+}
+
+export interface BulkDownloadHistoryResponse {
+  items: BulkDownloadHistoryItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export const getBulkDownloadHistory = async (
+  params?: { status?: 'ACTIVE' | 'EXPIRED' | 'MISSING_FILE'; page?: number; pageSize?: number },
+): Promise<BulkDownloadHistoryResponse> => {
+  const query = new URLSearchParams();
+  if (params?.status) query.append('status', params.status);
+  if (params?.page) query.append('page', String(params.page));
+  if (params?.pageSize) query.append('pageSize', String(params.pageSize));
+  const suffix = query.toString();
+  return apiRequest<BulkDownloadHistoryResponse>(
+    `/invoices/pdf/bulk-downloads${suffix ? `?${suffix}` : ''}`,
+  );
 };

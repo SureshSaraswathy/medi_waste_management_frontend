@@ -101,3 +101,50 @@ textarea {
 a {
   color: inherit;
 }
+
+/* Report search sizing aligned with Autoclave pattern */
+.invoice-report-page .search-container,
+.route-trip-report-page .search-container {
+  width: 520px !important;
+  max-width: 100%;
+  flex: 0 1 520px !important;
+}
+
+/* Keep Filter + Export aligned together on right */
+.invoice-report-page .search-actions-row,
+.route-trip-report-page .search-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invoice-report-page .search-actions-row > .search-container,
+.route-trip-report-page .search-actions-row > .search-container {
+  margin-right: auto;
+}
+
+.invoice-report-page .global-search-input,
+.route-trip-report-page .global-search-input {
+  height: 40px !important;
+}
+
+.bulk-zip-report-page .bulk-zip-search-box {
+  width: 520px;
+  min-width: 520px;
+  height: 40px;
+}
+
+@media (max-width: 768px) {
+  .invoice-report-page .search-container,
+  .route-trip-report-page .search-container,
+  .bulk-zip-report-page .bulk-zip-search-box {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .invoice-report-page .search-actions-row > .search-container,
+  .route-trip-report-page .search-actions-row > .search-container {
+    margin-right: 0;
+  }
+}

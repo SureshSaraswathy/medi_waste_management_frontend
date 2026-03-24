@@ -5,6 +5,10 @@ import { getInvoiceReport, InvoiceReportItem, InvoiceReportResponse, InvoiceResp
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportColumn } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './outstandingReportPage.css';
 
 interface OutstandingFilters {
@@ -67,6 +71,17 @@ const OutstandingReportPage = () => {
     totalOutstanding: 0,
     totalInvoices: 0,
   });
+
+  const outstandingExportColumns: ExportColumn<InvoiceResponse>[] = [
+    { key: 'invoiceNumber', header: 'Invoice No.' },
+    { key: 'invoiceDate', header: 'Invoice Date', type: 'date' },
+    { key: 'companyName', header: 'Company' },
+    { key: 'hcfName', header: 'HCF' },
+    { key: 'status', header: 'Status' },
+    { key: 'totalAmount', header: 'Total Amount', type: 'number' },
+    { key: 'paidAmount', header: 'Paid Amount', type: 'number' },
+    { key: 'balanceAmount', header: 'Outstanding Amount', type: 'number' },
+  ];
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -446,6 +461,11 @@ const OutstandingReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Outstanding Payment Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -528,7 +548,7 @@ const OutstandingReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -558,6 +578,23 @@ const OutstandingReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  if (format === 'pdf') {
+                    reportExportService.exportToPDF(filteredOutstandingData, outstandingExportColumns, 'Outstanding_Report');
+                  } else if (format === 'excel') {
+                    reportExportService.exportToExcel(filteredOutstandingData, outstandingExportColumns, 'Outstanding_Report');
+                  } else {
+                    reportExportService.exportToCSV(filteredOutstandingData, outstandingExportColumns, 'Outstanding_Report');
+                  }
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

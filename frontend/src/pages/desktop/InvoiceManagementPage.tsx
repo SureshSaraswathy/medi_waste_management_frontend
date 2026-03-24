@@ -25,6 +25,7 @@ import NotificationBell from '../../components/NotificationBell';
 import {
   processPayment,
   getReceipt,
+  getPayment,
   PaymentMode,
   CreatePaymentRequest,
   ProcessPaymentResponse,
@@ -33,6 +34,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
 // InvoiceCreationMethodModal moved to GenerateInvoicesPage
+import { jsPDF } from 'jspdf';
 import './invoiceManagementPage.css';
 import '../desktop/dashboardPage.css';
 
@@ -63,11 +65,27 @@ interface Invoice extends Partial<InvoiceResponse> {
   modifiedOn?: string;
 }
 
+/** Map API enum values to UI status (posted invoices use DUE; legacy auto used POSTED). */
+function mapApiInvoiceStatusToUi(apiStatus: string | undefined): Invoice['invoiceStatus'] {
+  const s = (apiStatus || '').toUpperCase();
+  if (s === 'DRAFT') return 'Draft';
+  if (s === 'DUE' || s === 'POSTED') return 'Generated';
+  if (s === 'PARTIAL_PAID') return 'Partially Paid';
+  if (s === 'PAID') return 'Paid';
+  if (s === 'CANCELLED') return 'Cancelled';
+  return 'Draft';
+}
+
 interface Company {
   id: string;
   companyCode: string;
   companyName: string;
   status: 'Active' | 'Inactive';
+  regdOfficeAddress?: string | null;
+  adminOfficeAddress?: string | null;
+  factoryAddress?: string | null;
+  contactNum?: string | null;
+  companyEmail?: string | null;
 }
 
 interface HCF {
@@ -93,6 +111,16 @@ interface AdvancedFilters {
   status: string;
 }
 
+interface InlinePaymentSuccess {
+  receiptId: string;
+  receiptNumber: string;
+  totalAmount: number;
+  receiptDate: string;
+  invoiceCount: number;
+  companyId: string;
+  companyName?: string;
+}
+
 const InvoiceManagementPage = () => {
   const { logout, permissions, user } = useAuth();
   const MAX_BULK_PDF = 100;
@@ -114,6 +142,8 @@ const InvoiceManagementPage = () => {
   const [selectedInvoices, setSelectedInvoices] = useState<Invoice[]>([]);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const [inlinePaymentSuccess, setInlinePaymentSuccess] = useState<InlinePaymentSuccess | null>(null);
+  const [receiptDownloading, setReceiptDownloading] = useState(false);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
@@ -137,6 +167,19 @@ const InvoiceManagementPage = () => {
     loadData();
   }, []);
 
+  // Toast popups for page-level success / error (same copy as inline banners)
+  useEffect(() => {
+    if (successMessage) {
+      notifySuccess(successMessage);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (error) {
+      notifyError(error);
+    }
+  }, [error]);
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -148,6 +191,11 @@ const InvoiceManagementPage = () => {
         companyCode: c.companyCode,
         companyName: c.companyName,
         status: c.status,
+        regdOfficeAddress: c.regdOfficeAddress || null,
+        adminOfficeAddress: c.adminOfficeAddress || null,
+        factoryAddress: c.factoryAddress || null,
+        contactNum: c.contactNum || null,
+        companyEmail: c.companyEmail || null,
       }));
       setCompanies(mappedCompanies);
 
@@ -183,6 +231,7 @@ const InvoiceManagementPage = () => {
     }
   };
 
+
   const loadInvoicesWithData = async (companiesData: Company[], hcfsData: HCF[]) => {
     try {
       const invoicesData = await getInvoices();
@@ -212,7 +261,7 @@ const InvoiceManagementPage = () => {
           ...inv,
           id: inv.invoiceId,
           invoiceNum: inv.invoiceNumber,
-          invoiceStatus: inv.status,
+          invoiceStatus: mapApiInvoiceStatusToUi(inv.status),
           companyName: company?.companyName || inv.companyName || '',
           hcfCode: hcf?.hcfCode || inv.hcfCode || '',
           invoiceDate: inv.invoiceDate || '',
@@ -342,6 +391,7 @@ const InvoiceManagementPage = () => {
         return;
       }
       setSelectedInvoices(payableInvoices);
+      setInlinePaymentSuccess(null);
       setShowPaymentModal(true);
     }
   };
@@ -424,9 +474,10 @@ const InvoiceManagementPage = () => {
       notifyWarning('Please select at least one invoice to proceed with payment');
       return;
     }
-    // Navigate to payment page with selected invoices
-    const invoiceIds = Array.from(selectedInvoiceIds);
-    navigate(`/finance/payment?invoices=${invoiceIds.join(',')}`);
+    // Open payment modal flow (review + payment in one place)
+    setSelectedInvoices(selected);
+    setInlinePaymentSuccess(null);
+    setShowPaymentModal(true);
   };
 
   // Calculate summary for selected invoices
@@ -446,19 +497,34 @@ const InvoiceManagementPage = () => {
 
     try {
       const result: ProcessPaymentResponse = await processPayment(paymentData);
+      const receipt = (result as any)?.receipt || (result as any)?.data?.receipt;
+      const invoiceUpdates = (result as any)?.invoiceUpdates || (result as any)?.data?.invoiceUpdates || [];
+      if (!receipt?.receiptId) {
+        throw new Error('Payment processed but receipt details were not returned');
+      }
       
       setSuccessMessage(
-        `Payment processed successfully! Receipt Number: ${result.data.receipt.receiptNumber}`
+        `Payment processed successfully! Receipt Number: ${receipt.receiptNumber}`
       );
-
-      // Load receipt details
-      const receiptDetails = await getReceipt(result.data.receipt.receiptId);
-      setReceiptData(receiptDetails.data);
-      setShowReceiptModal(true);
 
       // Reload invoices to reflect updated statuses
       await loadInvoices();
-      setShowPaymentModal(false);
+      setInlinePaymentSuccess({
+        receiptId: receipt.receiptId,
+        receiptNumber: receipt.receiptNumber,
+        totalAmount: Number(receipt.totalAmount || paymentData.paymentAmount || 0),
+        receiptDate: receipt.receiptDate,
+        invoiceCount: Math.max(
+          selectedInvoices.length,
+          Array.isArray(invoiceUpdates) ? invoiceUpdates.length : 0,
+          Array.isArray(paymentData.invoiceAllocations) ? paymentData.invoiceAllocations.length : 0,
+        ),
+        companyId: paymentData.companyId,
+        companyName:
+          companies.find((c) => c.id === paymentData.companyId)?.companyName ||
+          selectedInvoices[0]?.companyName ||
+          undefined,
+      });
     } catch (err: any) {
       console.error('Error processing payment:', err);
       const errorMessage = err.message || 'Failed to process payment';
@@ -477,6 +543,172 @@ const InvoiceManagementPage = () => {
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
+  };
+
+  const downloadReceiptHtml = async (receiptId: string, companyId?: string, fallbackCompanyName?: string): Promise<void> => {
+    setReceiptDownloading(true);
+    try {
+      const response = await getReceipt(receiptId);
+      const receiptDataAny = (response as any)?.data || response;
+      const clean = (value: any): string | null => {
+        if (value === null || value === undefined) return null;
+        const s = String(value).trim();
+        return s.length > 0 ? s : null;
+      };
+      let company =
+        companies.find((c) => c.id === companyId) ||
+        companies.find(
+          (c) =>
+            (fallbackCompanyName || '').trim().toLowerCase() !== '' &&
+            c.companyName.trim().toLowerCase() === (fallbackCompanyName || '').trim().toLowerCase(),
+        ) ||
+        null;
+
+      // Always try to refresh from payment->companyId for latest master data fields.
+      if (receiptDataAny?.payment?.paymentId) {
+        try {
+          const paymentData = await getPayment(receiptDataAny.payment.paymentId);
+          const paymentObj = (paymentData as any)?.data || paymentData;
+          const paymentCompanyId = paymentObj?.companyId;
+          if (paymentCompanyId) {
+            const companyById = await companyService.getCompanyById(paymentCompanyId);
+            company = {
+              id: companyById.id,
+              companyCode: companyById.companyCode,
+              companyName: companyById.companyName,
+              status: companyById.status,
+              regdOfficeAddress: companyById.regdOfficeAddress || null,
+              adminOfficeAddress: companyById.adminOfficeAddress || null,
+              factoryAddress: companyById.factoryAddress || null,
+              contactNum: companyById.contactNum || null,
+              companyEmail: companyById.companyEmail || null,
+            };
+          }
+        } catch {
+          // Keep existing fallback behavior if lookup fails.
+        }
+      }
+      // Final fallback: query complete company list and rematch.
+      if (!company) {
+        try {
+          const allCompanies = await companyService.getAllCompanies(false);
+          const fromAll =
+            allCompanies.find((c) => c.id === companyId) ||
+            allCompanies.find(
+              (c) =>
+                (fallbackCompanyName || '').trim().toLowerCase() !== '' &&
+                c.companyName.trim().toLowerCase() === (fallbackCompanyName || '').trim().toLowerCase(),
+            ) ||
+            null;
+          if (fromAll) {
+            company = {
+              id: fromAll.id,
+              companyCode: fromAll.companyCode,
+              companyName: fromAll.companyName,
+              status: fromAll.status,
+              regdOfficeAddress: fromAll.regdOfficeAddress || null,
+              adminOfficeAddress: fromAll.adminOfficeAddress || null,
+              factoryAddress: fromAll.factoryAddress || null,
+              contactNum: fromAll.contactNum || null,
+              companyEmail: fromAll.companyEmail || null,
+            };
+          }
+        } catch {
+          // Keep fallback behavior if list lookup fails.
+        }
+      }
+      const address =
+        clean(company?.regdOfficeAddress) ||
+        clean(company?.adminOfficeAddress) ||
+        clean(company?.factoryAddress) ||
+        '-';
+      const totalAmount = Number(receiptDataAny.totalAmount || 0);
+      const formatAmount = (n: number) => `Rs. ${Number(n || 0).toFixed(2)}`;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const left = 36;
+      const right = pageWidth - 36;
+      const width = right - left;
+      let y = 40;
+
+      const drawCellRow = (leftText: string, rightText: string, height = 24, fill = false) => {
+        if (fill) {
+          doc.setFillColor(219, 234, 254);
+          doc.rect(left, y, width, height, 'F');
+        }
+        doc.rect(left, y, width, height);
+        doc.line(left + width * 0.65, y, left + width * 0.65, y + height);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(leftText, left + 8, y + 16);
+        doc.text(rightText, right - 8, y + 16, { align: 'right' });
+        y += height;
+      };
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text(company?.companyName || 'Company Name', pageWidth / 2, y, { align: 'center' });
+      y += 18;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Address: ${address}`, pageWidth / 2, y, { align: 'center' });
+      y += 14;
+      doc.text(`Ph: ${company?.contactNum || '-'}`, pageWidth / 2, y, { align: 'center' });
+      y += 14;
+      doc.text(`Email: ${company?.companyEmail || '-'}`, pageWidth / 2, y, { align: 'center' });
+      y += 20;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('Receipt Voucher', pageWidth / 2, y, { align: 'center' });
+      y += 12;
+
+      drawCellRow(`No: ${receiptDataAny.receiptNumber || '-'}`, `Date: ${receiptDataAny.receiptDate || '-'}`);
+      drawCellRow('Particulars', 'Amount', 24, true);
+      drawCellRow(`Account: ${company?.companyName || '-'}`, formatAmount(totalAmount));
+      drawCellRow(`Through: ${receiptDataAny?.payment?.paymentMode || '-'}`, '');
+
+      doc.rect(left, y, width, 24);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Against Invoice', left + 8, y + 16);
+      y += 24;
+
+      const invoicesBody = (receiptDataAny.invoices || []).map((inv: any) => [
+        inv.invoiceNumber || '-',
+        formatAmount(Number(inv.allocatedAmount || 0)),
+      ]);
+      try {
+        const autotableModule = await import('jspdf-autotable');
+        const autoTableFn = (autotableModule as any)?.default;
+        if (typeof autoTableFn === 'function') {
+          autoTableFn(doc, {
+            startY: y,
+            head: [['Inv-Num', 'Amount']],
+            body: invoicesBody,
+            margin: { left, right: pageWidth - right },
+            styles: { fontSize: 10, cellPadding: 4, lineColor: [203, 213, 225], lineWidth: 0.5 },
+            headStyles: { fillColor: [219, 234, 254], textColor: [15, 23, 42], fontStyle: 'bold' },
+            columnStyles: { 1: { halign: 'right' } },
+          });
+          y = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : y + 24;
+        }
+      } catch {
+        // Fallback manual table when autotable module isn't resolved by dev server.
+        drawCellRow('Inv-Num', 'Amount', 22, true);
+        invoicesBody.forEach((row: string[]) => {
+          drawCellRow(row[0], row[1], 20, false);
+        });
+      }
+
+      drawCellRow('Total', formatAmount(totalAmount));
+      y += 28;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Authorised Signatory', right, y, { align: 'right' });
+      doc.save(`${receiptDataAny.receiptNumber || 'receipt'}.pdf`);
+    } finally {
+      setReceiptDownloading(false);
+    }
   };
 
   const enqueueBulkPdfJobs = async (invoiceIds: string[]) => {
@@ -508,6 +740,7 @@ const InvoiceManagementPage = () => {
       const url = window.URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      notifySuccess('Invoice PDF opened in a new tab');
 
       // If you prefer direct download instead of opening, use:
       // triggerBrowserDownload(blob, filename);
@@ -539,11 +772,6 @@ const InvoiceManagementPage = () => {
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to delete invoice';
       notifyUpdate(loadingToast, errorMessage, 'error');
-      if (errorMessage.includes('Internal server error') || errorMessage.includes('500')) {
-        setError('Internal server error. Please check the backend logs.');
-      } else {
-        setError(errorMessage);
-      }
     } finally {
       setLoading(false);
     }
@@ -1037,6 +1265,49 @@ const InvoiceManagementPage = () => {
             </div>
           </div>
 
+          {/* Step Flow */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            marginBottom: '16px',
+            padding: '10px 14px',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '10px'
+          }}>
+            {[
+              { id: 1, label: 'Select Invoices', active: true },
+              { id: 2, label: 'Review', active: false },
+              { id: 3, label: 'Payment', active: false },
+            ].map((step, idx) => (
+              <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  background: step.active ? '#0f766e' : '#E5E7EB',
+                  color: step.active ? '#FFFFFF' : '#6B7280'
+                }}>
+                  {step.id}
+                </div>
+                <span style={{
+                  fontSize: '13px',
+                  fontWeight: step.active ? 700 : 500,
+                  color: step.active ? '#0f172a' : '#64748b'
+                }}>
+                  {step.label}
+                </span>
+                {idx < 2 && <span style={{ color: '#CBD5E1', fontSize: '14px' }}>→</span>}
+              </div>
+            ))}
+          </div>
+
           {/* Search and Actions */}
           <div className="ra-search-actions">
             <div className="ra-search-box">
@@ -1113,9 +1384,9 @@ const InvoiceManagementPage = () => {
                     <th>HCF Code</th>
                     <th>Invoice Date</th>
                     <th>Due Date</th>
-                    <th>Invoice Value</th>
-                    <th>Paid Amount</th>
-                    <th>Balance</th>
+                    <th style={{ textAlign: 'right' }}>Invoice Value</th>
+                    <th style={{ textAlign: 'right' }}>Paid Amount</th>
+                    <th style={{ textAlign: 'right' }}>Balance</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -1142,9 +1413,9 @@ const InvoiceManagementPage = () => {
                         <td>{hcf ? `${invoice.hcfCode} - ${hcf.hcfName}` : invoice.hcfCode}</td>
                         <td>{invoice.invoiceDate || '-'}</td>
                         <td>{invoice.dueDate || '-'}</td>
-                        <td>₹{invoice.invoiceValue || '0'}</td>
-                        <td style={{ color: '#94a3b8', fontSize: '13px' }}>₹{parseFloat(invoice.totalPaidAmount || '0').toFixed(2)}</td>
-                        <td style={{ fontWeight: 700, color: '#059669', fontSize: '14px' }}>₹{parseFloat(invoice.balanceAmount || '0').toFixed(2)}</td>
+                        <td style={{ textAlign: 'right' }}>₹{invoice.invoiceValue || '0'}</td>
+                        <td style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'right' }}>₹{parseFloat(invoice.totalPaidAmount || '0').toFixed(2)}</td>
+                        <td style={{ fontWeight: 700, color: '#059669', fontSize: '14px', textAlign: 'right' }}>₹{parseFloat(invoice.balanceAmount || '0').toFixed(2)}</td>
                         <td>
                           <span className={`invoice-status-badge invoice-status-badge--${invoice.invoiceStatus.toLowerCase().replace(' ', '-')}`}>
                             {getDisplayStatus(invoice.invoiceStatus)}
@@ -1243,13 +1514,8 @@ const InvoiceManagementPage = () => {
               {/* Left Section - Summary Information */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '32px', flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
-                    fontWeight: 400,
-                    lineHeight: '1.5'
-                  }}>
-                    Selected Invoices:
+                  <span style={{ fontSize: '14px', color: '#6B7280', fontWeight: 400, lineHeight: '1.5' }}>
+                    Invoices Selected:
                   </span>
                   <span style={{ 
                     fontSize: '14px', 
@@ -1257,7 +1523,7 @@ const InvoiceManagementPage = () => {
                     color: '#1F2937',
                     lineHeight: '1.5'
                   }}>
-                    {selectedInvoicesSummary().count}
+                    {selectedInvoicesSummary().count} Invoices Selected
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1324,7 +1590,7 @@ const InvoiceManagementPage = () => {
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                   </svg>
-                  Proceed to Payment
+                  Proceed to Payment →
                 </button>
               </div>
             </div>
@@ -1386,8 +1652,13 @@ const InvoiceManagementPage = () => {
           onClose={() => {
             setShowPaymentModal(false);
             setSelectedInvoices([]);
+            setInlinePaymentSuccess(null);
           }}
           onProcessPayment={handleProcessPayment}
+          paymentSuccess={inlinePaymentSuccess}
+          paymentError={error}
+          onDownloadReceipt={downloadReceiptHtml}
+          receiptDownloading={receiptDownloading}
           loading={loading}
         />
       )}
@@ -2802,6 +3073,16 @@ interface InvoiceViewModalProps {
 const InvoiceViewModal = ({ invoice, hcfs, onClose, onPrint }: InvoiceViewModalProps) => {
   const hcf = hcfs.find(h => h.hcfCode === invoice.hcfCode);
 
+  const showValue = (value?: string | number) => {
+    const parsed = value === undefined || value === null ? '' : String(value).trim();
+    return parsed ? parsed : '-';
+  };
+
+  const showCurrency = (value?: string | number) => {
+    const parsed = value === undefined || value === null ? '' : String(value).trim();
+    return parsed ? `₹${parsed}` : '-';
+  };
+
   const handleAddReceipt = () => {
     notifyInfo('Add Receipt functionality will be implemented');
   };
@@ -2811,10 +3092,10 @@ const InvoiceViewModal = ({ invoice, hcfs, onClose, onPrint }: InvoiceViewModalP
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay invoice-view-overlay" onClick={onClose}>
       <div className="modal-content modal-content--view" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Invoice Details - {invoice.invoiceNum}</h2>
+          <h2 className="modal-title">Invoice Details - {showValue(invoice.invoiceNum)}</h2>
           <button className="modal-close-btn" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -2828,29 +3109,29 @@ const InvoiceViewModal = ({ invoice, hcfs, onClose, onPrint }: InvoiceViewModalP
             <h3 className="invoice-view-section-title">Basic Information</h3>
             <div className="invoice-view-grid">
               <div className="invoice-view-field">
-                <label>Company Name:</label>
-                <span>{invoice.companyName || '-'}</span>
+                <label>Company Name</label>
+                <span>{showValue(invoice.companyName)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>HCF Code:</label>
-                <span>{hcf ? `${invoice.hcfCode} - ${hcf.hcfName}` : invoice.hcfCode}</span>
+                <label>HCF Code</label>
+                <span>{showValue(hcf ? `${invoice.hcfCode} - ${hcf.hcfName}` : invoice.hcfCode)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Invoice Number:</label>
-                <span>{invoice.invoiceNum || '-'}</span>
+                <label>Invoice Number</label>
+                <span>{showValue(invoice.invoiceNum)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Invoice Date:</label>
-                <span>{invoice.invoiceDate || '-'}</span>
+                <label>Invoice Date</label>
+                <span>{showValue(invoice.invoiceDate)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Due Date:</label>
-                <span>{invoice.dueDate || '-'}</span>
+                <label>Due Date</label>
+                <span>{showValue(invoice.dueDate)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Status:</label>
+                <label>Status</label>
                 <span className={`invoice-status-badge invoice-status-badge--${invoice.invoiceStatus.toLowerCase().replace(' ', '-')}`}>
-                  {invoice.invoiceStatus}
+                  {showValue(invoice.invoiceStatus)}
                 </span>
               </div>
             </div>
@@ -2860,76 +3141,87 @@ const InvoiceViewModal = ({ invoice, hcfs, onClose, onPrint }: InvoiceViewModalP
             <h3 className="invoice-view-section-title">Billing Information</h3>
             <div className="invoice-view-grid">
               <div className="invoice-view-field">
-                <label>Billing Type:</label>
-                <span>{invoice.billingType || '-'}</span>
+                <label>Billing Type</label>
+                <span>{showValue(invoice.billingType)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Billing Days:</label>
-                <span>{invoice.billingDays || '-'}</span>
+                <label>Billing Days</label>
+                <span>{showValue(invoice.billingDays)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Bed Count:</label>
-                <span>{invoice.bedCount || '-'}</span>
+                <label>Bed Count</label>
+                <span>{showValue(invoice.bedCount)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Bed Rate:</label>
-                <span>₹{invoice.bedRate || '-'}</span>
+                <label>Bed Rate</label>
+                <span>{showCurrency(invoice.bedRate)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Weight in Kg:</label>
-                <span>{invoice.weightInKg || '-'} kg</span>
+                <label>Weight in Kg</label>
+                <span>{showValue(invoice.weightInKg) === '-' ? '-' : `${showValue(invoice.weightInKg)} kg`}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Kg Rate:</label>
-                <span>₹{invoice.kgRate || '-'}</span>
+                <label>Kg Rate</label>
+                <span>{showCurrency(invoice.kgRate)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Lumpsum Amount:</label>
-                <span>₹{invoice.lumpsumAmount || '-'}</span>
+                <label>Lumpsum Amount</label>
+                <span>{showCurrency(invoice.lumpsumAmount)}</span>
+              </div>
+              <div className="invoice-view-field">
+                <label>Remarks</label>
+                <span>{showValue(invoice.remarks)}</span>
               </div>
             </div>
           </div>
 
           <div className="invoice-view-section">
-            <h3 className="invoice-view-section-title">Tax & Amount Details</h3>
+            <h3 className="invoice-view-section-title">Tax Details</h3>
             <div className="invoice-view-grid">
               <div className="invoice-view-field">
-                <label>Taxable Value:</label>
-                <span>₹{invoice.taxableValue || '0'}</span>
+                <label>Taxable Value</label>
+                <span>{showCurrency(invoice.taxableValue)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>IGST:</label>
-                <span>₹{invoice.igst || '0'}</span>
+                <label>IGST</label>
+                <span>{showCurrency(invoice.igst)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>CGST:</label>
-                <span>₹{invoice.cgst || '0'}</span>
+                <label>CGST</label>
+                <span>{showCurrency(invoice.cgst)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>SGST:</label>
-                <span>₹{invoice.sgst || '0'}</span>
+                <label>SGST</label>
+                <span>{showCurrency(invoice.sgst)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Round Off:</label>
-                <span>₹{invoice.roundOff || '0'}</span>
-              </div>
-              <div className="invoice-view-field invoice-view-field--highlight">
-                <label>Invoice Value:</label>
-                <span>₹{invoice.invoiceValue || '0'}</span>
+                <label>Round Off</label>
+                <span>{showCurrency(invoice.roundOff)}</span>
               </div>
               <div className="invoice-view-field">
-                <label>Total Paid Amount:</label>
-                <span>₹{invoice.totalPaidAmount || '0'}</span>
+                <label>GST Number</label>
+                <span>{showValue(invoice.gstNumber)}</span>
               </div>
-              <div className="invoice-view-field invoice-view-field--highlight">
-                <label>Balance Amount:</label>
-                <span>₹{invoice.balanceAmount || '0'}</span>
               </div>
+            </div>
+
+          <div className="invoice-view-amount-card">
+            <div className="invoice-view-amount-item">
+              <label>Invoice Value</label>
+              <span>{showCurrency(invoice.invoiceValue)}</span>
+            </div>
+            <div className="invoice-view-amount-item">
+              <label>Total Paid</label>
+              <span>{showCurrency(invoice.totalPaidAmount)}</span>
+            </div>
+            <div className="invoice-view-amount-item invoice-view-amount-item--balance">
+              <label>Balance</label>
+              <span>{showCurrency(invoice.balanceAmount)}</span>
             </div>
           </div>
         </div>
 
-        <div className="modal-footer">
+        <div className="modal-footer invoice-view-footer">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
             Back
           </button>
@@ -3209,14 +3501,19 @@ interface PaymentModalProps {
   companies: Company[];
   onClose: () => void;
   onProcessPayment: (paymentData: CreatePaymentRequest) => void;
+  paymentSuccess: InlinePaymentSuccess | null;
+  paymentError: string | null;
+  onDownloadReceipt: (receiptId: string, companyId?: string, fallbackCompanyName?: string) => Promise<void>;
+  receiptDownloading: boolean;
   loading: boolean;
 }
 
-const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading }: PaymentModalProps) => {
+const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, paymentSuccess, paymentError, onDownloadReceipt, receiptDownloading, loading }: PaymentModalProps) => {
   // Find company ID from first invoice
   const getCompanyId = () => {
     if (invoices.length === 0) return '';
     const firstInvoice = invoices[0];
+    if (firstInvoice.companyId) return firstInvoice.companyId;
     const company = companies.find(c => c.companyName === firstInvoice.companyName);
     return company?.id || '';
   };
@@ -3236,11 +3533,23 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
 
   const [allocationMode, setAllocationMode] = useState<'FIFO' | 'Manual'>('FIFO');
   const [manualAllocations, setManualAllocations] = useState<Record<string, number>>({});
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   // Calculate total payable amount
   const totalPayable = invoices.reduce((sum, inv) => {
     return sum + parseFloat(inv.balanceAmount || '0');
   }, 0);
+  const selectedCompanyName =
+    companies.find((c) => c.id === formData.companyId)?.companyName ||
+    invoices[0]?.companyName ||
+    'Selected Company';
+  const isAmountInvalid = formData.paymentAmount <= 0 || formData.paymentAmount > totalPayable;
+  const paymentAmountError =
+    formData.paymentAmount <= 0
+      ? 'Amount must be greater than 0'
+      : formData.paymentAmount > totalPayable
+        ? `Amount cannot exceed ₹${totalPayable.toFixed(2)}`
+        : null;
 
   useEffect(() => {
     setFormData(prev => ({
@@ -3257,10 +3566,23 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
       return;
     }
 
+    if (formData.paymentAmount > totalPayable) {
+      notifyWarning(`Payment amount cannot exceed total payable of ₹${totalPayable.toFixed(2)}`);
+      return;
+    }
+
+    if (allocationMode === 'Manual' && Object.values(manualAllocations).every((amt) => amt <= 0)) {
+      notifyWarning('Please allocate at least one invoice amount for manual payment');
+      return;
+    }
+
     const paymentData: CreatePaymentRequest = {
       ...formData,
       invoiceAllocations: allocationMode === 'FIFO' 
-        ? [] // Empty array triggers FIFO
+        ? invoices.map(inv => ({
+            invoiceId: inv.id,
+            allocatedAmount: 0,
+          })) // Send selected invoices with zero allocation to trigger FIFO
         : invoices.map(inv => ({
             invoiceId: inv.id,
             allocatedAmount: manualAllocations[inv.id] || 0,
@@ -3280,76 +3602,175 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
     }));
   };
 
+  const handlePaymentAmountChange = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+      setFormData({ ...formData, paymentAmount: 0 });
+      return;
+    }
+    if (!/^\d*\.?\d{0,2}$/.test(trimmed)) return;
+    const amount = parseFloat(trimmed);
+    if (isNaN(amount)) return;
+    if (amount < 0) {
+      setFormData({ ...formData, paymentAmount: 0 });
+      return;
+    }
+    setFormData({ ...formData, paymentAmount: Math.min(amount, totalPayable) });
+  };
+
+  if (paymentSuccess) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div
+        className="modal-overlay"
+        onClick={onClose}
+        style={{
+          justifyContent: 'flex-end',
+          alignItems: 'stretch',
+          padding: 0,
+          overflow: 'hidden',
+          background: 'rgba(15, 23, 42, 0.45)',
+        }}
+      >
+        <div
+          className="modal-content"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 'min(450px, 100vw)',
+            height: '100vh',
+            minHeight: '100vh',
+            maxHeight: '100vh',
+            margin: 0,
+            borderRadius: 0,
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '-10px 0 30px rgba(15, 23, 42, 0.15)',
+          }}
+        >
+          <div className="modal-header">
+            <h2 className="modal-title">Payment Completed</h2>
+            <button className="modal-close-btn" onClick={onClose}>×</button>
+          </div>
+          <div style={{ padding: '16px 14px', overflowY: 'auto', flex: 1 }}>
+            <div style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: '10px', padding: '14px' }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#166534', marginBottom: '6px' }}>Payment Successful</div>
+              <div style={{ fontSize: '13px', color: '#166534' }}>Receipt #{paymentSuccess.receiptNumber}</div>
+            </div>
+            <div style={{ marginTop: '12px', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '12px', background: '#fff' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Amount Paid</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#047857' }}>₹{Number(paymentSuccess.totalAmount || 0).toFixed(2)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Invoices Settled</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{paymentSuccess.invoiceCount}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer" style={{ marginTop: 0, borderTop: '1px solid #E2E8F0', padding: '10px 12px', background: '#FFFFFF', position: 'sticky', bottom: 0, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={() =>
+                onDownloadReceipt(paymentSuccess.receiptId, paymentSuccess.companyId, paymentSuccess.companyName)
+              }
+              disabled={receiptDownloading}
+            >
+              {receiptDownloading ? 'Downloading...' : 'Download Receipt'}
+            </button>
+            <button type="button" className="btn btn--primary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{
+        justifyContent: 'flex-end',
+        alignItems: 'stretch',
+        padding: 0,
+        overflow: 'hidden',
+        background: 'rgba(15, 23, 42, 0.45)',
+      }}
+    >
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(450px, 100vw)',
+          height: '100vh',
+          minHeight: '100vh',
+          maxHeight: '100vh',
+          margin: 0,
+          borderRadius: 0,
+          border: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '-10px 0 30px rgba(15, 23, 42, 0.15)',
+        }}
+      >
         <div className="modal-header">
           <h2 className="modal-title">Make Payment</h2>
           <button className="modal-close-btn" onClick={onClose}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Selected Invoices Summary */}
-          <div style={{ marginBottom: '20px', padding: '15px', background: '#f1f5f9', borderRadius: '8px' }}>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600 }}>Selected Invoices ({invoices.length})</h3>
-            <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-              <table style={{ width: '100%', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Invoice #</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Invoice Value</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Paid</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map(inv => (
-                    <tr key={inv.id}>
-                      <td style={{ padding: '8px' }}>{inv.invoiceNum}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>₹{parseFloat(inv.invoiceValue || '0').toFixed(2)}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>₹{parseFloat(inv.totalPaidAmount || '0').toFixed(2)}</td>
-                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>₹{parseFloat(inv.balanceAmount || '0').toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: '2px solid #cbd5e1', fontWeight: 600 }}>
-                    <td style={{ padding: '8px' }}>Total Payable:</td>
-                    <td colSpan={3} style={{ padding: '8px', textAlign: 'right' }}>₹{totalPayable.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <div style={{ padding: '0 12px', overflowY: 'auto', flex: 1 }}>
+          {paymentError && (
+            <div style={{ margin: '10px 0 8px', padding: '10px 12px', border: '1px solid #fecaca', background: '#fef2f2', borderRadius: '10px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: '#b91c1c', marginBottom: '2px' }}>Payment Failed</div>
+              <div style={{ fontSize: '12px', color: '#991b1b' }}>{paymentError}</div>
+            </div>
+          )}
+          {/* Total Payable Highlight */}
+          <div style={{ margin: '10px 0 8px', padding: '10px 12px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px' }}>
+            <div style={{ fontSize: '11px', color: '#065F46', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              Total Payable
+            </div>
+            <div style={{ fontSize: '30px', lineHeight: 1.1, color: '#047857', fontWeight: 800, marginTop: '2px' }}>
+              ₹{totalPayable.toFixed(2)}
+            </div>
+            <div style={{ marginTop: '4px', fontSize: '12px', color: '#166534', fontWeight: 600 }}>
+              {invoices.length} invoice(s) selected
+            </div>
+          </div>
+
+          {/* Compact Invoice List */}
+          <div style={{ marginBottom: '8px', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '8px 10px', background: '#F8FAFC' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+              Selected Invoices
+            </div>
+            <div style={{ maxHeight: '96px', overflowY: 'auto' }}>
+              {invoices.map((inv) => (
+                <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid #EAEFF5' }}>
+                  <span style={{ fontSize: '12px', color: '#334155', fontWeight: 600 }}>{inv.invoiceNum}</span>
+                  <span style={{ fontSize: '12px', color: '#059669', fontWeight: 700 }}>
+                    ₹{parseFloat(inv.balanceAmount || '0').toFixed(2)}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Payment Details */}
-          <div className="form-section">
+          <div className="form-section" style={{ marginBottom: '8px', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px' }}>
             <h3 className="form-section-title">Payment Details</h3>
             <div className="form-grid">
-              <div className="form-group">
-                <label>Company *</label>
-                <select
-                  required
-                  value={formData.companyId}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.companyName}</option>
-                  ))}
-                </select>
+              <div className="form-group form-group--full" style={{ marginBottom: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#0f766e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Primary Fields
               </div>
-
-              <div className="form-group">
-                <label>Payment Date *</label>
-                <input
-                  type="date"
-                  required
-                  value={formData.paymentDate}
-                  onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                />
               </div>
-
               <div className="form-group">
                 <label>Payment Mode *</label>
                 <select
@@ -3370,19 +3791,68 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
               <div className="form-group">
                 <label>Payment Amount *</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   required
-                  min="0.01"
-                  step="0.01"
+                  placeholder="Enter payment amount"
                   value={formData.paymentAmount}
-                  onChange={(e) => setFormData({ ...formData, paymentAmount: parseFloat(e.target.value) || 0 })}
-                  disabled={allocationMode === 'FIFO'}
+                  onChange={(e) => handlePaymentAmountChange(e.target.value)}
+                  onBlur={() => {
+                    if (formData.paymentAmount < 0) {
+                      setFormData({ ...formData, paymentAmount: 0 });
+                    } else if (formData.paymentAmount > totalPayable) {
+                      setFormData({ ...formData, paymentAmount: totalPayable });
+                    }
+                  }}
+                  style={{ textAlign: 'right' }}
                 />
-                {allocationMode === 'FIFO' && (
+                {paymentAmountError ? (
+                  <small style={{ display: 'block', marginTop: '4px', color: '#dc2626' }}>{paymentAmountError}</small>
+                ) : (
                   <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
-                    Auto-calculated from selected invoices (FIFO allocation)
+                    Max: ₹{totalPayable.toFixed(2)} (partial payment allowed)
                   </small>
                 )}
+              </div>
+
+              <div className="form-group form-group--full" style={{ marginTop: '2px', marginBottom: '2px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreDetails((prev) => !prev)}
+                  style={{
+                    border: '1px solid #E2E8F0',
+                    background: '#FFFFFF',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#475569',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span>More Details</span>
+                  <span>{showMoreDetails ? '−' : '+'}</span>
+                </button>
+              </div>
+
+              {showMoreDetails && (
+                <>
+                  <div className="form-group">
+                    <label>Company *</label>
+                    <input type="text" value={selectedCompanyName} disabled readOnly />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Payment Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.paymentDate}
+                      onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                    />
               </div>
 
               {(formData.paymentMode === PaymentMode.CHEQUE || formData.paymentMode === PaymentMode.BANK_TRANSFER || 
@@ -3437,14 +3907,16 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
                   value={formData.notes || ''}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
                   placeholder="Payment notes (optional)"
-                  rows={3}
+                      rows={2}
                 />
               </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Allocation Mode */}
-          <div className="form-section">
+          <div className="form-section" style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '12px', marginBottom: '8px' }}>
             <h3 className="form-section-title">Allocation Mode</h3>
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
@@ -3504,11 +3976,14 @@ const PaymentModal = ({ invoices, companies, onClose, onProcessPayment, loading 
               </div>
             )}
           </div>
+          </div>
 
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} disabled={loading}>Cancel</button>
-            <button type="submit" className="btn btn--primary" disabled={loading}>
-              {loading ? 'Processing...' : 'Process Payment'}
+          <div className="modal-footer" style={{ marginTop: 0, borderTop: '1px solid #E2E8F0', padding: '8px 10px', background: '#FFFFFF', position: 'sticky', bottom: 0, alignItems: 'center' }}>
+            <button type="button" className="btn btn--secondary" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={loading || isAmountInvalid || !formData.companyId}>
+              {loading ? 'Processing...' : `Process Payment ₹${formData.paymentAmount.toFixed(2)} →`}
             </button>
           </div>
         </form>
@@ -3825,6 +4300,74 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
+  const formatDate = (value: string | undefined) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-GB');
+  };
+
+  const amountInWords = (amount: number): string => {
+    const a = Math.floor(amount);
+    const units = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    const convert = (n: number): string => {
+      if (n < 10) return units[n];
+      if (n < 20) return teens[n - 10];
+      if (n < 100) return `${tens[Math.floor(n / 10)]}${n % 10 ? ` ${units[n % 10]}` : ''}`;
+      if (n < 1000) return `${units[Math.floor(n / 100)]} hundred${n % 100 ? ` ${convert(n % 100)}` : ''}`;
+      if (n < 100000) return `${convert(Math.floor(n / 1000))} thousand${n % 1000 ? ` ${convert(n % 1000)}` : ''}`;
+      if (n < 10000000) return `${convert(Math.floor(n / 100000))} lakh${n % 100000 ? ` ${convert(n % 100000)}` : ''}`;
+      return `${convert(Math.floor(n / 10000000))} crore${n % 10000000 ? ` ${convert(n % 10000000)}` : ''}`;
+    };
+    if (a === 0) return 'zero rupees only';
+    return `${convert(a)} rupees only`;
+  };
+
+  const handleDownloadReceipt = () => {
+    const rows = (receiptData.invoices || []).map((inv: any) => `
+      <tr>
+        <td style="padding:6px 8px;border:1px solid #d1d5db;">${inv.invoiceNumber || '-'}</td>
+        <td style="padding:6px 8px;border:1px solid #d1d5db;text-align:right;">${formatDate(inv.invoiceDate)}</td>
+        <td style="padding:6px 8px;border:1px solid #d1d5db;text-align:right;">₹ ${Number(inv.allocatedAmount || 0).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    const companyName = receiptData?.payment?.companyName || receiptData?.companyName || '-';
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Receipt ${receiptData.receiptNumber}</title></head>
+<body style="font-family:Arial,sans-serif;padding:18px;color:#111827;">
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr><th colspan="3" style="font-size:28px;padding:8px;border:1px solid #d1d5db;">${companyName}</th></tr>
+    <tr><th colspan="3" style="font-size:24px;padding:8px;border:1px solid #d1d5db;">Receipt Voucher</th></tr>
+    <tr>
+      <td style="padding:8px;border:1px solid #d1d5db;"><strong>No:</strong> ${receiptData.receiptNumber || '-'}</td>
+      <td colspan="2" style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>Date:</strong> ${formatDate(receiptData.receiptDate)}</td>
+    </tr>
+    <tr><td colspan="2" style="padding:8px;border:1px solid #d1d5db;"><strong>Particulars</strong></td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>Amount</strong></td></tr>
+    <tr><td colspan="2" style="padding:8px;border:1px solid #d1d5db;">Account: ${companyName}</td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;">₹ ${Number(receiptData.totalAmount || 0).toFixed(2)}</td></tr>
+    <tr><td colspan="2" style="padding:8px;border:1px solid #d1d5db;">Through: ${receiptData?.payment?.paymentMode || '-'}</td><td style="padding:8px;border:1px solid #d1d5db;"></td></tr>
+    <tr><td colspan="3" style="padding:8px;border:1px solid #d1d5db;"><strong>Against</strong></td></tr>
+    <tr><td style="padding:8px;border:1px solid #d1d5db;"><strong>Inv-Num</strong></td><td style="padding:8px;border:1px solid #d1d5db;"><strong>Inv-Date</strong></td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>Amount</strong></td></tr>
+    ${rows || '<tr><td colspan="3" style="padding:8px;border:1px solid #d1d5db;">-</td></tr>'}
+    <tr><td colspan="2" style="padding:8px;border:1px solid #d1d5db;"><strong>Amount in words</strong><br/>${amountInWords(Number(receiptData.totalAmount || 0))}</td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;">₹ ${Number(receiptData.totalAmount || 0).toFixed(2)}</td></tr>
+    <tr><td colspan="3" style="padding:18px 8px;border:1px solid #d1d5db;text-align:right;"><strong>Authorised Signatory</strong></td></tr>
+  </table>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${receiptData.receiptNumber || 'receipt'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
@@ -3894,15 +4437,22 @@ const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn btn--primary" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={handleDownloadReceipt}
+          >
+            Download Receipt
+          </button>
           <button
             type="button"
             className="btn btn--secondary"
             onClick={() => window.print()}
-            style={{ marginLeft: '10px' }}
+            style={{ marginLeft: '6px' }}
           >
             Print Receipt
           </button>
+          <button type="button" className="btn btn--primary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

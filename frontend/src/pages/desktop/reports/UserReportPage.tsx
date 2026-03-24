@@ -6,6 +6,9 @@ import { companyService, CompanyResponse } from '../../../services/companyServic
 import { roleService, RoleResponse } from '../../../services/roleService';
 import AppLayout from '../../../components/layout/AppLayout';
 import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportFormat } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './userReportPage.css';
 
 interface UserReportFilters {
@@ -519,7 +522,7 @@ const UserReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -551,6 +554,17 @@ const UserReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading || !dataLoaded || filteredUsers.length === 0}
+              onExport={(format) => {
+                try {
+                  reportExportService.exportAuto(filteredUsers as Record<string, any>[], format as ExportFormat, 'User_Report');
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {/* Filter Modal Overlay */}

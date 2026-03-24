@@ -386,6 +386,49 @@ const PaymentPage = () => {
           </h1>
         </div>
 
+        {/* Step Flow */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '18px',
+          padding: '10px 14px',
+          background: '#F8FAFC',
+          border: '1px solid #E2E8F0',
+          borderRadius: '10px'
+        }}>
+          {[
+            { id: 1, label: 'Select Invoices', state: 'done' as const },
+            { id: 2, label: 'Review', state: 'active' as const },
+            { id: 3, label: 'Payment', state: 'active' as const },
+          ].map((step, idx) => (
+            <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 700,
+                background: step.state === 'done' ? '#16A34A' : step.state === 'active' ? '#0f766e' : '#E5E7EB',
+                color: step.state === 'active' || step.state === 'done' ? '#FFFFFF' : '#6B7280'
+              }}>
+                {step.id}
+              </div>
+              <span style={{
+                fontSize: '13px',
+                fontWeight: step.state === 'active' ? 700 : 500,
+                color: step.state === 'active' ? '#0f172a' : '#64748b'
+              }}>
+                {step.label}
+              </span>
+              {idx < 2 && <span style={{ color: '#CBD5E1', fontSize: '14px' }}>→</span>}
+            </div>
+          ))}
+        </div>
+
         {/* Error/Success Messages */}
         {error && (
           <div className="alert alert-error" style={{ 
@@ -429,10 +472,32 @@ const PaymentPage = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* Total Payable Highlight */}
+          <div style={{
+            marginBottom: '16px',
+            padding: '16px 20px',
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            borderRadius: '10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: '13px', color: '#065F46', fontWeight: 600 }}>Total Payable</div>
+              <div style={{ fontSize: '30px', fontWeight: 800, color: '#047857', lineHeight: 1.1 }}>
+                ₹{totalPayable.toFixed(2)}
+              </div>
+            </div>
+            <div style={{ fontSize: '13px', color: '#065F46', fontWeight: 600 }}>
+              {invoices.length} invoice(s) selected
+            </div>
+          </div>
+
           {/* Selected Invoices Section - Payment Context */}
           <div style={{ 
-            marginBottom: '32px', 
-            padding: '20px', 
+            marginBottom: '24px', 
+            padding: '16px', 
             background: '#F1F5F9', 
             borderRadius: '8px',
             borderLeft: '4px solid #10b981'
@@ -445,66 +510,27 @@ const PaymentPage = () => {
             }}>
               Selected Invoices ({invoices.length})
             </h3>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
-              gap: '12px',
-              marginBottom: '16px'
-            }}>
-              {invoices.map(inv => (
-                <div key={inv.id} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '12px',
-                  padding: '12px',
-                  background: '#FFFFFF',
-                  borderRadius: '6px',
-                  border: '1px solid #E2E8F0'
-                }}>
-                  <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500 }}>
-                    Invoice #
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#1F2937', fontWeight: 600, textAlign: 'right' }}>
-                    {inv.invoiceNum}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500 }}>
-                    Balance
-                  </div>
-                  <div style={{ 
-                    fontSize: '14px', 
-                    color: '#059669', 
-                    fontWeight: 700, 
-                    textAlign: 'right' 
-                  }}>
-                    ₹{parseFloat(inv.balanceAmount || '0').toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{
-              padding: '16px',
-              background: '#FFFFFF',
-              borderRadius: '6px',
-              border: '2px solid #10b981',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{ 
-                fontSize: '16px', 
-                fontWeight: 600, 
-                color: '#1F2937' 
-              }}>
-                Total Payable:
-              </span>
-              <span style={{ 
-                fontSize: '24px', 
-                fontWeight: 700, 
-                color: '#059669',
-                letterSpacing: '-0.02em'
-              }}>
-                ₹{totalPayable.toFixed(2)}
-              </span>
+            <div style={{ overflowX: 'auto', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569' }}>Invoice No</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569' }}>HCF</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', color: '#475569' }}>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} style={{ borderTop: '1px solid #EEF2F7' }}>
+                      <td style={{ padding: '10px 12px', color: '#0F172A', fontWeight: 600 }}>{inv.invoiceNum}</td>
+                      <td style={{ padding: '10px 12px', color: '#334155' }}>{inv.hcfCode || '-'}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'right', color: '#059669', fontWeight: 700 }}>
+                        ₹{parseFloat(inv.balanceAmount || '0').toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -523,71 +549,13 @@ const PaymentPage = () => {
               gridTemplateColumns: 'repeat(2, 1fr)', 
               gap: '20px'
             }}>
-              {/* Row 1: Company | Payment Date */}
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontSize: '14px', 
-                  fontWeight: 500,
-                  color: '#374151'
-                }}>
-                  Company *
-                </label>
-                <input
-                  type="text"
-                  value={companies.find(c => c.id === formData.companyId)?.companyName || ''}
-                  readOnly
-                  disabled
-                  style={{ 
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: '#F3F4F6', 
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '6px',
-                    cursor: 'not-allowed',
-                    fontSize: '14px',
-                    color: '#6B7280'
-                  }}
-                />
-                <small style={{ 
-                  display: 'block', 
-                  marginTop: '6px', 
-                  color: '#6B7280', 
-                  fontSize: '12px',
-                  fontStyle: 'italic'
-                }}>
-                  Company is derived from selected invoices
-                </small>
+              <div style={{ gridColumn: '1 / -1', marginBottom: '-6px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Primary Fields
+                </div>
               </div>
-
-              <div>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: '8px', 
-                  fontSize: '14px', 
-                  fontWeight: 500,
-                  color: '#374151'
-                }}>
-                  Payment Date *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.paymentDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#1F2937'
-                  }}
-                />
-              </div>
-
-              {/* Row 2: Payment Mode | Payment Amount */}
+              
+              {/* Primary: Payment Mode | Payment Amount */}
               <div>
                 <label style={{ 
                   display: 'block', 
@@ -664,7 +632,6 @@ const PaymentPage = () => {
                     }
                     paymentAmountRef.current = amount;
                     setFormData(prev => ({ ...prev, paymentAmount: amount }));
-                    console.log('Payment amount updated to:', amount); // Debug log
                   }}
                   onBlur={(e) => {
                     const inputValue = e.target.value.trim();
@@ -690,7 +657,8 @@ const PaymentPage = () => {
                     fontSize: '16px',
                     fontWeight: 600,
                     color: '#1F2937',
-                    background: '#FFFFFF'
+                    background: '#FFFFFF',
+                    textAlign: 'right'
                   }}
                 />
                 <small style={{ 
@@ -699,8 +667,78 @@ const PaymentPage = () => {
                   color: '#6B7280', 
                   fontSize: '12px'
                 }}>
-                  Maximum: ₹{totalPayable.toFixed(2)} (supports partial payments)
+                  Maximum: ₹{totalPayable.toFixed(2)} (auto-filled from selected invoices)
                 </small>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', margin: '2px 0 -6px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Secondary Fields
+                </div>
+              </div>
+
+              {/* Row 1: Company | Payment Date */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontSize: '14px', 
+                  fontWeight: 500,
+                  color: '#374151'
+                }}>
+                  Company *
+                </label>
+                <input
+                  type="text"
+                  value={companies.find(c => c.id === formData.companyId)?.companyName || ''}
+                  readOnly
+                  disabled
+                  style={{ 
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: '#F3F4F6', 
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    cursor: 'not-allowed',
+                    fontSize: '14px',
+                    color: '#6B7280'
+                  }}
+                />
+                <small style={{ 
+                  display: 'block', 
+                  marginTop: '6px', 
+                  color: '#6B7280', 
+                  fontSize: '12px',
+                  fontStyle: 'italic'
+                }}>
+                  Company is derived from selected invoices
+                </small>
+              </div>
+
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontSize: '14px', 
+                  fontWeight: 500,
+                  color: '#374151'
+                }}>
+                  Payment Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.paymentDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    color: '#1F2937'
+                  }}
+                />
               </div>
 
               {(formData.paymentMode === PaymentMode.CHEQUE || formData.paymentMode === PaymentMode.BANK_TRANSFER || 

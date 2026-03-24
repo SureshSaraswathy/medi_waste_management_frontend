@@ -86,6 +86,15 @@ import CollectionReportPage from './pages/desktop/reports/CollectionReportPage';
 import CompanyReportPage from './pages/desktop/reports/CompanyReportPage';
 import ComplianceReportPage from './pages/desktop/reports/ComplianceReportPage';
 import FleetMasterReportPage from './pages/desktop/reports/FleetMasterReportPage';
+import RouteTripReportPage from './pages/desktop/reports/RouteTripReportPage';
+import BulkZipDownloadReportPage from './pages/desktop/reports/BulkZipDownloadReportPage';
+import MissedRouteScheduleReportPage from './pages/desktop/reports/MissedRouteScheduleReportPage';
+import HcfWasteCollectionHistoryReportPage from './pages/desktop/reports/HcfWasteCollectionHistoryReportPage';
+import WasteCollectionSummaryReportPage from './pages/desktop/reports/WasteCollectionSummaryReportPage';
+import CostAnalysisReportPage from './pages/desktop/reports/CostAnalysisReportPage';
+import HcfLedgerStatementReportPage from './pages/desktop/reports/HcfLedgerStatementReportPage';
+import OperatorPcbReportPage from './pages/desktop/reports/OperatorPcbReportPage';
+import PcbComplianceReportPage from './pages/desktop/reports/PcbComplianceReportPage';
 import LoginPageMobileFirst from './pages/mobile/LoginPageMobileFirst';
 import UserCreatePageMobile from './pages/mobile/UserCreatePage';
 import ProfilePage from './pages/desktop/ProfilePage';
@@ -965,6 +974,14 @@ const AppWithDashboard = () => {
         }
       />
       <Route
+        path="/report/operations-logistics/waste-collection-transactions"
+        element={
+          <ProtectedRoute>
+            <CollectionReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/report/company"
         element={
           <ProtectedRoute>
@@ -985,6 +1002,46 @@ const AppWithDashboard = () => {
         element={
           <ProtectedRoute>
             <FleetMasterReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/bulk-zip-downloads"
+        element={
+          <ProtectedRoute>
+            <BulkZipDownloadReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/cost-analysis"
+        element={
+          <ProtectedRoute>
+            <CostAnalysisReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/hcf-ledger-statement"
+        element={
+          <ProtectedRoute>
+            <HcfLedgerStatementReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/operator-pcb-collection"
+        element={
+          <ProtectedRoute>
+            <OperatorPcbReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/pcb-compliance"
+        element={
+          <ProtectedRoute>
+            <PcbComplianceReportPage />
           </ProtectedRoute>
         }
       />
@@ -1042,6 +1099,38 @@ const AppWithDashboard = () => {
         element={
           <ProtectedRoute>
             <OperationsLogisticsReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/operations-logistics/route-trip-sheet"
+        element={
+          <ProtectedRoute>
+            <RouteTripReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/operations-logistics/missed-route-schedule"
+        element={
+          <ProtectedRoute>
+            <MissedRouteScheduleReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/waste-collection-summary"
+        element={
+          <ProtectedRoute>
+            <WasteCollectionSummaryReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/hcf-waste-collection-history"
+        element={
+          <ProtectedRoute>
+            <HcfWasteCollectionHistoryReportPage />
           </ProtectedRoute>
         }
       />

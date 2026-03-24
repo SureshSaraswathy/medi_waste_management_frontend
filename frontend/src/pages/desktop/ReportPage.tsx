@@ -163,6 +163,7 @@ const ReportPage = () => {
       label: 'Operations & Logistics',
       icon: iconTruck,
       children: [
+        { id: 'OperationsLogistics-RouteTrip', label: 'Route Trip', icon: iconMap },
         { id: 'OperationsLogistics-Fleet', label: 'Fleet', icon: iconTruck },
         { id: 'OperationsLogistics-Routes', label: 'Routes', icon: iconMap },
         { id: 'OperationsLogistics-Collection', label: 'Collection', icon: iconBox },
@@ -231,6 +232,24 @@ const ReportPage = () => {
       isFavorite: true,
     },
     {
+      id: 'bulk-zip-download-report',
+      category: 'BillingFinance',
+      title: 'Bulk ZIP Download Report',
+      description: 'Track ZIP link status, expiry, and download count',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      ),
+      path: '/report/bulk-zip-downloads',
+      parameters: ['Status', 'Expiry Window', 'Download Count', 'Job ID'],
+      reportType: 'Transactional',
+      ownership: 'System',
+      indicators: ['popular'],
+    },
+    {
       id: 'revenue-report',
       category: 'BillingFinance',
       title: 'Revenue Analysis Report',
@@ -248,6 +267,77 @@ const ReportPage = () => {
       reportType: 'Analytics',
       ownership: 'System',
       isFavorite: true,
+    },
+    {
+      id: 'cost-analysis-report',
+      category: 'BillingFinance',
+      title: 'Cost Analysis Report',
+      description: 'Track daily direct costs by route and period',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="20" x2="20" y2="20"></line>
+          <rect x="5" y="11" width="3" height="7"></rect>
+          <rect x="10.5" y="8" width="3" height="10"></rect>
+          <rect x="16" y="5" width="3" height="13"></rect>
+        </svg>
+      ),
+      path: '/report/cost-analysis',
+      parameters: ['Option', 'Route', 'Period'],
+      reportType: 'Analytics',
+      ownership: 'System',
+    },
+    {
+      id: 'hcf-ledger-statement-report',
+      category: 'BillingFinance',
+      title: 'HCF Ledger Statement',
+      description: 'View HCF-wise ledger statement with debit and credit entries',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h16v16H4z"></path>
+          <line x1="9" y1="4" x2="9" y2="20"></line>
+          <line x1="4" y1="10" x2="20" y2="10"></line>
+        </svg>
+      ),
+      path: '/report/hcf-ledger-statement',
+      parameters: ['HCF', 'From Date', 'To Date'],
+      reportType: 'Transactional',
+      ownership: 'System',
+    },
+    {
+      id: 'operator-pcb-collection-report',
+      category: 'OperationsLogistics',
+      title: 'Operator PCB Report',
+      description: 'Collection and treatment quantities by period',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3h18v18H3z"></path>
+          <path d="M8 8h8"></path>
+          <path d="M8 12h8"></path>
+          <path d="M8 16h8"></path>
+        </svg>
+      ),
+      path: '/report/operator-pcb-collection',
+      parameters: ['Option', 'From Date', 'To Date'],
+      reportType: 'Transactional',
+      ownership: 'System',
+    },
+    {
+      id: 'pcb-compliance-report',
+      category: 'OperationsLogistics',
+      title: 'PCB Compliance Report',
+      description: 'Compare BMW generated vs received with compliance differences',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18"></rect>
+          <path d="M7 12h10"></path>
+          <path d="M7 8h10"></path>
+          <path d="M7 16h10"></path>
+        </svg>
+      ),
+      path: '/report/pcb-compliance',
+      parameters: ['From Date', 'To Date'],
+      reportType: 'Transactional',
+      ownership: 'System',
     },
     {
       id: 'outstanding-report',
@@ -318,6 +408,43 @@ const ReportPage = () => {
       ownership: 'Shared',
     },
     {
+      id: 'route-trip-report',
+      category: 'OperationsLogistics',
+      title: 'Route Trip Report',
+      description: 'Route trip sheet and trip manifest details',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="8" y1="13" x2="16" y2="13"></line>
+          <line x1="8" y1="17" x2="13" y2="17"></line>
+        </svg>
+      ),
+      path: '/report/operations-logistics/route-trip-sheet',
+      parameters: ['Date', 'Route', 'HCF', 'Time In/Out', 'Color Bags'],
+      reportType: 'Transactional',
+      ownership: 'System',
+      indicators: ['popular'],
+      isFavorite: true,
+    },
+    {
+      id: 'missed-route-schedule-report',
+      category: 'OperationsLogistics',
+      title: 'Missed Route Schedule',
+      description: 'Routes missed due to no pickup entry or schedule misses',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      ),
+      path: '/report/operations-logistics/missed-route-schedule',
+      parameters: ['Date', 'Route', 'Area'],
+      reportType: 'Transactional',
+      ownership: 'System',
+    },
+    {
       id: 'fleet-report',
       category: 'OperationsLogistics',
       title: 'Fleet Management Report',
@@ -386,6 +513,41 @@ const ReportPage = () => {
       reportType: 'Transactional',
       ownership: 'System',
       isFavorite: true,
+    },
+    {
+      id: 'hcf-waste-collection-history-report',
+      category: 'OperationsLogistics',
+      title: 'HCF Waste Collection History Report',
+      description: 'Color-wise bag count and weight history by HCF',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      ),
+      path: '/report/hcf-waste-collection-history',
+      parameters: ['HCF', 'Date Range', 'Bag Count', 'Weight'],
+      reportType: 'Transactional',
+      ownership: 'System',
+    },
+    {
+      id: 'waste-collection-summary-report',
+      category: 'OperationsLogistics',
+      title: 'Waste Collection Summary Report',
+      description: 'Route/HCF/Period/PCB Zone summary with missing collection report',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18"></rect>
+          <line x1="7" y1="8" x2="17" y2="8"></line>
+          <line x1="7" y1="12" x2="17" y2="12"></line>
+          <line x1="7" y1="16" x2="17" y2="16"></line>
+        </svg>
+      ),
+      path: '/report/waste-collection-summary',
+      parameters: ['Option', 'Route/HCF/PCB Zone', 'From Date', 'To Date'],
+      reportType: 'Transactional',
+      ownership: 'System',
     },
     {
       id: 'company-report',

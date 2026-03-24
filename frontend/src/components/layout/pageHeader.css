@@ -34,6 +34,63 @@
   align-items: center !important;
 }
 
+/* Apply Report-menu style alignment across all report pages */
+.report-page-header.app-header--standard.app-header {
+  min-height: 64px !important;
+  max-height: 64px !important;
+  height: 64px !important;
+  padding: 0 24px !important;
+  align-items: center !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  column-gap: 16px !important;
+  justify-content: initial !important;
+}
+
+.report-page-header.app-header--standard .app-header-left {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex: 1 1 auto !important;
+  min-width: 0;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.report-page-header.app-header--standard .app-title-group,
+.report-page-header.app-header--standard .app-breadcrumb-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.report-page-header.app-header--standard .app-breadcrumb {
+  margin: 0 !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  white-space: nowrap !important;
+}
+
+.report-page-header.app-header--standard .app-header-actions {
+  height: 100%;
+  display: flex;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding-right: 16px !important;
+  margin-left: 0 !important;
+}
+
+.report-page-header.app-header--standard .app-user-profile {
+  margin-right: 10px !important;
+}
+
+/* When report pages use shared PageHeader, suppress legacy in-page breadcrumb/title blocks */
+.report-page-header + .invoice-report-page .report-breadcrumb,
+.report-page-header + .invoice-report-page .page-header {
+  display: none !important;
+}
+
 /* Some pages add header padding via dashboardPage.css with !important; override it when standard is on */
 .dashboard-page .dashboard-main > .dashboard-header.app-header.app-header--standard {
   height: 64px !important;

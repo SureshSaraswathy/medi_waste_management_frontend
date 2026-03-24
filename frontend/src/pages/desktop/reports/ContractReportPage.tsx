@@ -5,6 +5,10 @@ import { contractService, ContractResponse } from '../../../services/contractSer
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportFormat } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './contractReportPage.css';
 
 interface ContractFilters {
@@ -393,6 +397,11 @@ const ContractReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Contract Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -476,7 +485,7 @@ const ContractReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -508,6 +517,17 @@ const ContractReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  reportExportService.exportAuto(filteredContracts as Record<string, any>[], format as ExportFormat, 'Contract_Report');
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

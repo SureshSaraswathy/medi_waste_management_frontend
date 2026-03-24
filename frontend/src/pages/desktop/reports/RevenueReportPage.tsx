@@ -5,6 +5,10 @@ import { getInvoiceReport, InvoiceReportItem, InvoiceReportResponse, InvoiceResp
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportColumn } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './revenueReportPage.css';
 
 interface RevenueFilters {
@@ -68,6 +72,18 @@ const RevenueReportPage = () => {
     totalInvoices: 0,
     paidAmount: 0,
   });
+
+  const revenueExportColumns: ExportColumn<InvoiceResponse>[] = [
+    { key: 'invoiceNumber', header: 'Invoice No.' },
+    { key: 'invoiceDate', header: 'Invoice Date', type: 'date' },
+    { key: 'companyName', header: 'Company' },
+    { key: 'hcfName', header: 'HCF' },
+    { key: 'billingType', header: 'Billing Type' },
+    { key: 'status', header: 'Status' },
+    { key: 'totalAmount', header: 'Invoice Amount', type: 'number' },
+    { key: 'paidAmount', header: 'Paid Amount', type: 'number' },
+    { key: 'balanceAmount', header: 'Balance Amount', type: 'number' },
+  ];
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -400,6 +416,11 @@ const RevenueReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Revenue Analysis Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -482,7 +503,7 @@ const RevenueReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -510,6 +531,23 @@ const RevenueReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  if (format === 'pdf') {
+                    reportExportService.exportToPDF(filteredRevenueData, revenueExportColumns, 'Revenue_Report');
+                  } else if (format === 'excel') {
+                    reportExportService.exportToExcel(filteredRevenueData, revenueExportColumns, 'Revenue_Report');
+                  } else {
+                    reportExportService.exportToCSV(filteredRevenueData, revenueExportColumns, 'Revenue_Report');
+                  }
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

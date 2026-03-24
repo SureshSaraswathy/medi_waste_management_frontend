@@ -347,36 +347,43 @@
 /* Invoice Status Badge */
 .invoice-status-badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   text-transform: capitalize;
+  border: 1px solid transparent;
 }
 
 .invoice-status-badge--draft {
   background: #fef3c7;
   color: #92400e;
+  border-color: #fde68a;
 }
 
 .invoice-status-badge--generated {
   background: #dbeafe;
   color: #1e40af;
+  border-color: #bfdbfe;
 }
 
 .invoice-status-badge--partially-paid {
   background: #fde68a;
   color: #78350f;
+  border-color: #fcd34d;
 }
 
 .invoice-status-badge--paid {
   background: #d1fae5;
   color: #065f46;
+  border-color: #86efac;
 }
 
 .invoice-status-badge--cancelled {
   background: #fee2e2;
   color: #991b1b;
+  border-color: #fecaca;
 }
 
 /* Action Buttons */
@@ -674,7 +681,23 @@
 }
 
 .modal-content--view {
+  width: 95vw;
   max-width: 900px;
+  max-height: 90vh;
+}
+
+/* Strongly scope Invoice View modal to avoid global modal overrides */
+.invoice-view-overlay {
+  padding: 16px !important;
+  overflow: hidden;
+}
+
+.modal-content.modal-content--view {
+  width: min(95vw, 900px) !important;
+  max-width: 900px !important;
+  max-height: 90vh !important;
+  height: auto !important;
+  overflow: hidden !important;
 }
 
 .modal-header {
@@ -944,13 +967,22 @@
 
 /* Invoice View Styles */
 .invoice-view-content {
-  padding: 18px;
+  padding: 16px;
   overflow-y: auto;
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
 }
 
 .invoice-view-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .invoice-view-section:last-child {
@@ -961,23 +993,24 @@
   font-size: 14px;
   font-weight: 700;
   color: #0f172a;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
+  margin: 0 0 12px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .invoice-view-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px 24px;
 }
 
 .invoice-view-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-height: 54px;
 }
 
 .invoice-view-field label {
@@ -992,23 +1025,61 @@
   font-size: 14px;
   color: #1e293b;
   font-weight: 500;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
-.invoice-view-field--highlight {
-  background: #f8fafc;
+.invoice-view-amount-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
   padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  margin-bottom: 6px;
 }
 
-.invoice-view-field--highlight label {
-  color: #3b82f6;
+.invoice-view-amount-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 1px solid #d1fae5;
+  border-radius: 8px;
 }
 
-.invoice-view-field--highlight span {
+.invoice-view-amount-item label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #065f46;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invoice-view-amount-item span {
   font-size: 16px;
   font-weight: 700;
-  color: #1e293b;
+  color: #047857;
+}
+
+.invoice-view-amount-item--balance {
+  border-color: #86efac;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.invoice-view-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.invoice-view-footer .btn {
+  height: 40px;
+  min-width: 120px;
 }
 
 /* Responsive */
@@ -1020,6 +1091,14 @@
   .form-grid,
   .invoice-view-grid {
     grid-template-columns: 1fr;
+  }
+
+  .invoice-view-amount-card {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-view-footer {
+    flex-wrap: wrap;
   }
 
   .ra-search-actions {

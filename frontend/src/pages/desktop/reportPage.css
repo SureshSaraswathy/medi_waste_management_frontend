@@ -54,6 +54,57 @@
   white-space: nowrap !important;
 }
 
+/* Report page breadcrumb header - aligned with invoice report style */
+.report-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 56px;
+  margin: 0 24px 12px 24px;
+  padding: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.report-breadcrumb .breadcrumb-home {
+  display: flex;
+  align-items: center;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.report-breadcrumb .breadcrumb-home:hover {
+  color: #1e293b;
+}
+
+.report-breadcrumb .breadcrumb-separator {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0;
+}
+
+.report-breadcrumb .breadcrumb-item {
+  color: #64748b;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.report-breadcrumb .breadcrumb-item:hover {
+  color: #1e293b;
+}
+
+.report-breadcrumb .breadcrumb-item--active {
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: inline-block;
+}
+
 .reports-page .app-header--standard .app-header-actions {
   height: 100%;
   display: flex;

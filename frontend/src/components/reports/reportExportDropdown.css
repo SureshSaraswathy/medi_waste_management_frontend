@@ -1,0 +1,66 @@
+.report-export-dropdown {
+  position: relative;
+}
+
+.report-export-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.report-export-trigger:hover:not(:disabled) {
+  background: #111827;
+}
+
+.report-export-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.report-export-trigger .dropdown-arrow {
+  transition: transform 0.2s ease;
+}
+
+.report-export-trigger.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.report-export-menu {
+  position: fixed;
+  min-width: 152px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  z-index: 2500;
+  overflow: hidden;
+}
+
+.report-export-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: #fff;
+  color: #0f172a;
+  font-size: 14px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.report-export-option:hover {
+  background: #f8fafc;
+}
+

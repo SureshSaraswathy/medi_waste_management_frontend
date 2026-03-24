@@ -4,6 +4,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportFormat } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './hcfReportPage.css';
 
 interface HCFFilters {
@@ -394,6 +398,11 @@ const HCFReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="HCF Master Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -477,7 +486,7 @@ const HCFReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -509,6 +518,17 @@ const HCFReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading}
+              onExport={(format) => {
+                try {
+                  reportExportService.exportAuto(filteredHcfs as Record<string, any>[], format as ExportFormat, 'HCF_Report');
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

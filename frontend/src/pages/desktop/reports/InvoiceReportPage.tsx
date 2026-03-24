@@ -13,6 +13,8 @@ import { companyService, CompanyResponse } from '../../../services/companyServic
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import AppLayout from '../../../components/layout/AppLayout';
 import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportColumn } from '../../../services/reportExportService';
 import './invoiceReportPage.css';
 
 const InvoiceReportPage = () => {
@@ -55,8 +57,6 @@ const InvoiceReportPage = () => {
   // Ref for filter button to position modal
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const [filterModalPosition, setFilterModalPosition] = useState<{ top: number; left: number } | null>(null);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const exportButtonRef = useRef<HTMLButtonElement>(null);
 
   // Summary state
   const [summary, setSummary] = useState({
@@ -65,23 +65,6 @@ const InvoiceReportPage = () => {
     paidAmount: 0,
     balanceAmount: 0,
   });
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showExportDropdown && exportButtonRef.current && !exportButtonRef.current.contains(event.target as Node)) {
-        const dropdown = document.querySelector('.export-dropdown-menu');
-        if (dropdown && !dropdown.contains(event.target as Node)) {
-          setShowExportDropdown(false);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showExportDropdown]);
 
   // Load master data
   useEffect(() => {
@@ -692,8 +675,33 @@ const InvoiceReportPage = () => {
       return;
     }
 
-    // TODO: Implement actual export functionality
-    toast.error(`Exporting ${filteredInvoices.length} invoices as ${format.toUpperCase()}`);
+    try {
+      const columns: ExportColumn<InvoiceResponse>[] = [
+        { key: 'invoiceNumber', header: 'Invoice Number' },
+        { key: 'companyName', header: 'Company' },
+        { key: 'hcfCode', header: 'HCF Code' },
+        { key: 'invoiceDate', header: 'Invoice Date', type: 'date' },
+        { key: 'dueDate', header: 'Due Date', type: 'date' },
+        { key: 'billingType', header: 'Billing Type' },
+        { key: 'invoiceValue', header: 'Invoice Value', type: 'number' },
+        { key: 'totalPaidAmount', header: 'Paid Amount', type: 'number' },
+        { key: 'balanceAmount', header: 'Balance Amount', type: 'number' },
+        { key: 'status', header: 'Status' },
+      ];
+
+      await reportExportService.exportReport<InvoiceResponse>({
+        reportType: 'invoice',
+        format,
+        filters: buildApiFilters(),
+        columns,
+        fileName: 'Invoice_Report',
+        fallbackData: filteredInvoices,
+        mapPayloadToRows: (payload) => (Array.isArray(payload?.data) ? payload.data : []),
+      });
+      toast.success(`Exported ${filteredInvoices.length} invoice records as ${format.toUpperCase()}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to export report');
+    }
   };
 
   const navItems = [
@@ -784,6 +792,7 @@ const InvoiceReportPage = () => {
       <PageHeader 
         title="Invoice Generation & Printing Report"
         subtitle={getContextSubtitle()}
+        className="invoice-report-header"
       />
       <div className="invoice-report-page">
           <div className="report-content-wrapper">
@@ -836,7 +845,6 @@ const InvoiceReportPage = () => {
                   className={`btn btn-filters-toggle ${showAdvancedFilters ? 'active' : ''} ${loading ? 'loading' : ''}`}
                   onClick={() => {
                     if (loading) return;
-                    setShowExportDropdown(false);
                     // Sync pendingFilters with current filters when opening modal
                     if (!showAdvancedFilters) {
                       updatePendingFilter('companyId', filters.companyId || '');
@@ -850,7 +858,7 @@ const InvoiceReportPage = () => {
                       const rect = filterButtonRef.current.getBoundingClientRect();
                       setFilterModalPosition({
                         top: rect.bottom + 8, // 8px gap below button
-                        left: rect.left // Align to left edge of button
+                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 360)) // Align to left edge of button
                       });
                     }
                     setShowAdvancedFilters(!showAdvancedFilters);
@@ -882,81 +890,10 @@ const InvoiceReportPage = () => {
                     </span>
                   )}
                 </button>
-                <div className="export-dropdown-wrapper">
-                  <button
-                    type="button"
-                    ref={exportButtonRef}
-                    className={`btn btn-export ${showExportDropdown ? 'active' : ''}`}
-                    onClick={() => {
-                      setShowAdvancedFilters(false);
-                      setShowExportDropdown(!showExportDropdown);
-                    }}
-                    disabled={loading || filteredInvoices.length === 0}
-                    title="Export"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    Export
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="dropdown-arrow">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </button>
-                  {showExportDropdown && (
-                    <div className="export-dropdown-menu">
-                      <button
-                        type="button"
-                        className="export-option"
-                        onClick={() => {
-                          handleExport('pdf');
-                          setShowExportDropdown(false);
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                          <line x1="16" y1="13" x2="8" y2="13"></line>
-                          <line x1="16" y1="17" x2="8" y2="17"></line>
-                        </svg>
-                        PDF
-                      </button>
-                      <button
-                        type="button"
-                        className="export-option"
-                        onClick={() => {
-                          handleExport('excel');
-                          setShowExportDropdown(false);
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                          <line x1="16" y1="13" x2="8" y2="13"></line>
-                          <line x1="16" y1="17" x2="8" y2="17"></line>
-                        </svg>
-                        Excel
-                      </button>
-                      <button
-                        type="button"
-                        className="export-option"
-                        onClick={() => {
-                          handleExport('csv');
-                          setShowExportDropdown(false);
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                          <polyline points="14 2 14 8 20 8"></polyline>
-                          <line x1="16" y1="13" x2="8" y2="13"></line>
-                          <line x1="16" y1="17" x2="8" y2="17"></line>
-                        </svg>
-                        CSV
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ReportExportDropdown
+                  disabled={loading || filteredInvoices.length === 0}
+                  onExport={handleExport}
+                />
               </div>
             </div>
 

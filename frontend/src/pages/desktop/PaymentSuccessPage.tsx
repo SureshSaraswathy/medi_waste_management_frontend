@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { getReceipt } from '../../services/paymentService';
 import './paymentSuccessPage.css';
 
 interface InvoiceUpdate {
@@ -21,6 +22,7 @@ interface PaymentSuccessState {
 const PaymentSuccessPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [downloading, setDownloading] = useState(false);
 
   const state = location.state as PaymentSuccessState;
 
@@ -31,9 +33,48 @@ const PaymentSuccessPage = () => {
     }
   }, [state, navigate]);
 
-  const handleDownloadReceipt = () => {
-    // TODO: Implement PDF download
-    window.print();
+  const handleDownloadReceipt = async () => {
+    if (!state?.receiptId || downloading) return;
+    setDownloading(true);
+    try {
+      const response = await getReceipt(state.receiptId);
+      const receipt = (response as any)?.data || response;
+      const rows = (receipt.invoices || []).map((inv: any) => `
+        <tr>
+          <td style="padding:6px 8px;border:1px solid #d1d5db;">${inv.invoiceNumber || '-'}</td>
+          <td style="padding:6px 8px;border:1px solid #d1d5db;text-align:right;">₹ ${Number(inv.allocatedAmount || 0).toFixed(2)}</td>
+        </tr>
+      `).join('');
+
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Receipt ${receipt.receiptNumber || state.receiptNumber}</title></head>
+<body style="font-family:Arial,sans-serif;padding:18px;color:#111827;">
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr><th colspan="2" style="font-size:24px;padding:8px;border:1px solid #d1d5db;">Receipt Voucher</th></tr>
+    <tr><td style="padding:8px;border:1px solid #d1d5db;"><strong>No:</strong> ${receipt.receiptNumber || state.receiptNumber}</td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>Date:</strong> ${receipt.receiptDate || state.receiptDate}</td></tr>
+    <tr><td style="padding:8px;border:1px solid #d1d5db;"><strong>Particulars</strong></td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>Amount</strong></td></tr>
+    <tr><td style="padding:8px;border:1px solid #d1d5db;">Payment (${receipt?.payment?.paymentMode || '-'})</td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;">₹ ${Number(receipt.totalAmount || state.totalAmount || 0).toFixed(2)}</td></tr>
+    <tr><td style="padding:8px;border:1px solid #d1d5db;"><strong>Against Invoice</strong></td><td style="padding:8px;border:1px solid #d1d5db;"></td></tr>
+    ${rows || '<tr><td style="padding:8px;border:1px solid #d1d5db;" colspan="2">-</td></tr>'}
+    <tr><td style="padding:8px;border:1px solid #d1d5db;"><strong>Total</strong></td><td style="padding:8px;border:1px solid #d1d5db;text-align:right;"><strong>₹ ${Number(receipt.totalAmount || state.totalAmount || 0).toFixed(2)}</strong></td></tr>
+  </table>
+</body></html>`;
+
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${receipt.receiptNumber || state.receiptNumber || 'receipt'}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Receipt download failed:', error);
+      alert('Failed to download receipt. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleBackToInvoices = () => {
@@ -149,13 +190,14 @@ const PaymentSuccessPage = () => {
           <button
             onClick={handleDownloadReceipt}
             className="primary-action-btn"
+            disabled={downloading}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            Download Receipt
+            {downloading ? 'Downloading...' : 'Download Receipt'}
           </button>
           <button
             onClick={handleBackToInvoices}

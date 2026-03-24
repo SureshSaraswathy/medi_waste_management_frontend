@@ -4,6 +4,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getAllPayments, PaymentResponse, PaymentStatus, PaymentMode } from '../../../services/paymentService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
 import AppLayout from '../../../components/layout/AppLayout';
+import PageHeader from '../../../components/layout/PageHeader';
+import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
+import { reportExportService, ExportColumn } from '../../../services/reportExportService';
+import toast from 'react-hot-toast';
 import './paymentReportPage.css';
 
 interface PaymentFilters {
@@ -65,6 +69,20 @@ const PaymentReportPage = () => {
     totalPayments: 0,
     totalAmount: 0,
   });
+
+  const paymentExportColumns: ExportColumn<PaymentResponse>[] = [
+    { key: 'receiptNumber', header: 'Receipt No.' },
+    {
+      key: 'companyId',
+      header: 'Company',
+      formatter: (value) => companies.find((c) => c.id === value)?.companyName || String(value || ''),
+    },
+    { key: 'paymentDate', header: 'Payment Date', type: 'date' },
+    { key: 'paymentMode', header: 'Payment Mode' },
+    { key: 'referenceNumber', header: 'Reference No.' },
+    { key: 'paymentAmount', header: 'Amount', type: 'number' },
+    { key: 'status', header: 'Status' },
+  ];
 
   useEffect(() => {
     const loadMasterData = async () => {
@@ -372,6 +390,11 @@ const PaymentReportPage = () => {
 
   return (
     <AppLayout navItems={navItems}>
+      <PageHeader
+        title="Payment Report"
+        subtitle={getContextSubtitle()}
+        className="invoice-report-header"
+      />
       <div className="invoice-report-page">
         <div className="report-breadcrumb">
           <button
@@ -454,7 +477,7 @@ const PaymentReportPage = () => {
                   const rect = filterButtonRef.current.getBoundingClientRect();
                   setFilterModalPosition({
                     top: rect.bottom + 8,
-                    left: rect.left
+                    left: Math.max(8, Math.min(rect.left, window.innerWidth - 360))
                   });
                 }
                 setShowAdvancedFilters(!showAdvancedFilters);
@@ -484,6 +507,23 @@ const PaymentReportPage = () => {
                 </span>
               )}
             </button>
+            <ReportExportDropdown
+              disabled={loading || !dataLoaded || filteredPayments.length === 0}
+              onExport={(format) => {
+                try {
+                  if (format === 'pdf') {
+                    reportExportService.exportToPDF(filteredPayments, paymentExportColumns, 'Payment_Report');
+                  } else if (format === 'excel') {
+                    reportExportService.exportToExcel(filteredPayments, paymentExportColumns, 'Payment_Report');
+                  } else {
+                    reportExportService.exportToCSV(filteredPayments, paymentExportColumns, 'Payment_Report');
+                  }
+                  toast.success('Export downloaded successfully');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Failed to export report');
+                }
+              }}
+            />
           </div>
 
           {showAdvancedFilters && createPortal(

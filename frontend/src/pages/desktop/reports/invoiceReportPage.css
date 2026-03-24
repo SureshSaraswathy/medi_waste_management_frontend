@@ -20,6 +20,57 @@
   min-width: 0 !important;
 }
 
+/* Keep Invoice report page header content vertically centered */
+.invoice-report-header.app-header--standard.app-header {
+  min-height: 64px !important;
+  max-height: 64px !important;
+  height: 64px !important;
+  padding: 0 24px 0 24px !important;
+  align-items: center !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  column-gap: 16px !important;
+  justify-content: initial !important;
+}
+
+.invoice-report-header.app-header--standard .app-header-left {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex: 1 1 auto !important;
+  min-width: 0;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.invoice-report-header.app-header--standard .app-title-group,
+.invoice-report-header.app-header--standard .app-breadcrumb-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.invoice-report-header.app-header--standard .app-breadcrumb {
+  margin: 0 !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  white-space: nowrap !important;
+}
+
+.invoice-report-header.app-header--standard .app-header-actions {
+  height: 100%;
+  display: flex;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  padding-right: 16px !important;
+  margin-left: 0 !important;
+}
+
+.invoice-report-header.app-header--standard .app-user-profile {
+  margin-right: 10px !important;
+}
+
 /* Breadcrumb Navigation */
 .report-breadcrumb {
   display: flex;
