@@ -1111,121 +1111,28 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
 }
 
-/* Fixed column widths using pixel values for consistent sizing - Optimized for 100% zoom */
-/* First column - Invoice No - Fixed on left */
+/* Payment report has 7 columns - keep header/value alignment consistent */
 .invoice-table th:nth-child(1),
-.invoice-table td:nth-child(1) {
-  width: auto; /* Invoice No - auto width based on content */
-  min-width: 100px; /* Minimum width for readability at 80% zoom */
-  max-width: none; /* Allow expansion if needed */
-  position: sticky;
-  left: 0;
-  z-index: 20; /* Higher than body cells, lower than header */
-  background: #F9FAFB; /* Match header background */
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08); /* Enhanced shadow for better visibility */
-}
-
-.invoice-table th:nth-child(1) {
-  z-index: 30; /* Highest z-index for header + fixed column */
-}
-
-.invoice-table td:nth-child(1) {
-  background: #FFFFFF; /* Match body background */
-}
-
-.invoice-table tr:hover td:nth-child(1) {
-  background: #f8fafc; /* Match hover background */
-}
-
-.invoice-table tr.table-row-even td:nth-child(1) {
-  background: #FFFFFF;
-}
-
-.invoice-table tr.table-row-odd td:nth-child(1) {
-  background: #ffffff;
-}
-
+.invoice-table td:nth-child(1) { min-width: 145px; } /* Receipt No */
 .invoice-table th:nth-child(2),
-.invoice-table td:nth-child(2) {
-  width: auto; /* Company - auto width based on content */
-  min-width: 140px; /* Minimum width for readability at 80% zoom */
-}
-
+.invoice-table td:nth-child(2) { min-width: 200px; } /* Company */
 .invoice-table th:nth-child(3),
-.invoice-table td:nth-child(3) {
-  width: auto; /* HCF - auto width based on content */
-  min-width: 100px; /* Minimum width for readability at 80% zoom */
-}
-
+.invoice-table td:nth-child(3) { min-width: 120px; } /* Payment Date */
 .invoice-table th:nth-child(4),
-.invoice-table td:nth-child(4) {
-  width: auto; /* Invoice Date - auto width based on content */
-  min-width: 110px; /* Minimum width for readability at 80% zoom */
-}
-
+.invoice-table td:nth-child(4) { min-width: 120px; } /* Payment Mode */
 .invoice-table th:nth-child(5),
-.invoice-table td:nth-child(5) {
-  width: auto; /* Billing Type - auto width based on content */
-  min-width: 100px; /* Minimum width for readability at 80% zoom */
-}
-
+.invoice-table td:nth-child(5) { min-width: 130px; } /* Payment Amount */
 .invoice-table th:nth-child(6),
-.invoice-table td:nth-child(6) {
-  width: auto; /* Invoice Amount - auto width based on content */
-  min-width: 130px; /* Minimum width for readability at 80% zoom */
-}
-
+.invoice-table td:nth-child(6) { min-width: 150px; } /* Reference Number */
 .invoice-table th:nth-child(7),
-.invoice-table td:nth-child(7) {
-  width: auto; /* Paid Amount - auto width based on content */
-  min-width: 130px; /* Minimum width for readability at 80% zoom */
-}
-
-.invoice-table th:nth-child(8),
-.invoice-table td:nth-child(8) {
-  width: auto; /* Balance - auto width based on content */
-  min-width: 130px; /* Minimum width for readability at 80% zoom */
-}
-
-/* Last column - Status - Fixed on right */
-.invoice-table th:nth-child(9),
-.invoice-table td:nth-child(9) {
-  width: auto; /* Status - auto width based on content */
-  min-width: 100px; /* Minimum width for readability at 80% zoom */
-  max-width: none; /* Allow expansion if needed */
-  position: sticky;
-  right: 0;
-  z-index: 20; /* Higher than body cells, lower than header */
-  background: #F9FAFB; /* Match header background */
-  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.08); /* Enhanced shadow for better visibility */
-}
-
-.invoice-table th:nth-child(9) {
-  z-index: 30; /* Highest z-index for header + fixed column */
-}
-
-.invoice-table td:nth-child(9) {
-  background: #FFFFFF; /* Match body background */
-}
-
-.invoice-table tr:hover td:nth-child(9) {
-  background: #f8fafc; /* Match hover background */
-}
-
-.invoice-table tr.table-row-even td:nth-child(9) {
-  background: #FFFFFF;
-}
-
-.invoice-table tr.table-row-odd td:nth-child(9) {
-  background: #ffffff;
-}
+.invoice-table td:nth-child(7) { min-width: 120px; } /* Status */
 
 .table-header {
   background: #F8FAFC; /* Light background for clarity */
 }
 
 .table-header th {
-  padding: 12px 14px; /* Reduced horizontal padding from 16px to 14px */
+  padding: 11px 12px;
   text-align: left;
   font-weight: 600; /* Already set to 600 */
   font-size: 13px; /* Same as body */
@@ -1242,12 +1149,12 @@
   position: sticky; /* Fixed position when scrolling vertically */
   top: 0;
   z-index: 10;
+  vertical-align: middle;
 }
 
-/* Ensure fixed columns have higher z-index in header */
-.table-header th:nth-child(1),
-.table-header th:nth-child(9) {
-  z-index: 30; /* Higher z-index for fixed columns in header (both horizontal and vertical) */
+/* Keep standard sticky header layering only */
+.table-header th {
+  z-index: 10;
 }
 
 /* Column alignment - Amount columns right-aligned, Status/Actions center-aligned */
@@ -1280,7 +1187,7 @@
 }
 
 .table-body td {
-  padding: 12px 14px; /* Reduced horizontal padding from 16px to 14px */
+  padding: 11px 12px;
   height: 44px;
   box-sizing: border-box;
   color: #1e293b;
@@ -1293,29 +1200,10 @@
   min-width: 0; /* Allow column to shrink if needed */
   position: relative; /* For proper z-index stacking */
   z-index: 1; /* Default z-index for body cells */
+  vertical-align: middle;
 }
 
-/* Ensure fixed columns maintain proper styling and z-index */
-.table-body tr:hover td:nth-child(1),
-.table-body tr:hover td:nth-child(9) {
-  background: #f8fafc;
-}
-
-.table-body td:nth-child(1),
-.table-body td:nth-child(9) {
-  z-index: 20; /* Higher z-index for fixed columns in body */
-}
-
-/* Ensure fixed columns have proper borders */
-.invoice-table th:nth-child(1),
-.invoice-table td:nth-child(1) {
-  border-right: 1px solid #E5E7EB;
-}
-
-.invoice-table th:nth-child(9),
-.invoice-table td:nth-child(9) {
-  border-left: 1px solid #E5E7EB;
-}
+/* No sticky side columns in payment report table */
 
 .table-row-even {
   background: #FFFFFF;
@@ -1335,6 +1223,87 @@
 
 .table-body td.text-right {
   text-align: right;
+}
+
+/* Payment report column alignment by data type */
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1), /* Receipt No */
+.invoice-table th:nth-child(2),
+.invoice-table td:nth-child(2), /* Company */
+.invoice-table th:nth-child(4),
+.invoice-table td:nth-child(4), /* Payment Mode */
+.invoice-table th:nth-child(6),
+.invoice-table td:nth-child(6) { /* Reference Number */
+  text-align: left;
+}
+
+.invoice-table th:nth-child(3),
+.invoice-table td:nth-child(3), /* Payment Date */
+.invoice-table th:nth-child(7),
+.invoice-table td:nth-child(7) { /* Status */
+  text-align: center;
+}
+
+.invoice-table th:nth-child(5),
+.invoice-table td:nth-child(5) { /* Payment Amount */
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  text-align: right !important;
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-table td:nth-child(5) {
+  font-weight: 600;
+}
+
+.invoice-table td:nth-child(5) > *,
+.invoice-table td:nth-child(5) span,
+.invoice-table td:nth-child(5) div {
+  display: block;
+  width: 100%;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+/* Reference Number - fixed width + force left alignment */
+.invoice-table th:nth-child(6),
+.invoice-table td:nth-child(6) {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+  text-align: left !important;
+  white-space: nowrap;
+}
+
+.invoice-table td:nth-child(6) > *,
+.invoice-table td:nth-child(6) span,
+.invoice-table td:nth-child(6) div {
+  text-align: left !important;
+}
+
+/* Status - fixed width + flex centering for badge */
+.invoice-table th:nth-child(7),
+.invoice-table td:nth-child(7) {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+  text-align: center !important;
+}
+
+.invoice-table td:nth-child(7) > *,
+.invoice-table td:nth-child(7) span,
+.invoice-table td:nth-child(7) div {
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.invoice-table td:nth-child(7) .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .text-right {
@@ -2181,4 +2150,100 @@
   color: #1d4ed8;
   font-size: 13px;
   font-weight: 700;
+}
+
+/* Final alignment overrides for payment report columns */
+.results-section .invoice-table th:nth-child(5),
+.results-section .invoice-table td:nth-child(5),
+.results-section .invoice-table td:nth-child(5) > * {
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+.results-section .invoice-table th:nth-child(6),
+.results-section .invoice-table td:nth-child(6),
+.results-section .invoice-table td:nth-child(6) > * {
+  text-align: left !important;
+}
+
+.results-section .invoice-table th:nth-child(7),
+.results-section .invoice-table td:nth-child(7) {
+  text-align: center !important;
+}
+
+/* Payment report: strict column consistency and responsive scroll */
+.results-section .table-scroll-container {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.results-section .invoice-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+/* Same width for header and body cells */
+.results-section .invoice-table th:nth-child(1),
+.results-section .invoice-table td:nth-child(1) { width: 17% !important; } /* Receipt No */
+.results-section .invoice-table th:nth-child(2),
+.results-section .invoice-table td:nth-child(2) { width: 24% !important; } /* Company */
+.results-section .invoice-table th:nth-child(3),
+.results-section .invoice-table td:nth-child(3) { width: 14% !important; } /* Payment Date */
+.results-section .invoice-table th:nth-child(4),
+.results-section .invoice-table td:nth-child(4) { width: 13% !important; } /* Payment Mode */
+.results-section .invoice-table th:nth-child(5),
+.results-section .invoice-table td:nth-child(5) { width: 12% !important; } /* Payment Amount */
+.results-section .invoice-table th:nth-child(6),
+.results-section .invoice-table td:nth-child(6) { width: 12% !important; } /* Reference Number */
+.results-section .invoice-table th:nth-child(7),
+.results-section .invoice-table td:nth-child(7) { width: 8% !important; }  /* Status */
+
+/* Prevent wrapping/shifting in all cells */
+.results-section .invoice-table th,
+.results-section .invoice-table td {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+}
+
+/* Alignment by data type */
+.results-section .invoice-table th:nth-child(1),
+.results-section .invoice-table td:nth-child(1),
+.results-section .invoice-table th:nth-child(2),
+.results-section .invoice-table td:nth-child(2),
+.results-section .invoice-table th:nth-child(4),
+.results-section .invoice-table td:nth-child(4),
+.results-section .invoice-table th:nth-child(6),
+.results-section .invoice-table td:nth-child(6) {
+  text-align: left !important;
+}
+
+.results-section .invoice-table th:nth-child(3),
+.results-section .invoice-table td:nth-child(3),
+.results-section .invoice-table th:nth-child(7),
+.results-section .invoice-table td:nth-child(7) {
+  text-align: center !important;
+}
+
+.results-section .invoice-table th:nth-child(5),
+.results-section .invoice-table td:nth-child(5) {
+  text-align: right !important;
+}
+
+/* Ensure inner content follows cell alignment */
+.results-section .invoice-table td:nth-child(1) > *,
+.results-section .invoice-table td:nth-child(2) > *,
+.results-section .invoice-table td:nth-child(4) > *,
+.results-section .invoice-table td:nth-child(6) > * {
+  text-align: left !important;
+}
+
+.results-section .invoice-table td:nth-child(3) > *,
+.results-section .invoice-table td:nth-child(7) > * {
+  text-align: center !important;
+}
+
+.results-section .invoice-table td:nth-child(5) > * {
+  text-align: right !important;
+  white-space: nowrap !important;
 }

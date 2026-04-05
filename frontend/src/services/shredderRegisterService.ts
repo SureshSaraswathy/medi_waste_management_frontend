@@ -12,11 +12,11 @@ export interface CreateShredderRegisterRequest {
   equipmentId: string;
   batchNo: string;
   wasteCategory: string;
-  wasteQtyKg: number;
+  wasteQtyKg?: number | null;
   startTime: string;
   endTime: string;
-  temperatureC: number;
-  pressureBar: number;
+  temperatureC?: number | null;
+  pressureBar?: number | null;
   cycleTimeMin: number;
   indicatorResult: string;
   complianceStatus: string;
@@ -34,11 +34,11 @@ export interface UpdateShredderRegisterRequest {
   equipmentId?: string;
   batchNo?: string;
   wasteCategory?: string;
-  wasteQtyKg?: number;
+  wasteQtyKg?: number | null;
   startTime?: string;
   endTime?: string;
-  temperatureC?: number;
-  pressureBar?: number;
+  temperatureC?: number | null;
+  pressureBar?: number | null;
   cycleTimeMin?: number;
   indicatorResult?: string;
   complianceStatus?: string;
@@ -60,11 +60,11 @@ export interface ShredderRegisterResponse {
   equipmentId: string;
   batchNo: string;
   wasteCategory: string;
-  wasteQtyKg: number;
+  wasteQtyKg: number | null;
   startTime: string;
   endTime: string;
-  temperatureC: number;
-  pressureBar: number;
+  temperatureC: number | null;
+  pressureBar: number | null;
   cycleTimeMin: number;
   indicatorResult: string;
   complianceStatus: string;
@@ -161,6 +161,12 @@ const apiRequest = async <T>(
   return response.json();
 };
 
+const normalizeNullableDecimal = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
 const normalizeShredderRegister = (payload: any): ShredderRegisterResponse => ({
   id: payload?.id || payload?.shredderId || '',
   shredderId: payload?.shredderId,
@@ -170,11 +176,11 @@ const normalizeShredderRegister = (payload: any): ShredderRegisterResponse => ({
   equipmentId: payload?.equipmentId || '',
   batchNo: payload?.batchNo || '',
   wasteCategory: payload?.wasteCategory || '',
-  wasteQtyKg: payload?.wasteQtyKg ?? 0,
+  wasteQtyKg: normalizeNullableDecimal(payload?.wasteQtyKg),
   startTime: payload?.startTime || '',
   endTime: payload?.endTime || '',
-  temperatureC: payload?.temperatureC ?? 0,
-  pressureBar: payload?.pressureBar ?? 0,
+  temperatureC: normalizeNullableDecimal(payload?.temperatureC),
+  pressureBar: normalizeNullableDecimal(payload?.pressureBar),
   cycleTimeMin: payload?.cycleTimeMin ?? 0,
   indicatorResult: payload?.indicatorResult || '',
   complianceStatus: payload?.complianceStatus || '',

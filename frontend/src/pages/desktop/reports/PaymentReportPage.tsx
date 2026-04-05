@@ -171,7 +171,8 @@ const PaymentReportPage = () => {
       };
 
       const response = await getAllPayments(apiFilters);
-      let allPayments: PaymentResponse[] = response.data || [];
+      // paymentService returns already-unwrapped data array
+      let allPayments: PaymentResponse[] = Array.isArray(response) ? response : [];
 
       // Client-side filtering
       if (filters.searchText?.trim()) {

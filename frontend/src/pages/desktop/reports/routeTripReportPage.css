@@ -217,6 +217,7 @@
   min-width: 1100px;
   border-collapse: collapse;
   font-size: 12px;
+  table-layout: fixed;
 }
 
 .table-header th {
@@ -233,12 +234,19 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .route-trip-table tbody td {
   padding: 10px 12px;
   border-bottom: 1px solid #f1f5f9;
   color: #0f172a;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .route-trip-table tbody tr:hover {
@@ -246,7 +254,24 @@
 }
 
 .route-trip-table .num-col {
-  text-align: right;
+  text-align: right !important;
+}
+
+/* Group headers in PCB reports should be centered */
+.table-header th[colspan] {
+  text-align: center !important;
+}
+
+/* Keep row-span labels left unless explicitly numeric */
+.table-header th[rowspan]:not(.num-col) {
+  text-align: left !important;
+}
+
+/* Ensure inner elements inherit cell alignment consistently */
+.route-trip-table td > *,
+.route-trip-table th > * {
+  text-align: inherit;
+  white-space: inherit;
 }
 
 .route-trip-table .empty-cell {

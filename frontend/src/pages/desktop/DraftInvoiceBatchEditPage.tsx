@@ -7,9 +7,11 @@ import {
   getDraftInvoicesByBatch,
   updateDraftInvoice,
   postDraftInvoices,
+  startBulkInvoicePdfJob,
   InvoiceResponse,
 } from '../../services/invoiceService';
 import { notifyError, notifySuccess, notifyWarning } from '../../utils/notify';
+import { MAX_BULK_PDF } from '../../utils/bulkInvoicePdf';
 import NotificationBell from '../../components/NotificationBell';
 import { hcfService } from '../../services/hcfService';
 import PageHeader from '../../components/layout/PageHeader';
@@ -274,6 +276,21 @@ const DraftInvoiceBatchEditPage = () => {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  const enqueueBulkPdfJobs = async (ids: string[]) => {
+    const targetEmail = user?.email || '';
+    if (!targetEmail) {
+      throw new Error('EMAIL_MISSING');
+    }
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += MAX_BULK_PDF) {
+      chunks.push(ids.slice(i, i + MAX_BULK_PDF));
+    }
+    for (const chunk of chunks) {
+      await startBulkInvoicePdfJob(chunk, targetEmail);
+    }
+    return { jobs: chunks.length, email: targetEmail };
+  };
+
   const postInvoices = async () => {
     const selectedInvoices = invoices.filter(inv => inv.isSelected && !inv.hasError);
     if (selectedInvoices.length === 0) {
@@ -303,9 +320,27 @@ const DraftInvoiceBatchEditPage = () => {
       const invoiceDate = new Date().toISOString().split('T')[0];
       
       const result = await postDraftInvoices(invoiceIds, invoiceDate);
-      
-      setSuccessMessage(`Posted ${result.success} invoice(s) successfully. ${result.failed} failed.`);
-      notifySuccess(`Posted ${result.success} invoice(s) successfully${result.failed ? `, ${result.failed} failed` : ''}.`);
+
+      const postedIds = result.invoiceIds ?? [];
+      let bulkSuffix = '';
+      if (postedIds.length > 0) {
+        try {
+          const { jobs, email } = await enqueueBulkPdfJobs(postedIds);
+          bulkSuffix = ` PDF ZIP processing started (${jobs} job${jobs === 1 ? '' : 's'}). Download link will be emailed to ${email}.`;
+        } catch (jobErr) {
+          if (jobErr instanceof Error && jobErr.message === 'EMAIL_MISSING') {
+            notifyWarning(
+              'Invoices posted, but your account email is missing so bulk PDF ZIP was not started. Re-login or download PDFs from Invoice Management.',
+            );
+          } else {
+            notifyWarning('Invoices posted, but bulk PDF ZIP could not be started. You can download PDFs from Invoice Management.');
+          }
+        }
+      }
+
+      const summary = `Posted ${result.success} invoice(s) successfully. ${result.failed} failed.${bulkSuffix}`;
+      setSuccessMessage(summary);
+      notifySuccess(`Posted ${result.success} invoice(s) successfully${result.failed ? `, ${result.failed} failed` : ''}.${bulkSuffix}`);
       
       setTimeout(() => {
         navigate('/finance/invoice-management');

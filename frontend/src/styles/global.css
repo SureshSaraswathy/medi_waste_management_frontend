@@ -148,3 +148,44 @@ a {
     margin-right: 0;
   }
 }
+
+/* Shared report table alignment/stability */
+[class*='report-page'] .table-scroll-container {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+[class*='report-page'] .invoice-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+[class*='report-page'] .invoice-table th,
+[class*='report-page'] .invoice-table td {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  vertical-align: middle !important;
+}
+
+/* Ensure alignment utility classes apply to inner content too */
+[class*='report-page'] .invoice-table th.text-right,
+[class*='report-page'] .invoice-table td.text-right,
+[class*='report-page'] .invoice-table th.text-right > *,
+[class*='report-page'] .invoice-table td.text-right > * {
+  text-align: right !important;
+}
+
+[class*='report-page'] .invoice-table th.text-center,
+[class*='report-page'] .invoice-table td.text-center,
+[class*='report-page'] .invoice-table th.text-center > *,
+[class*='report-page'] .invoice-table td.text-center > * {
+  text-align: center !important;
+}
+
+[class*='report-page'] .invoice-table th:not(.text-right):not(.text-center),
+[class*='report-page'] .invoice-table td:not(.text-right):not(.text-center),
+[class*='report-page'] .invoice-table th:not(.text-right):not(.text-center) > *,
+[class*='report-page'] .invoice-table td:not(.text-right):not(.text-center) > * {
+  text-align: left;
+}

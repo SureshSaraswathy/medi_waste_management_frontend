@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
-import {
-  getPaymentsWithoutReceipt,
-  createManualReceipt,
-  PaymentResponse,
-  CreateManualReceiptRequest,
-} from '../../services/paymentService';
+import { getAllPayments, PaymentResponse } from '../../services/paymentService';
+import { downloadReceiptPdf } from '../../utils/receiptPdfDownload';
+import { notifySuccess, notifyError } from '../../utils/notify';
 import NotificationBell from '../../components/NotificationBell';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
@@ -29,10 +26,20 @@ interface AdvancedFilters {
   status: string;
 }
 
+/** Short human-readable ref when no bank/UPI reference exists (avoids raw UUID in the grid). */
+function formatPaymentRef(paymentId: string): string {
+  const compact = paymentId.replace(/-/g, '');
+  return `PAY-${compact.slice(-8).toUpperCase()}`;
+}
+
+function paymentDisplayPrimary(p: PaymentResponse): string {
+  const ref = p.referenceNumber?.trim();
+  return ref || formatPaymentRef(p.paymentId);
+}
+
 const ReceiptManagementPage = () => {
   const { logout, permissions } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -43,25 +50,16 @@ const ReceiptManagementPage = () => {
     paymentMode: '',
     status: '',
   });
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null);
   const [payments, setPayments] = useState<PaymentResponse[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [downloadingPaymentId, setDownloadingPaymentId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
-
-  // Form state for manual receipt creation
-  const [formData, setFormData] = useState<CreateManualReceiptRequest>({
-    paymentId: '',
-    receiptDate: '',
-    notes: null,
-  });
 
   useEffect(() => {
     loadData();
@@ -92,9 +90,7 @@ const ReceiptManagementPage = () => {
         status: c.status,
       }));
       setCompanies(mappedCompanies);
-      console.log('Loaded companies:', mappedCompanies.length);
 
-      // Load payments without receipts after companies are loaded
       await loadPayments();
       
       // Clear error on successful load
@@ -111,21 +107,11 @@ const ReceiptManagementPage = () => {
   const loadPayments = async (companyId?: string) => {
     try {
       setLoading(true);
-      setError(null); // Clear any previous errors
-      const response = await getPaymentsWithoutReceipt(companyId);
-      // apiRequest extracts the data property, so response is PaymentResponse[]
-      const paymentsList = Array.isArray(response) ? response : [];
-      setPayments(paymentsList);
-      
-      // Clear error on successful load
       setError(null);
-      
-      // Debug: Log company IDs from payments
-      if (paymentsList.length > 0) {
-        console.log('Payments loaded:', paymentsList.length);
-        console.log('Payment company IDs:', paymentsList.map(p => p.companyId));
-        console.log('Available companies:', companies.map(c => ({ id: c.id, name: c.companyName })));
-      }
+      const response = await getAllPayments(companyId ? { companyId } : undefined);
+      const list = Array.isArray(response) ? response : [];
+      setPayments(list.filter((p) => p.receiptId));
+      setError(null);
     } catch (err: any) {
       console.error('Error loading payments:', err);
       const errorMessage = err.message || err.response?.data?.message || 'Failed to load payments';
@@ -136,53 +122,31 @@ const ReceiptManagementPage = () => {
     }
   };
 
-  const handleCreateReceipt = (payment: PaymentResponse) => {
-    setSelectedPayment(payment);
-    setFormData({
-      paymentId: payment.paymentId,
-      receiptDate: payment.paymentDate, // Default to payment date
-      notes: null,
-    });
-    setShowCreateModal(true);
-  };
-
-  const handleSubmitReceipt = async () => {
-    if (!formData.paymentId) {
-      setError('Please select a payment');
-      return;
-    }
-
+  const handleDownloadReceiptPdf = async (payment: PaymentResponse) => {
+    if (!payment.receiptId) return;
+    setDownloadingPaymentId(payment.paymentId);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setSuccessMessage(null);
-
-      const result = await createManualReceipt(formData);
-
-      setSuccessMessage(`Receipt ${result.data.receipt.receiptNumber} created successfully!`);
-      setShowCreateModal(false);
-      setSelectedPayment(null);
-      setFormData({
-        paymentId: '',
-        receiptDate: '',
-        notes: null,
-      });
-
-      // Reload payments
-      await loadPayments(companyFilter || undefined);
-    } catch (err: any) {
-      console.error('Error creating receipt:', err);
-      setError(err.message || 'Failed to create receipt');
+      const company = companies.find((c) => c.id === payment.companyId);
+      await downloadReceiptPdf(payment.receiptId, { companyId: payment.companyId, fallbackCompanyName: company?.companyName });
+      notifySuccess('Receipt PDF downloaded (same template as Invoice Management).');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to download receipt PDF';
+      setError(msg);
+      notifyError(msg);
     } finally {
-      setLoading(false);
+      setDownloadingPaymentId(null);
     }
   };
 
   const filteredPayments = payments.filter((payment) => {
     // Search query filter
     const searchLower = searchQuery.toLowerCase();
+    const shortRef = formatPaymentRef(payment.paymentId).toLowerCase();
     const matchesSearch = !searchQuery ||
       payment.paymentId.toLowerCase().includes(searchLower) ||
+      shortRef.includes(searchLower) ||
+      payment.referenceNumber?.toLowerCase().includes(searchLower) ||
       payment.receiptNumber?.toLowerCase().includes(searchLower) ||
       companies.find((c) => c.id === payment.companyId)?.companyName.toLowerCase().includes(searchLower);
 
@@ -190,7 +154,12 @@ const ReceiptManagementPage = () => {
     const matchesCompany = !companyFilter || payment.companyId === companyFilter;
 
     // Advanced filters
-    const matchesPaymentId = !advancedFilters.paymentId || payment.paymentId.toLowerCase().includes(advancedFilters.paymentId.toLowerCase());
+    const pid = advancedFilters.paymentId.toLowerCase();
+    const matchesPaymentId =
+      !advancedFilters.paymentId ||
+      payment.paymentId.toLowerCase().includes(pid) ||
+      shortRef.includes(pid) ||
+      (payment.referenceNumber?.toLowerCase().includes(pid) ?? false);
     const matchesAdvancedCompany = !advancedFilters.companyId || payment.companyId === advancedFilters.companyId;
     const matchesPaymentDate = !advancedFilters.paymentDate || payment.paymentDate === advancedFilters.paymentDate;
     const matchesPaymentMode = !advancedFilters.paymentMode || payment.paymentMode === advancedFilters.paymentMode;
@@ -278,7 +247,7 @@ const ReceiptManagementPage = () => {
       <main className="dashboard-main">
         <PageHeader 
           title="Receipt Management"
-          subtitle="Generate and manage payment receipts"
+          subtitle="Download payment receipt PDFs (Invoice Management template)"
         />
 
         <div className="route-assignment-page">
@@ -294,7 +263,7 @@ const ReceiptManagementPage = () => {
             </div>
             <div className="ra-header-text">
               <h1 className="ra-page-title">Receipt Management</h1>
-              <p className="ra-page-subtitle">Generate and manage payment receipts</p>
+              <p className="ra-page-subtitle">Download payment receipt PDFs</p>
             </div>
           </div>
 
@@ -308,7 +277,7 @@ const ReceiptManagementPage = () => {
               <input
                 type="text"
                 className="ra-search-input"
-                placeholder="Search by payment ID, receipt number, company..."
+                placeholder="Search by reference, PAY- code, receipt #, company..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -330,13 +299,6 @@ const ReceiptManagementPage = () => {
               <button className="ra-alert-close" onClick={() => setError(null)}>×</button>
             </div>
           )}
-          {successMessage && (
-            <div className="ra-alert ra-alert--success">
-              <span>{successMessage}</span>
-              <button className="ra-alert-close" onClick={() => setSuccessMessage(null)}>×</button>
-            </div>
-          )}
-
           {/* Table Container */}
           <div className="route-assignment-table-container">
             {loading && payments.length === 0 ? (
@@ -352,7 +314,7 @@ const ReceiptManagementPage = () => {
                 </svg>
                 <p style={{ fontSize: '14px', margin: 0 }}>
                   {payments.length === 0
-                    ? 'No payments found without receipts'
+                    ? 'No payments with receipts found'
                     : 'No payments match your search criteria'}
                 </p>
               </div>
@@ -360,7 +322,8 @@ const ReceiptManagementPage = () => {
               <table className="route-assignment-table">
                 <thead>
                   <tr>
-                    <th>Payment ID</th>
+                    <th>Payment reference</th>
+                    <th>Receipt #</th>
                     <th>Company</th>
                     <th>Payment Date</th>
                     <th>Payment Amount</th>
@@ -374,7 +337,13 @@ const ReceiptManagementPage = () => {
                     const company = companies.find((c) => c.id === payment.companyId);
                     return (
                       <tr key={payment.paymentId}>
-                        <td className="payment-id-cell">{payment.paymentId.substring(0, 8)}...</td>
+                        <td className="payment-ref-cell" title={payment.paymentId}>
+                          <span className="payment-ref-primary">{paymentDisplayPrimary(payment)}</span>
+                          {payment.referenceNumber?.trim() ? (
+                            <span className="payment-ref-secondary">{formatPaymentRef(payment.paymentId)}</span>
+                          ) : null}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{payment.receiptNumber || '—'}</td>
                         <td>{company?.companyName || payment.companyId || '-'}</td>
                         <td>{payment.paymentDate}</td>
                         <td style={{ fontWeight: 600 }}>₹{Number(payment.paymentAmount).toFixed(2)}</td>
@@ -384,14 +353,46 @@ const ReceiptManagementPage = () => {
                             {payment.status}
                           </span>
                         </td>
-                        <td>
-                          <button
-                            className="action-btn action-btn--create"
-                            onClick={() => handleCreateReceipt(payment)}
-                            type="button"
-                          >
-                            Create Receipt
-                          </button>
+                        <td className="receipt-mgmt-actions">
+                          <div className="receipt-action-icons">
+                            <button
+                              type="button"
+                              className="receipt-icon-btn receipt-icon-btn--pdf"
+                              disabled={!payment.receiptId || downloadingPaymentId === payment.paymentId}
+                              title={
+                                downloadingPaymentId === payment.paymentId
+                                  ? 'Downloading…'
+                                  : 'Download receipt PDF'
+                              }
+                              aria-label={
+                                downloadingPaymentId === payment.paymentId
+                                  ? 'Downloading receipt PDF'
+                                  : 'Download receipt PDF'
+                              }
+                              onClick={() => void handleDownloadReceiptPdf(payment)}
+                            >
+                              {downloadingPaymentId === payment.paymentId ? (
+                                <svg
+                                  className="receipt-icon-btn__spinner"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                </svg>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="7 10 12 15 17 10" />
+                                  <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -425,127 +426,6 @@ const ReceiptManagementPage = () => {
                 setShowAdvancedFilters(false);
               }}
             />
-          )}
-
-          {/* Create Receipt Modal */}
-          {showCreateModal && selectedPayment && (
-            <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                <div className="modal-header">
-                  <h2>Create Receipt</h2>
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '24px',
-                      cursor: 'pointer',
-                      color: '#64748b',
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="modal-body">
-                  <div style={{ marginBottom: '20px', padding: '16px', background: '#f8fafc', borderRadius: '6px' }}>
-                    <div style={{ display: 'grid', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748b' }}>Payment ID:</span>
-                        <span style={{ fontWeight: 600 }}>{selectedPayment.paymentId.substring(0, 8)}...</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748b' }}>Payment Amount:</span>
-                        <span style={{ fontWeight: 600 }}>₹{Number(selectedPayment.paymentAmount).toFixed(2)}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748b' }}>Payment Date:</span>
-                        <span>{selectedPayment.paymentDate}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748b' }}>Payment Mode:</span>
-                        <span>{selectedPayment.paymentMode}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '14px' }}>
-                      Receipt Date <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.receiptDate || ''}
-                      onChange={(e) => setFormData({ ...formData, receiptDate: e.target.value })}
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                      }}
-                    />
-                    <p style={{ marginTop: '4px', fontSize: '12px', color: '#64748b' }}>
-                      Defaults to payment date if not specified
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, fontSize: '14px' }}>
-                      Notes (Optional)
-                    </label>
-                    <textarea
-                      value={formData.notes || ''}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value || null })}
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="modal-footer">
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmitReceipt}
-                    disabled={loading || !formData.receiptDate}
-                    style={{
-                      padding: '10px 20px',
-                      background: loading || !formData.receiptDate ? '#cbd5e1' : '#3b82f6',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: loading || !formData.receiptDate ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {loading ? 'Creating...' : 'Create Receipt'}
-                  </button>
-                </div>
-              </div>
-            </div>
           )}
         </div>
       </main>
@@ -594,13 +474,13 @@ const AdvancedFiltersModal = ({
         <div className="ra-filter-modal-body">
           <div className="ra-filter-grid">
             <div className="ra-filter-field">
-              <label>Payment ID</label>
+              <label>Reference / ID</label>
               <input
                 type="text"
                 value={draft.paymentId}
                 onChange={(e) => setDraft({ ...draft, paymentId: e.target.value })}
                 className="ra-filter-input"
-                placeholder="Enter payment ID"
+                placeholder="Reference, PAY- code, or UUID"
               />
             </div>
 

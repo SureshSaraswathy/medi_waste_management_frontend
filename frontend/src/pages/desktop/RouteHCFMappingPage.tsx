@@ -846,21 +846,19 @@ const MappingFormModal = ({ mapping, companies, routes, hcfs, mappings, onClose,
     ? routes.filter(route => route.companyName === formData.companyName)
     : routes;
 
-  // Get selected route ID
-  const selectedRoute = filteredRoutes.find(r => r.routeCode === formData.routeCode);
-  
-  // Get HCFs already assigned to the selected route (excluding current mapping if editing)
-  const assignedHcfIds = mappings
-    .filter(m => m.routeId === selectedRoute?.id && m.id !== mapping?.id)
-    .map(m => m.hcfId);
+  // One HCF may appear on only one route at a time (active mappings). Exclude HCFs already
+  // mapped on any route; when editing, exclude this row so the current HCF stays listed.
+  const hcfIdsMappedOnAnyRoute = mappings
+    .filter((m) => !mapping || m.id !== mapping.id)
+    .map((m) => m.hcfId);
 
-  // Filter HCFs: exclude already assigned ones
   const filteredHCFs = formData.companyName
-    ? hcfs.filter(hcf => 
-        hcf.companyName === formData.companyName && 
-        !assignedHcfIds.includes(hcf.id)
+    ? hcfs.filter(
+        (hcf) =>
+          hcf.companyName === formData.companyName &&
+          !hcfIdsMappedOnAnyRoute.includes(hcf.id)
       )
-    : hcfs.filter(hcf => !assignedHcfIds.includes(hcf.id));
+    : hcfs.filter((hcf) => !hcfIdsMappedOnAnyRoute.includes(hcf.id));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

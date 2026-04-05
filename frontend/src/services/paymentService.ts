@@ -242,7 +242,7 @@ export const getAllPayments = async (filters?: {
   status?: string;
   paymentDateFrom?: string;
   paymentDateTo?: string;
-}): Promise<{ success: boolean; data: PaymentResponse[] }> => {
+}): Promise<PaymentResponse[]> => {
   const queryParams = new URLSearchParams();
   if (filters?.companyId) queryParams.append('companyId', filters.companyId);
   if (filters?.status) queryParams.append('status', filters.status);
@@ -250,7 +250,7 @@ export const getAllPayments = async (filters?: {
   if (filters?.paymentDateTo) queryParams.append('paymentDateTo', filters.paymentDateTo);
 
   const url = `/payments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-  return apiRequest<{ success: boolean; data: PaymentResponse[] }>(url, {
+  return apiRequest<PaymentResponse[]>(url, {
     method: 'GET',
   });
 };
@@ -306,26 +306,24 @@ export interface CreateManualReceiptRequest {
   notes?: string | null;
 }
 
-export interface CreateManualReceiptResponse {
-  success: boolean;
-  data: {
-    receipt: {
-      receiptId: string;
-      receiptNumber: string;
-      receiptDate: string;
-      totalAmount: number;
-    };
-    payment: {
-      paymentId: string;
-      paymentDate: string;
-      paymentAmount: number;
-      paymentMode: PaymentMode;
-    };
+/** Unwrapped API payload (`apiRequest` returns `data` from `{ success, data }`). */
+export interface ManualReceiptCreatedPayload {
+  receipt: {
+    receiptId: string;
+    receiptNumber: string;
+    receiptDate: string;
+    totalAmount: number;
+  };
+  payment: {
+    paymentId: string;
+    paymentDate: string;
+    paymentAmount: number;
+    paymentMode: PaymentMode;
   };
 }
 
-export const createManualReceipt = async (request: CreateManualReceiptRequest): Promise<CreateManualReceiptResponse> => {
-  return apiRequest<CreateManualReceiptResponse>('/payments/receipts/manual', {
+export const createManualReceipt = async (request: CreateManualReceiptRequest): Promise<ManualReceiptCreatedPayload> => {
+  return apiRequest<ManualReceiptCreatedPayload>('/payments/receipts/manual', {
     method: 'POST',
     body: JSON.stringify(request),
   });

@@ -894,6 +894,25 @@
   text-align: center !important;
 }
 
+/* Stamp paper first page: keep flex column + bottom-aligned party text when exporting PDF */
+.agreement-document.pdf-export-mode.stamp-paper-mode .agreement-page--stamp-paper {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 280mm !important;
+  justify-content: flex-start !important;
+}
+
+.agreement-document.pdf-export-mode.stamp-paper-mode .stamp-paper-blank-space {
+  flex: 1 1 auto !important;
+  min-height: 40mm !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.agreement-document.pdf-export-mode.stamp-paper-mode .agreement-party-intro {
+  flex-shrink: 0 !important;
+}
+
 .loading-message {
   padding: 40px;
   text-align: center;
@@ -930,15 +949,31 @@
   }
 }
 
-/* Stamp Paper Mode */
+/* Stamp Paper Mode — party block anchored toward bottom; top area for physical stamp */
 .agreement-document.stamp-paper-mode .agreement-page--stamp-paper {
   page-break-after: always;
   break-after: page;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 70vh;
+}
+
+.agreement-document.stamp-paper-mode .stamp-paper-blank-space {
+  flex: 1 1 auto;
+  /* ~4 lines less than former 65mm print reserve; enough room for stamp without extra filler */
+  min-height: 40mm;
+  height: auto;
 }
 
 .stamp-paper-blank-space {
   height: 0;
   min-height: 0;
+}
+
+.agreement-document.stamp-paper-mode .agreement-party-intro {
+  flex-shrink: 0;
+  margin-top: 0;
 }
 
 .agreement-party-intro {
@@ -1357,18 +1392,25 @@
     break-after: auto;
   }
 
-  /* Stamp Paper Mode - First Page */
+  /* Stamp Paper Mode - First Page: flex spacer + party block toward bottom; less bottom pad than other pages */
   .stamp-paper-mode .agreement-page--stamp-paper {
     padding-top: 0;
+    padding-bottom: 12mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 297mm;
   }
 
   .stamp-paper-mode .stamp-paper-blank-space {
-    height: 65mm; /* 6.5 cm blank space for stamp */
-    min-height: 65mm;
+    flex: 1 1 auto;
+    min-height: 40mm;
+    height: auto;
     display: block;
   }
 
   .stamp-paper-mode .agreement-page--stamp-paper .agreement-party-intro {
+    flex-shrink: 0;
     margin-top: 0;
   }
 

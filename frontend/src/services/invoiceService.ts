@@ -571,8 +571,11 @@ export const getBatchPreview = async (batchId: string): Promise<BatchPreviewResp
   return apiRequest<BatchPreviewResponse>(`/billing/batches/${batchId}`);
 };
 
-export const postBatch = async (batchId: string, invoiceDate: string): Promise<{ success: number; failed: number }> => {
-  return apiRequest<{ success: number; failed: number }>(`/billing/batches/${batchId}/post`, {
+export const postBatch = async (
+  batchId: string,
+  invoiceDate: string,
+): Promise<{ success: number; failed: number; invoiceIds: string[] }> => {
+  return apiRequest<{ success: number; failed: number; invoiceIds: string[] }>(`/billing/batches/${batchId}/post`, {
     method: 'POST',
     body: JSON.stringify({ invoiceDate }),
   });
@@ -612,8 +615,11 @@ export const updateDraftInvoice = async (invoiceId: string, updates: { quantity?
   });
 };
 
-export const postDraftInvoices = async (invoiceIds: string[], invoiceDate: string): Promise<{ success: number; failed: number }> => {
-  return apiRequest<{ success: number; failed: number }>(`/billing/batches/draft-invoices/post`, {
+export const postDraftInvoices = async (
+  invoiceIds: string[],
+  invoiceDate: string,
+): Promise<{ success: number; failed: number; invoiceIds: string[] }> => {
+  return apiRequest<{ success: number; failed: number; invoiceIds: string[] }>(`/billing/batches/draft-invoices/post`, {
     method: 'POST',
     body: JSON.stringify({ invoiceIds, invoiceDate }),
   });

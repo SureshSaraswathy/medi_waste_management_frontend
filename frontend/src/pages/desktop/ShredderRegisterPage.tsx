@@ -11,6 +11,18 @@ import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
 import toast from 'react-hot-toast';
 
+function parseNullableDecimal(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function optionalMetricForSave(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 interface ShredderRegister {
   id: string;
   shredRegNum: string;
@@ -20,11 +32,11 @@ interface ShredderRegister {
   equipmentId: string;
   batchNo: string;
   wasteCategory: string;
-  wasteQtyKg: number;
+  wasteQtyKg: number | null;
   startTime: string;
   endTime: string;
-  temperatureC: number;
-  pressureBar: number;
+  temperatureC: number | null;
+  pressureBar: number | null;
   cycleTimeMin: number;
   indicatorResult: string;
   complianceStatus: string;
@@ -170,12 +182,11 @@ const ShredderRegisterPage = () => {
             equipmentId: apiShredder.equipmentId,
             batchNo: apiShredder.batchNo,
             wasteCategory: apiShredder.wasteCategory,
-            // Convert decimal strings to numbers
-            wasteQtyKg: typeof apiShredder.wasteQtyKg === 'string' ? parseFloat(apiShredder.wasteQtyKg) : Number(apiShredder.wasteQtyKg) || 0,
+            wasteQtyKg: parseNullableDecimal(apiShredder.wasteQtyKg),
             startTime: apiShredder.startTime,
             endTime: apiShredder.endTime,
-            temperatureC: typeof apiShredder.temperatureC === 'string' ? parseFloat(apiShredder.temperatureC) : Number(apiShredder.temperatureC) || 0,
-            pressureBar: typeof apiShredder.pressureBar === 'string' ? parseFloat(apiShredder.pressureBar) : Number(apiShredder.pressureBar) || 0,
+            temperatureC: parseNullableDecimal(apiShredder.temperatureC),
+            pressureBar: parseNullableDecimal(apiShredder.pressureBar),
             cycleTimeMin: typeof apiShredder.cycleTimeMin === 'string' ? parseFloat(apiShredder.cycleTimeMin) : Number(apiShredder.cycleTimeMin) || 0,
             indicatorResult: apiShredder.indicatorResult,
             complianceStatus: apiShredder.complianceStatus,
@@ -336,11 +347,11 @@ const ShredderRegisterPage = () => {
         equipmentId: data.equipmentId,
         batchNo: data.batchNo?.trim(),
         wasteCategory: data.wasteCategory,
-        wasteQtyKg: Number(data.wasteQtyKg ?? 0),
+        wasteQtyKg: optionalMetricForSave(data.wasteQtyKg),
         startTime: data.startTime,
         endTime: data.endTime,
-        temperatureC: Number(data.temperatureC ?? 0),
-        pressureBar: Number(data.pressureBar ?? 0),
+        temperatureC: optionalMetricForSave(data.temperatureC),
+        pressureBar: optionalMetricForSave(data.pressureBar),
         cycleTimeMin: Number(data.cycleTimeMin ?? 0),
         indicatorResult: data.indicatorResult || 'Pass',
         complianceStatus: data.complianceStatus || 'Compliant',
@@ -748,12 +759,9 @@ const ShredderFormModal = ({
       inputSourceType: '',
       inputSourceRef: '',
       wasteCategory: '',
-      wasteQtyKg: 0,
       inputQtyKg: 0,
       startTime: '08:00',
       endTime: '17:00',
-      temperatureC: 0,
-      pressureBar: 0,
       cycleTimeMin: 0,
       indicatorResult: 'Pass',
       bladeCondition: '',
@@ -944,37 +952,7 @@ const ShredderFormModal = ({
               />
             </div>
 
-            {/* Row 4: Temperature | Pressure | Cycle Time */}
-            <div className="ra-assignment-form-group">
-              <label htmlFor="temperature">
-                Temperature (°C) <span className="ra-required">*</span>
-              </label>
-              <input
-                id="temperature"
-                type="number"
-                step="0.01"
-                value={formData.temperatureC || 0}
-                onChange={(e) => setFormData({ ...formData, temperatureC: parseFloat(e.target.value) || 0 })}
-                required
-                className="ra-assignment-input"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="ra-assignment-form-group">
-              <label htmlFor="pressure">
-                Pressure (bar) <span className="ra-required">*</span>
-              </label>
-              <input
-                id="pressure"
-                type="number"
-                step="0.01"
-                value={formData.pressureBar || 0}
-                onChange={(e) => setFormData({ ...formData, pressureBar: parseFloat(e.target.value) || 0 })}
-                required
-                className="ra-assignment-input"
-                placeholder="0.00"
-              />
-            </div>
+            {/* Row 4: Cycle Time */}
             <div className="ra-assignment-form-group">
               <label htmlFor="cycle-time">
                 Cycle Time (minutes) <span className="ra-required">*</span>
@@ -991,7 +969,7 @@ const ShredderFormModal = ({
               />
             </div>
 
-            {/* Row 5: Waste Category | Waste Quantity | Output Quantity */}
+            {/* Row 5: Waste Category | Output Quantity */}
             <div className="ra-assignment-form-group">
               <label htmlFor="waste-category">
                 Waste Category <span className="ra-required">*</span>
@@ -1014,21 +992,6 @@ const ShredderFormModal = ({
               {wasteCategoryError && (
                 <span className="ra-input-error-message">{wasteCategoryError}</span>
               )}
-            </div>
-            <div className="ra-assignment-form-group">
-              <label htmlFor="waste-qty">
-                Waste Quantity (kg) <span className="ra-required">*</span>
-              </label>
-              <input
-                id="waste-qty"
-                type="number"
-                step="0.01"
-                value={formData.wasteQtyKg || 0}
-                onChange={(e) => setFormData({ ...formData, wasteQtyKg: parseFloat(e.target.value) || 0 })}
-                required
-                className="ra-assignment-input"
-                placeholder="0.00"
-              />
             </div>
             <div className="ra-assignment-form-group">
               <label htmlFor="output-qty">Output Quantity (kg)</label>

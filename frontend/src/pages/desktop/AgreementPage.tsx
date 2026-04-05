@@ -660,6 +660,7 @@ const AgreementPage = () => {
       {/* Preview Agreement Modal */}
       {showPreviewModal && selectedAgreement && (
         <AgreementPreviewModal
+          key={selectedAgreement.id}
           agreement={selectedAgreement}
           contractNum={selectedAgreement.contractNum}
           onClose={() => {
@@ -1061,6 +1062,10 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
   const [placeholders, setPlaceholders] = useState<PlaceholderMasterResponse[]>([]);
   const agreementDocumentRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setPrintOnStampPaper(false);
+  }, [agreement.id]);
+
   // ---- Dynamic "BETWEEN" paragraph (master-driven) helpers ----
   const cleanText = (v?: string | null): string => (v ? v.replace(/\s+/g, ' ').trim() : '');
 
@@ -1074,9 +1079,26 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
     return '';
   };
 
-  const formatOrdinalDate = (dateStr: string): string => {
+  /** Parse YYYY-MM-DD as a local calendar date (avoids UTC off-by-one when displaying agreement dates). */
+  const parseAgreementDateOnly = (dateStr: string): Date | null => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const ymd = dateStr.trim().split('T')[0];
+    const parts = ymd.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(day)) {
+        return new Date(y, m, day);
+      }
+    }
     const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const formatOrdinalDate = (dateStr: string): string => {
+    const d = parseAgreementDateOnly(dateStr);
+    if (!d || Number.isNaN(d.getTime())) return dateStr;
     const day = d.getDate();
     const month = d.toLocaleString('en-IN', { month: 'long' });
     const year = d.getFullYear();
@@ -1196,30 +1218,6 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
         
         setCompany(companyData);
         setHcf(hcfData);
-        // Debug: confirm master values exist for PDF rendering
-        console.log('[AgreementPreviewModal] Loaded master data for PDF:', {
-          contractId: agreement.contractID,
-          companyId: contract.companyId,
-          hcfId: contract.hcfId,
-          company: {
-            companyName: companyData?.companyName,
-            regdOfficeAddress: companyData?.regdOfficeAddress,
-            adminOfficeAddress: companyData?.adminOfficeAddress,
-            factoryAddress: companyData?.factoryAddress,
-            authPersonName: companyData?.authPersonName,
-            authPersonDesignation: companyData?.authPersonDesignation,
-          },
-          hcf: {
-            hcfName: hcfData?.hcfName,
-            serviceAddress: hcfData?.serviceAddress,
-            agrSignAuthName: hcfData?.agrSignAuthName,
-            agrSignAuthDesignation: hcfData?.agrSignAuthDesignation,
-            drName: hcfData?.drName,
-          },
-          // Also log possible snake_case keys if API returned them unexpectedly
-          companyKeys: companyData ? Object.keys(companyData) : [],
-          hcfKeys: hcfData ? Object.keys(hcfData) : [],
-        });
       } catch (err) {
         console.error('Failed to load party data:', err);
         // Don't set error state, just leave placeholders
@@ -1505,11 +1503,9 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                   <div className="stamp-paper-blank-space"></div>
                   <div className="agreement-party-intro">
                     <h2 className="party-intro-title">THIS SERVICE AGREEMENT</h2>
-                    <p className="party-intro-subtitle">is made on this <strong>{new Date(agreement.agreementDate).toLocaleDateString('en-IN', { 
-                      day: 'numeric', 
-                      month: 'long', 
-                      year: 'numeric' 
-                    })}</strong></p>
+                    <p className="party-intro-subtitle">
+                      is made on this <strong>{formatOrdinalDate(agreement.agreementDate)}</strong>
+                    </p>
                     <div className="party-details">
                       <div className="party-section">
                         <p className="party-intro-text"><strong>BETWEEN</strong></p>
@@ -1555,7 +1551,8 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
 
             {/* Agreement Content - Starts after header spacing */}
             <div className="agreement-content">
-            {/* BETWEEN / AND section (dynamic from masters) */}
+            {/* BETWEEN / AND: hidden in stamp-paper mode — party block is on the stamp page only */}
+            {!printOnStampPaper && (
             <div className="agreement-section agreement-intro-section">
               <p className="between-text">
                 This Agreement made and entered into at <strong>{getAgreementCity()}</strong> on this{' '}
@@ -1576,6 +1573,7 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
                 </p>
               )}
             </div>
+            )}
 
             {/* All Clauses - Rendered in sequenceNo order with appropriate formatting */}
             {clauses.length > 0 && (() => {

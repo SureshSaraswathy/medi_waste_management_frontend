@@ -35,6 +35,7 @@ import PageHeader from '../../components/layout/PageHeader';
 // InvoiceCreationMethodModal removed - cards trigger modals directly
 import './invoiceManagementPage.css';
 import { computeManualInvoiceTaxPreview } from '../../utils/invoiceGstCalculation';
+import { MAX_BULK_PDF } from '../../utils/bulkInvoicePdf';
 import '../desktop/dashboardPage.css';
 import '../desktop/masterPage.css';
 import '../desktop/routeAssignmentPage.css';
@@ -100,7 +101,6 @@ function normalizeBatchStatus(status: unknown): string {
 
 const GenerateInvoicesPage = () => {
   const { logout, permissions, user } = useAuth();
-  const MAX_BULK_PDF = 100;
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -458,7 +458,25 @@ const GenerateInvoicesPage = () => {
 
     try {
       const result = await postBatch(batchId, invoiceDate);
-      setSuccessMessage(`Batch posted successfully. ${result.success} invoice(s) created, ${result.failed} failed.`);
+      const postedIds = result.invoiceIds ?? [];
+      let bulkSuffix = '';
+      if (postedIds.length > 0) {
+        try {
+          const { jobs, email } = await enqueueBulkPdfJobs(postedIds);
+          bulkSuffix = ` PDF ZIP processing started (${jobs} job${jobs === 1 ? '' : 's'}). Download link will be emailed to ${email}.`;
+        } catch (jobErr) {
+          if (jobErr instanceof Error && jobErr.message === 'EMAIL_MISSING') {
+            notifyWarning(
+              'Batch posted, but your account email is missing so bulk PDF ZIP was not started. Re-login or download PDFs from Invoice Management.',
+            );
+          } else {
+            notifyWarning('Batch posted, but bulk PDF ZIP could not be started. You can download PDFs from Invoice Management.');
+          }
+        }
+      }
+      setSuccessMessage(
+        `Batch posted successfully. ${result.success} invoice(s) created, ${result.failed} failed.${bulkSuffix}`,
+      );
       setShowBatchPreviewModal(false);
       setCurrentBatch(null);
       await loadBatches();

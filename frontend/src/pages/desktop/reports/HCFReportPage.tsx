@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { hcfService, HcfResponse } from '../../../services/hcfService';
 import { companyService, CompanyResponse } from '../../../services/companyService';
+import { categoryService, CategoryResponse } from '../../../services/categoryService';
 import AppLayout from '../../../components/layout/AppLayout';
 import PageHeader from '../../../components/layout/PageHeader';
 import ReportExportDropdown from '../../../components/reports/ReportExportDropdown';
@@ -55,6 +56,7 @@ const HCFReportPage = () => {
   const searchQuery = filters.searchText || '';
 
   const [companies, setCompanies] = useState<CompanyResponse[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [hcfs, setHcfs] = useState<HcfResponse[]>([]);
   const [filteredHcfs, setFilteredHcfs] = useState<HcfResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,14 +77,24 @@ const HCFReportPage = () => {
   useEffect(() => {
     const loadMasterData = async () => {
       try {
-        const companiesData = await companyService.getAllCompanies();
+        const [companiesData, categoriesData] = await Promise.all([
+          companyService.getAllCompanies(),
+          categoryService.getAllCategories(undefined, true),
+        ]);
         setCompanies(companiesData);
+        setCategories(categoriesData);
       } catch (error) {
         console.error('Error loading master data:', error);
       }
     };
     loadMasterData();
   }, []);
+
+  const getCategoryDisplayName = (categoryId: string | undefined): string => {
+    if (!categoryId) return 'N/A';
+    const cat = categories.find((c) => c.id === categoryId);
+    return cat?.categoryName ?? 'N/A';
+  };
 
   const hasFiltersApplied = (): boolean => {
     return !!(
@@ -127,7 +139,9 @@ const HCFReportPage = () => {
     }
 
     if (filters.category) {
-      parts.push(`Category: ${filters.category}`);
+      const f = filters.category.trim();
+      const byId = categories.find((c) => c.id === f);
+      parts.push(`Category: ${byId?.categoryName ?? f}`);
     }
 
     return parts.join(' • ');
@@ -178,10 +192,12 @@ const HCFReportPage = () => {
       }
 
       if (filters.category) {
-        const categoryLower = filters.category.toLowerCase().trim();
-        allHcfs = allHcfs.filter(h => 
-          h.category && h.category.toLowerCase().includes(categoryLower)
-        );
+        const q = filters.category.toLowerCase().trim();
+        allHcfs = allHcfs.filter((h) => {
+          if (!h.category) return false;
+          const name = categories.find((c) => c.id === h.category)?.categoryName?.toLowerCase() || '';
+          return h.category.toLowerCase().includes(q) || name.includes(q);
+        });
       }
 
       if (filters.searchText?.trim()) {
@@ -193,13 +209,17 @@ const HCFReportPage = () => {
           const company = companies.find(c => c.id === hcf.companyId);
           const companyName = (company?.companyName || '').toLowerCase();
           const district = (hcf.district || '').toLowerCase();
-          const category = (hcf.category || '').toLowerCase();
+          const categoryId = (hcf.category || '').toLowerCase();
+          const categoryName = (
+            categories.find((c) => c.id === hcf.category)?.categoryName || ''
+          ).toLowerCase();
           return hcfCode.includes(searchLower) ||
                  hcfName.includes(searchLower) ||
                  hcfShortName.includes(searchLower) ||
                  companyName.includes(searchLower) ||
                  district.includes(searchLower) ||
-                 category.includes(searchLower) ||
+                 categoryId.includes(searchLower) ||
+                 categoryName.includes(searchLower) ||
                  (hcf.pincode && hcf.pincode.includes(searchLower)) ||
                  (hcf.gstin && hcf.gstin.toLowerCase().includes(searchLower));
         });
@@ -288,7 +308,7 @@ const HCFReportPage = () => {
       return () => clearTimeout(timeout);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, companies]);
+  }, [filters, companies, categories]);
 
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'N/A';
@@ -522,7 +542,11 @@ const HCFReportPage = () => {
               disabled={loading}
               onExport={(format) => {
                 try {
-                  reportExportService.exportAuto(filteredHcfs as Record<string, any>[], format as ExportFormat, 'HCF_Report');
+                  const rows = filteredHcfs.map((h) => ({
+                    ...h,
+                    category: getCategoryDisplayName(h.category),
+                  }));
+                  reportExportService.exportAuto(rows as Record<string, any>[], format as ExportFormat, 'HCF_Report');
                   toast.success('Export downloaded successfully');
                 } catch (err: any) {
                   toast.error(err?.message || 'Failed to export report');
@@ -785,7 +809,7 @@ const HCFReportPage = () => {
                         <td>{hcf.hcfTypeCode || 'N/A'}</td>
                         <td>{hcf.district || 'N/A'}</td>
                         <td>{hcf.stateCode || 'N/A'}</td>
-                        <td>{hcf.category || 'N/A'}</td>
+                        <td>{getCategoryDisplayName(hcf.category)}</td>
                         <td>{hcf.pincode || 'N/A'}</td>
                         <td className="text-center">
                           <span className={getStatusBadgeClass(hcf.status)}>
