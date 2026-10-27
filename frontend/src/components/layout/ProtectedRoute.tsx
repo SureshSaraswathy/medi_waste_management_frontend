@@ -58,7 +58,8 @@ const ProtectedRoute = ({ roles, children }: Props) => {
   // Safety check: ensure user.roles is an array
   const userRoles = Array.isArray(user.roles) ? user.roles : [];
   
-  if (roles && roles.length > 0 && !userRoles.some((r) => roles.includes(r))) {
+  const isSuperAdmin = perms.includes('*');
+  if (roles && roles.length > 0 && !isSuperAdmin && !userRoles.some((r) => roles.includes(r))) {
     return <Navigate to="/login" replace />;
   }
 

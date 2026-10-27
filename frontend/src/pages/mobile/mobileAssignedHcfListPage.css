@@ -21,6 +21,16 @@
   background: #fff;
 }
 
+.mobile-ahcf-user-company {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #f9fafb;
+  color: #374151;
+}
+
 .mobile-ahcf-banner {
   padding: 10px 12px;
   border-radius: 12px;
