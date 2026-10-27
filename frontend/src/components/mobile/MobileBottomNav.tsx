@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { fetchMenuConfig, canAccessMenu, MenuConfig } from '../../services/permissionService';
+import { fetchMenuConfig, canAccessMenu, hasPermission, MenuConfig } from '../../services/permissionService';
 import './mobileBottomNav.css';
 
 interface NavItem {
@@ -16,7 +16,7 @@ interface NavItem {
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, permissions } = useAuth();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [menuConfig, setMenuConfig] = useState<MenuConfig | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -59,6 +59,7 @@ const MobileBottomNav = () => {
         </svg>
       ),
       path: '/mobile/scan',
+      permission: 'WASTE_COLLECTION.CREATE',
       scanButton: true,
     },
     {
@@ -77,16 +78,15 @@ const MobileBottomNav = () => {
 
   // Check if item should be visible
   const isItemVisible = (item: NavItem): boolean => {
-    // Scan button is always visible
-    if (item.scanButton) return true;
-    
     // More button is always visible
     if (item.id === 'more') return true;
     
-    // Home is always visible
-    if (item.id === 'home') return true;
-    
-    // Check permission if specified
+    // Prefer explicit permission list when present.
+    if (item.permission && Array.isArray(permissions) && permissions.length > 0) {
+      return hasPermission(permissions, item.permission);
+    }
+
+    // Fallback to menu-config checks.
     if (item.permission && menuConfig) {
       // Map permission to menu config
       if (item.permission.includes('ROUTE_ASSIGNMENT')) {

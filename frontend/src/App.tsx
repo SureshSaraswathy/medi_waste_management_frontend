@@ -131,7 +131,9 @@ const AppWithDashboard = () => {
         path="/mobile/home"
         element={
           <ProtectedRoute>
-            <MobileHomePage />
+            <RequireAnyPermission anyOf={['HOME_VIEW', 'HOME.VIEW']}>
+              <MobileHomePage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -139,7 +141,9 @@ const AppWithDashboard = () => {
         path="/mobile/scan"
         element={
           <ProtectedRoute>
-            <MobileScanPage />
+            <RequireAnyPermission anyOf={['WASTE_COLLECTION_CREATE', 'WASTE_COLLECTION.CREATE']}>
+              <MobileScanPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -147,7 +151,9 @@ const AppWithDashboard = () => {
         path="/mobile/waste-entry"
         element={
           <ProtectedRoute>
-            <MobileWasteEntryPage />
+            <RequireAnyPermission anyOf={['WASTE_COLLECTION_CREATE', 'WASTE_COLLECTION.CREATE']}>
+              <MobileWasteEntryPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -155,7 +161,9 @@ const AppWithDashboard = () => {
         path="/mobile/waste-collections"
         element={
           <ProtectedRoute>
-            <MobileWasteCollectionsPage />
+            <RequireAnyPermission anyOf={['WASTE_COLLECTION_VIEW', 'WASTE_COLLECTION.VIEW']}>
+              <MobileWasteCollectionsPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -163,7 +171,9 @@ const AppWithDashboard = () => {
         path="/mobile/assign-hospital"
         element={
           <ProtectedRoute>
-            <MobileAssignHospitalPage />
+            <RequireAnyPermission anyOf={['ROUTE_ASSIGNMENT_VIEW', 'ROUTE_ASSIGNMENT.VIEW']}>
+              <MobileAssignHospitalPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -171,7 +181,9 @@ const AppWithDashboard = () => {
         path="/mobile/assigned-hcfs"
         element={
           <ProtectedRoute>
-            <MobileAssignedHcfListPage />
+            <RequireAnyPermission anyOf={['ROUTE_HCF_VIEW', 'ROUTE_HCF.VIEW']}>
+              <MobileAssignedHcfListPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -179,7 +191,9 @@ const AppWithDashboard = () => {
         path="/mobile/analytics"
         element={
           <ProtectedRoute>
-            <MobileAnalyticsPage />
+            <RequireAnyPermission anyOf={['REPORT_VIEW', 'REPORT.VIEW']}>
+              <MobileAnalyticsPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />
@@ -187,7 +201,9 @@ const AppWithDashboard = () => {
         path="/mobile/hcf-master"
         element={
           <ProtectedRoute>
-            <MobileHCFMasterPage />
+            <RequireAnyPermission anyOf={['HCF_VIEW', 'HCF.VIEW']}>
+              <MobileHCFMasterPage />
+            </RequireAnyPermission>
           </ProtectedRoute>
         }
       />

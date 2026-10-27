@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import MobileLayout from '../../components/mobile/MobileLayout';
 import { companyService, CompanyResponse } from '../../services/companyService';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import { routeHcfService, RouteHcfMappingResponse } from '../../services/routeHcfService';
+import { routeAssignmentService, RouteAssignmentResponse } from '../../services/routeAssignmentService';
 import CompanyPicker from '../../components/mobile/CompanyPicker';
 import './mobileAssignedHcfListPage.css';
 
@@ -18,25 +20,36 @@ type Row = {
 
 const MobileAssignedHcfListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, permissions } = useAuth();
   const [companies, setCompanies] = useState<CompanyResponse[]>([]);
   const [companyId, setCompanyId] = useState('');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const isSuperAdmin = Array.isArray(permissions) && permissions.includes('*');
 
   useEffect(() => {
     const loadCompanies = async () => {
       try {
         const data = await companyService.getAllCompanies(true);
         setCompanies(data);
-        if (data.length === 1) setCompanyId(data[0].id);
+        if (isSuperAdmin) {
+          if (data.length === 1) setCompanyId(data[0].id);
+          return;
+        }
+        // User-based mobile access: non-superadmin users are scoped to their company.
+        if (user?.companyId) {
+          setCompanyId(user.companyId);
+        } else if (data.length === 1) {
+          setCompanyId(data[0].id);
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load companies');
       }
     };
     loadCompanies();
-  }, []);
+  }, [isSuperAdmin, user?.companyId]);
 
   useEffect(() => {
     const load = async () => {
@@ -47,13 +60,25 @@ const MobileAssignedHcfListPage: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const [mappings, hcfs] = await Promise.all([
+        const [mappings, hcfs, assignments] = await Promise.all([
           routeHcfService.getAllRouteHcfMappings(undefined, undefined, companyId, true),
           hcfService.getAllHcfs(companyId, true),
+          routeAssignmentService.getAllRouteAssignments(companyId),
         ]);
+
+        const userRouteIds = new Set(
+          (assignments || [])
+            .filter((a: RouteAssignmentResponse) => {
+              if (isSuperAdmin) return true;
+              if (!user?.id) return false;
+              return a.driverId === user.id || a.pickerId === user.id || a.supervisorId === user.id;
+            })
+            .map((a: RouteAssignmentResponse) => a.routeId),
+        );
 
         const routeIdsByHcf = new Map<string, Set<string>>();
         (mappings || []).forEach((m: RouteHcfMappingResponse) => {
+          if (!isSuperAdmin && !userRouteIds.has(m.routeId)) return;
           const set = routeIdsByHcf.get(m.hcfId) || new Set<string>();
           set.add(m.routeId);
           routeIdsByHcf.set(m.hcfId, set);
@@ -79,7 +104,7 @@ const MobileAssignedHcfListPage: React.FC = () => {
       }
     };
     load();
-  }, [companyId]);
+  }, [companyId, isSuperAdmin, user?.id]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -98,12 +123,18 @@ const MobileAssignedHcfListPage: React.FC = () => {
     <MobileLayout title="Assigned HCF List" showBackButton onBack={() => navigate(-1)}>
       <div className="mobile-ahcf">
         <div className="mobile-ahcf-toolbar">
-          <CompanyPicker
-            placeholder="Select Company"
-            value={companyId}
-            options={companies.map((c) => ({ id: c.id, name: c.companyName }))}
-            onChange={setCompanyId}
-          />
+          {isSuperAdmin ? (
+            <CompanyPicker
+              placeholder="Select Company"
+              value={companyId}
+              options={companies.map((c) => ({ id: c.id, name: c.companyName }))}
+              onChange={setCompanyId}
+            />
+          ) : (
+            <div className="mobile-ahcf-user-company">
+              {companies.find((c) => c.id === companyId)?.companyName || 'Company not assigned'}
+            </div>
+          )}
 
           <input
             className="mobile-ahcf-search"

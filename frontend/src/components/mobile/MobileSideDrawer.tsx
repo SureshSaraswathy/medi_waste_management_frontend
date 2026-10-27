@@ -136,6 +136,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
             </svg>
           ),
           path: '/mobile/scan',
+          permission: 'WASTE_COLLECTION.CREATE',
         },
         {
           id: 'hcf-master',
