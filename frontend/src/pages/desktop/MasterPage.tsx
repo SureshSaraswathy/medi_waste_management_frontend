@@ -8,8 +8,11 @@ import './masterPage.css';
 import '../desktop/dashboardPage.css';
 import './masterPageHeader.css';
 import NotificationBell from '../../components/NotificationBell';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const MasterPage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -433,7 +436,7 @@ const MasterPage = () => {
   };
 
   const visibleItems = useMemo(() => {
-    const byPerm = filteredItems.filter((item) => canSeeMasterCard(item.id));
+    const byPerm = filteredItems.filter((item) => canSeeMasterCard(item.id) && isRouteEntitled(item.path));
     const byFav = filters.favorites ? byPerm.filter((i) => favoriteIds.has(i.id)) : byPerm;
     const sorted = [...byFav].sort((a, b) => {
       const cmp = a.title.localeCompare(b.title);

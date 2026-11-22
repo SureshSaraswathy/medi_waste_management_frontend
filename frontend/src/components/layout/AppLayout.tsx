@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getAdminNavItems } from '../../utils/adminNavItems';
 import { canAccessDesktopModule } from '../../utils/moduleAccess';
+import { useEntitlements } from '../../context/EntitlementsContext';
 import PageHeader from '../layout/PageHeader';
 import NotificationBell from '../NotificationBell';
 import './appLayout.css';
@@ -22,6 +23,7 @@ interface AppLayoutProps extends PropsWithChildren {
 
 const AppLayout = ({ children, navItems = [], pageTitle, pageSubtitle }: AppLayoutProps) => {
   const { user, logout, permissions } = useAuth();
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

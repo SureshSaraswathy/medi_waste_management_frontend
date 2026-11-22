@@ -8,8 +8,11 @@ import './masterPage.css';
 import '../desktop/dashboardPage.css';
 import './financePage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const FinancePage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +125,7 @@ const FinancePage = () => {
   };
 
   const visibleItems = useMemo(() => {
-    const byPerm = financeItems.filter((item) => canSeeFinanceCard(item.id));
+    const byPerm = financeItems.filter((item) => canSeeFinanceCard(item.id) && isRouteEntitled(item.path));
     const bySearch = byPerm.filter(
       (item) =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

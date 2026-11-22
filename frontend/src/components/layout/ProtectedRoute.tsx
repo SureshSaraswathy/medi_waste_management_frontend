@@ -2,6 +2,9 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { PropsWithChildren } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { User } from '../../context/AuthContext';
+import { useEntitlements } from '../../context/EntitlementsContext';
+import { isRouteEntitled } from '../../utils/entitlements';
+import NotLicensedPage from '../../pages/desktop/NotLicensedPage';
 
 type Props = PropsWithChildren<{
   roles?: Array<User['roles'][number]>;
@@ -11,10 +14,11 @@ const ProtectedRoute = ({ roles, children }: Props) => {
   const { user, loading, permissions, permissionsLoading, permissionsReady } = useAuth();
   const location = useLocation();
 
+  const { ready: entitlementsReady } = useEntitlements();
   // Show loading state while checking authentication
   // Important: wait until permissions are loaded at least once for this token
   // to avoid redirecting to /not-authorized due to a transient permissions=[] state.
-  if (loading || permissionsLoading || !permissionsReady) {
+  if (loading || permissionsLoading || !permissionsReady || (user && !entitlementsReady)) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -65,5 +69,10 @@ const ProtectedRoute = ({ roles, children }: Props) => {
 
   return <>{children}</>;
 };
+
+  // Customer entitlement gate (only restricts when licensing mode is ENFORCE; SuperAdmin is never restricted)
+  if (!isSuperAdmin && !isRouteEntitled(location.pathname)) {
+    return <NotLicensedPage />;
+  }
 
 export default ProtectedRoute;

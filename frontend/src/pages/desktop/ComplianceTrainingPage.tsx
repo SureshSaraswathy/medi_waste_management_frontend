@@ -8,8 +8,11 @@ import './masterPage.css';
 import '../desktop/dashboardPage.css';
 import './complianceTrainingPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const ComplianceTrainingPage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,7 +104,7 @@ const ComplianceTrainingPage = () => {
   };
 
   const visibleItems = useMemo(() => {
-    const byPerm = complianceTrainingItems.filter((item) => canSeeComplianceCard(item.id));
+    const byPerm = complianceTrainingItems.filter((item) => canSeeComplianceCard(item.id) && isRouteEntitled(item.path));
     const bySearch = byPerm.filter(
       (item) =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

@@ -1,4 +1,5 @@
 import { hasPermission } from '../services/permissionService';
+import { isModuleEntitled } from './entitlements';
 
 /**
  * Module-level permission gating for desktop sidebar menus.
@@ -78,6 +79,8 @@ export function canAccessDesktopModule(userPermissions: string[] | undefined, mo
   const perms = Array.isArray(userPermissions) ? userPermissions : [];
   if (perms.includes('*')) return true;
   if (moduleKey === 'dashboard') return true;
+  // Customer entitlement (only restricts when licensing mode is ENFORCE; SuperAdmin returned above)
+  if (!isModuleEntitled(moduleKey)) return false;
   const candidates = MODULE_MENU_PERMISSIONS[moduleKey] || [];
   return candidates.some((p) => hasPermission(perms, p));
 }

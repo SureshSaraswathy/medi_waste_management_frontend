@@ -6,6 +6,8 @@ import PageHeader from '../../components/layout/PageHeader';
 import './masterPage.css';
 import './reportPage.css';
 import '../../components/reports/reportCard.css';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface ReportCategory {
   id: string;
@@ -29,6 +31,7 @@ interface Report {
 }
 
 const ReportPage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -653,6 +656,7 @@ const ReportPage = () => {
 
   // Filter reports
   const filteredReports = allReports.filter(report => {
+    if (!isRouteEntitled(report.path)) return false;
     const matchesSearch = 
       report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -814,7 +818,7 @@ const ReportPage = () => {
   ];
 
   return (
-    <AppLayout navItems={navItems}>
+    <AppLayout navItems={navItems.filter((i) => isRouteEntitled(i.path))}>
       <div className="reports-page">
         {/* Page Header */}
         <PageHeader 

@@ -98,6 +98,7 @@ export const sendOTPEmail = async (usernameOrEmail: string): Promise<void> => {
 export const loginRequest = async (
   usernameOrEmail: string,
   password: string,
+  channel?: 'mobile',
 ): Promise<{ requiresOTP: boolean; email?: string; user?: User; forcePasswordChange?: boolean; requiresPasswordChange?: boolean; passwordExpired?: boolean }> => {
   try {
     const result = await apiRequest<LoginResponse>('/auth/login', {
@@ -105,6 +106,8 @@ export const loginRequest = async (
       body: JSON.stringify({
         usernameOrEmail: usernameOrEmail.trim(),
         password,
+        // signed into the token by the backend: the mobile app is licensed separately from the desktop app
+        ...(channel ? { channel } : {}),
       }),
     });
 
@@ -171,13 +174,14 @@ export const loginRequest = async (
   }
 };
 
-export const loginWithOTP = async (email: string, otp: string): Promise<User> => {
+export const loginWithOTP = async (email: string, otp: string, channel?: 'mobile'): Promise<User> => {
   try {
     const result = await apiRequest<LoginResponse>('/auth/verify-otp', {
       method: 'POST',
       body: JSON.stringify({
         usernameOrEmail: email,
         otp,
+        ...(channel ? { channel } : {}),
       }),
     });
 

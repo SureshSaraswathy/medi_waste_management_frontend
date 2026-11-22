@@ -8,8 +8,11 @@ import './masterPage.css';
 import '../desktop/dashboardPage.css';
 import './transactionPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const TransactionPage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -297,7 +300,7 @@ const TransactionPage = () => {
   };
 
   const visibleItems = useMemo(() => {
-    const byPerm = filteredItems.filter((item) => canSeeTransactionCard(item.id));
+    const byPerm = filteredItems.filter((item) => canSeeTransactionCard(item.id) && isRouteEntitled(item.path));
 
     // Filter out Compliance Register card
     const withoutCompliance = byPerm.filter((item) => item.id !== 'compliance-register');

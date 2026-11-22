@@ -10,6 +10,8 @@ import OTPVerificationPage from './pages/desktop/OTPVerificationPage';
 import DashboardPage from './pages/desktop/DashboardPage';
 import DashboardConfigurationPage from './pages/desktop/DashboardConfigurationPage';
 import PermissionConfigurationPage from './pages/desktop/admin/PermissionConfigurationPage';
+import CustomerEntitlementsPage from './pages/desktop/admin/CustomerEntitlementsPage';
+import { EntitlementsProvider } from './context/EntitlementsContext';
 import NotAuthorizedPage from './pages/desktop/NotAuthorizedPage';
 import TransactionPage from './pages/desktop/TransactionPage';
 import FinancePage from './pages/desktop/FinancePage';
@@ -248,6 +250,17 @@ const AppWithDashboard = () => {
           <ProtectedRoute>
             <RequireAnyPermission anyOf={['DASHBOARD_CONFIG_UPDATE', 'DASHBOARD_CONFIG.UPDATE']}>
               <DashboardConfigurationPage />
+            </RequireAnyPermission>
+          </ProtectedRoute>
+        }
+      />
+      {/* Customer Entitlements - SuperAdmin only ('*' is the only holder of ENTITLEMENT_MANAGE) */}
+      <Route
+        path="/admin/customer-entitlements"
+        element={
+          <ProtectedRoute>
+            <RequireAnyPermission anyOf={['ENTITLEMENT_MANAGE']}>
+              <CustomerEntitlementsPage />
             </RequireAnyPermission>
           </ProtectedRoute>
         }
@@ -1205,7 +1218,9 @@ const AppWithDashboard = () => {
 
 const App = () => (
   <AuthProvider>
-    <AppWithDashboard />
+    <EntitlementsProvider>
+      <AppWithDashboard />
+    </EntitlementsProvider>
     <Toaster
       position="top-right"
       reverseOrder={false}

@@ -57,7 +57,7 @@ const LoginPageMobileFirst = () => {
     }
     
     try {
-      const result = await login(email.trim(), password);
+      const result = await login(email.trim(), password, 'mobile');
       if (result.requiresOTP && result.email) {
         // Show OTP form
         setOtpEmail(result.email);
@@ -102,7 +102,7 @@ const LoginPageMobileFirst = () => {
     }
 
     try {
-      await verifyOTP(otpEmail, otpString);
+      await verifyOTP(otpEmail, otpString, 'mobile');
       const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname;
       navigate(redirect || '/mobile/home', { replace: true });
     } catch (err) {
@@ -116,7 +116,7 @@ const LoginPageMobileFirst = () => {
     if (resendTimer > 0) return;
     setError(null);
     try {
-      await login(email, password);
+      await login(email, password, 'mobile');
       setResendTimer(60);
       setOtp(['', '', '', '', '', '']);
     } catch (err) {

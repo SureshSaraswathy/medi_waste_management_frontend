@@ -8,8 +8,11 @@ import './masterPage.css';
 import '../desktop/dashboardPage.css';
 import './commercialAgreementsPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const CommercialAgreementsPage = () => {
+  useEntitlements(); // re-render when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,7 +126,7 @@ const CommercialAgreementsPage = () => {
   };
 
   const visibleItems = useMemo(() => {
-    const byPerm = commercialAgreementsItems.filter((item) => canSeeCommercialCard(item.id));
+    const byPerm = commercialAgreementsItems.filter((item) => canSeeCommercialCard(item.id) && isRouteEntitled(item.path));
     const bySearch = byPerm.filter(
       (item) =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

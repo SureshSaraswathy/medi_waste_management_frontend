@@ -29,9 +29,9 @@ type AuthContextValue = {
   permissions: string[];
   permissionsLoading: boolean;
   permissionsReady: boolean;
-  login: (email: string, password: string) => Promise<{ requiresOTP: boolean; email?: string; requiresPasswordChange?: boolean; passwordExpired?: boolean }>;
+  login: (email: string, password: string, channel?: 'mobile') => Promise<{ requiresOTP: boolean; email?: string; requiresPasswordChange?: boolean; passwordExpired?: boolean }>;
   sendOTP: (email: string) => Promise<void>;
-  verifyOTP: (email: string, otp: string) => Promise<void>;
+  verifyOTP: (email: string, otp: string, channel?: 'mobile') => Promise<void>;
   logout: () => void;
   createUser: (payload: {
     name: string;
@@ -212,10 +212,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     loadPermissions();
   }, [user?.token]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, channel?: 'mobile') => {
     setLoading(true);
     try {
-      const result = await loginRequest(email, password);
+      const result = await loginRequest(email, password, channel);
       if (result.requiresOTP) {
         // If a previous session user exists in storage, LoginPage's "already logged in" effect
         // can immediately redirect to /dashboard and skip the OTP UI.
@@ -252,10 +252,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     }
   }, []);
 
-  const verifyOTP = useCallback(async (email: string, otp: string) => {
+  const verifyOTP = useCallback(async (email: string, otp: string, channel?: 'mobile') => {
     setLoading(true);
     try {
-      const authenticated = await loginWithOTP(email, otp);
+      const authenticated = await loginWithOTP(email, otp, channel);
       persist(authenticated);
     } finally {
       setLoading(false);
