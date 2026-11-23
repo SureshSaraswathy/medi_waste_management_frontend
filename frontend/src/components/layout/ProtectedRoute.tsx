@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { PropsWithChildren } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { User } from '../../context/AuthContext';
+import AppLogoImage from '../common/AppLogoImage';
 
 type Props = PropsWithChildren<{
   roles?: Array<User['roles'][number]>;
@@ -24,6 +25,8 @@ const ProtectedRoute = ({ roles, children }: Props) => {
         flexDirection: 'column',
         gap: '16px'
       }}>
+        {/* Application logo (renders nothing when none is configured) */}
+        <AppLogoImage maxHeight={64} />
         <div style={{ 
           width: '40px', 
           height: '40px', 

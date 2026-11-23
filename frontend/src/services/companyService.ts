@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './apiBaseUrl';
+import { resolveApiUrl } from './brandingService';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -167,6 +168,9 @@ export interface CompanyResponse {
   bankBranch?: string | null;
   upiId?: string | null;
   qrCode?: string | null;
+  // Logo (API-relative url; use resolveApiUrl / companyService.fetchLogoObjectUrl to display)
+  logoUrl?: string | null;
+  logoUpdatedAt?: string | null;
 }
 
 // Get auth token from localStorage
@@ -288,5 +292,68 @@ export const companyService = {
     await apiRequest(`/companies/${companyId}`, {
       method: 'DELETE',
     });
+  },
+
+  // ---- Company Logo --------------------------------------------------------------------
+
+  // Upload or replace the logo of one company (multipart; the browser sets the boundary header)
+  uploadLogo: async (
+    companyId: string,
+    file: File,
+  ): Promise<{ logoUrl: string | null; logoUpdatedAt: string | null }> => {
+    const token = getAuthToken();
+    const form = new FormData();
+    form.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/companies/${companyId}/logo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
+    if (!response.ok) {
+      let message = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const body = await response.json();
+        message = Array.isArray(body.message) ? body.message.join(', ') : body.message || message;
+      } catch {
+        /* keep default */
+      }
+      throw new Error(message);
+    }
+    return (await response.json()).data;
+  },
+
+  // Remove the logo of one company
+  deleteLogo: async (companyId: string): Promise<void> => {
+    await apiRequest(`/companies/${companyId}/logo`, { method: 'DELETE' });
+  },
+
+  // Raw logo image of one company, or null when it has none / cannot be fetched.
+  // Used by documents (PDF / print); never throws so a missing logo cannot break a document.
+  fetchLogoBlob: async (companyId: string): Promise<Blob | null> => {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`${API_BASE_URL}/companies/${companyId}/logo`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!response.ok) return null;
+      return await response.blob();
+    } catch {
+      return null;
+    }
+  },
+
+  // The logo endpoint is authenticated, so an <img src> cannot call it directly:
+  // fetch with the token and return an object URL (caller should URL.revokeObjectURL it).
+  fetchLogoObjectUrl: async (logoUrl?: string | null): Promise<string | null> => {
+    const absolute = resolveApiUrl(logoUrl);
+    if (!absolute) return null;
+    const token = getAuthToken();
+    try {
+      const response = await fetch(absolute, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      if (!response.ok) return null;
+      return URL.createObjectURL(await response.blob());
+    } catch {
+      return null;
+    }
   },
 };

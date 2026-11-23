@@ -8,6 +8,7 @@ import { contractService, ContractResponse } from '../../services/contractServic
 import { agreementClauseService, AgreementClauseResponse } from '../../services/agreementClauseService';
 import { agreementTemplateService } from '../../services/agreementTemplateService';
 import { companyService, CompanyResponse } from '../../services/companyService';
+import { CompanyLogoAsset, fitLogo, getCompanyLogo } from '../../utils/companyLogo';
 import { hcfService, HcfResponse } from '../../services/hcfService';
 import { placeholderMasterService, PlaceholderMasterResponse } from '../../services/placeholderMasterService';
 import toast from 'react-hot-toast';
@@ -1057,6 +1058,17 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
   const [loadingClauses, setLoadingClauses] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [company, setCompany] = useState<CompanyResponse | null>(null);
+  // Logo of the FIRST PARTY company of this agreement (resolved from the contract's companyId)
+  const [companyLogo, setCompanyLogo] = useState<CompanyLogoAsset | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getCompanyLogo(company?.id).then((logo) => {
+      if (!cancelled) setCompanyLogo(logo);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [company?.id]);
   const [hcf, setHcf] = useState<HcfResponse | null>(null);
   const [loadingPartyData, setLoadingPartyData] = useState(false);
   const [placeholders, setPlaceholders] = useState<PlaceholderMasterResponse[]>([]);
@@ -1539,6 +1551,19 @@ const AgreementPreviewModal = ({ agreement, contractNum, onClose }: AgreementPre
               <div className="agreement-page">
             {/* Agreement Header - Fixed at top */}
             <div className="agreement-header-section">
+              {companyLogo && (() => {
+                const { width, height } = fitLogo(companyLogo, 180, 70);
+                return (
+                  <img
+                    src={companyLogo.dataUrl}
+                    alt={`${company?.companyName || 'Company'} logo`}
+                    width={width}
+                    height={height}
+                    className="agreement-company-logo"
+                    style={{ display: 'block', margin: '0 auto 10px' }}
+                  />
+                );
+              })()}
               <h1 className="agreement-main-title">SERVICE AGREEMENT</h1>
               <p className="agreement-subtitle">
                 FOR COLLECTION, TRANSPORTATION, TREATMENT AND DISPOSAL OF BIOMEDICAL WASTES

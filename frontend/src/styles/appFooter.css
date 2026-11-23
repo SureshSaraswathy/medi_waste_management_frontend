@@ -1,0 +1,88 @@
+/*
+ * Application copyright footer - ONE shared implementation.
+ *
+ * Every authenticated screen renders inside one of three "main content" containers
+ * (all are flex columns that own the scrolling for the page body):
+ *
+ *   .dashboard-main          Dashboard, Transaction, Finance, Commercial, Compliance, Master,
+ *                            Configuration ... (inline layout used by ~60 pages)
+ *   .app-layout__content     Reports (AppLayout)
+ *   .dashboard-shell__main   HCF dashboard (DashboardShell)
+ *
+ * Adding the footer as the LAST flex item of those containers means:
+ *   - it is always inside the content area, so the sidebar and header are untouched;
+ *   - `margin-top: auto` pins it to the bottom of the viewport on short pages;
+ *   - on long pages it simply follows the content (after the scrollable body / at the end of the scroll);
+ *   - it takes its own space (flex-shrink: 0), so it can never overlap tables, forms or buttons.
+ * The MOBILE pages use the same single footer through their own shared containers:
+ *
+ *   .mobile-page-content     the 10 pages rendered inside <MobileLayout> (home, scan, waste entry, collections,
+ *                            assign hospital, assigned HCFs, analytics, HCF master, profile, settings). The footer is
+ *                            the last item INSIDE the content area, above the space reserved for the fixed bottom nav.
+ *   .mobile-login-container  mobile login (and .mobile-login-page, the older mobile login)
+ *   .app-shell               pages rendered in <AppShell> (the create-user screens)
+ *
+ * No page file renders or imports anything for the footer. The text lives in ONE place: --app-copyright-text below.
+ */
+:root {
+  --app-copyright-text: '\00A9  Copyright TpointTech.com. All Rights Reserved.';
+}
+
+/* The mobile content area becomes a flex column so the footer can sit at the bottom of short pages, like on desktop.
+   Block children stretch to the full width exactly as before. */
+.mobile-page-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-main::after,
+.app-layout__content::after,
+.dashboard-shell__main::after,
+.mobile-page-content::after,
+.mobile-login-container::after,
+.mobile-login-page::after,
+.app-shell::after {
+  content: var(--app-copyright-text);
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: auto;
+  padding: 12px 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+  white-space: normal;
+}
+
+/* Tablet / mobile: centered, tighter padding */
+@media (max-width: 768px) {
+  .dashboard-main::after,
+  .app-layout__content::after,
+  .dashboard-shell__main::after,
+  .mobile-page-content::after,
+  .mobile-login-container::after,
+  .mobile-login-page::after,
+  .app-shell::after {
+    text-align: center;
+    padding: 12px 16px;
+    font-size: 11px;
+  }
+}
+
+/* The footer is chrome, not document content: keep it out of printed pages / PDFs */
+@media print {
+  .dashboard-main::after,
+  .app-layout__content::after,
+  .dashboard-shell__main::after,
+  .mobile-page-content::after,
+  .mobile-login-container::after,
+  .mobile-login-page::after,
+  .app-shell::after {
+    display: none;
+  }
+}

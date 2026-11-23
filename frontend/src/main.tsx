@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/global.css';
+import './styles/branding.css';
+import './styles/appFooter.css';
+import { BrandingProvider } from './context/BrandingContext';
 
 const rootElement = document.getElementById('root');
 
@@ -14,9 +17,11 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <BrandingProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </BrandingProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

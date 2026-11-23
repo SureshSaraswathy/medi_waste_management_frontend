@@ -1,3 +1,4 @@
+import { getCompanyLogo, getLoggedInCompanyId } from '../utils/companyLogo';
 export type ExportFormat = 'pdf' | 'excel' | 'csv';
 
 export type ExportColumn<T = Record<string, any>> = {
@@ -247,7 +248,18 @@ class ReportExportService {
     downloadBlob(blob, `${normalizeFileName(fileName)}.xls`);
   }
 
-  exportToPDF<T>(data: T[], columns: ExportColumn<T>[], fileName: string): void {
+  /**
+   * Print / "Save as PDF" view of a report.
+   * options.companyId: company whose logo goes in the header. When omitted, the logged-in user's own
+   * company is used; with no company (e.g. SuperAdmin) or no logo configured, no logo is shown and the
+   * report looks exactly as before.
+   */
+  exportToPDF<T>(
+    data: T[],
+    columns: ExportColumn<T>[],
+    fileName: string,
+    options?: { companyId?: string | null },
+  ): void {
     if (!data.length) {
       throw new Error('No records available to export');
     }
@@ -274,7 +286,19 @@ class ReportExportService {
       })
       .join('');
 
-    printWindow.document.write(`
+    // The window must be opened synchronously (popup blockers), so show a placeholder first and
+    // write the real report once the (optional) company logo has been fetched.
+    printWindow.document.write('<html><body style="font-family:Arial,sans-serif;padding:16px;">Preparing report...</body></html>');
+
+    const companyId = options?.companyId ?? getLoggedInCompanyId();
+    void getCompanyLogo(companyId)
+      .catch(() => null)
+      .then((logo) => {
+        const logoHtml = logo
+          ? `<img src="${logo.dataUrl}" alt="Company Logo" style="display:block;max-height:56px;max-width:200px;object-fit:contain;margin:0 0 10px;" />`
+          : '';
+        printWindow.document.open();
+        printWindow.document.write(`
       <html>
         <head>
           <title>${normalizeFileName(fileName)}</title>
@@ -287,6 +311,7 @@ class ReportExportService {
           </style>
         </head>
         <body>
+          ${logoHtml}
           <h1>${fileName}</h1>
           <table>
             <thead><tr>${headerHtml}</tr></thead>
@@ -295,10 +320,20 @@ class ReportExportService {
         </body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+        printWindow.document.close();
+        // let the logo <img> finish decoding before the print dialog opens (print once only)
+        let printed = false;
+        const printOnce = () => {
+          if (printed || printWindow.closed) return;
+          printed = true;
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        };
+        printWindow.onload = printOnce;
+        // some browsers do not fire onload for document.write content
+        window.setTimeout(printOnce, 600);
+      });
   }
 }
 

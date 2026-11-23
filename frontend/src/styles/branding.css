@@ -1,0 +1,154 @@
+/*
+ * Application Logo - sidebar brand tile.
+ *
+ * Every desktop screen renders the same markup:
+ *   .sidebar-header > .brand > .logo-container > <svg/>   (inline pages + AppLayout)
+ * When an Application Logo is configured, BrandingProvider sets `data-app-logo` and
+ * `--app-logo-url` on <html>. These rules swap ONLY the icon inside that tile:
+ * same 32x32 box, same position, "MEDI-WASTE / Enterprise Platform" text untouched.
+ * With no logo configured the attribute is absent and none of this applies.
+ */
+html[data-app-logo] .sidebar-header .brand .logo-container {
+  background-image: var(--app-logo-url);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain; /* keeps the aspect ratio, never stretches */
+  background-origin: content-box;
+  background-color: #ffffff; /* neutral tile so dark or transparent logos stay visible */
+  border-radius: 6px;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+html[data-app-logo] .sidebar-header .brand .logo-container > svg {
+  display: none;
+}
+
+/* Shared <AppLogoImage/> (login, loading screen) */
+.app-logo-image {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Company Master: logo upload field */
+.logo-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.logo-upload__preview {
+  width: 120px;
+  height: 80px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logo-upload__preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.logo-upload__placeholder {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 0 8px;
+}
+
+.logo-upload__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.logo-upload__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logo-upload__btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.logo-upload__btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.logo-upload__btn--danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.logo-upload__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.logo-upload__hint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.logo-upload__error {
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+/* Company Master: Application Branding modal (reuses the Advanced Filter modal shell) */
+.cm-filter-modal.app-branding-modal {
+  max-width: 480px;
+}
+
+.app-branding-modal__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-branding-modal__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.app-branding-modal__notes {
+  margin: 16px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.app-branding-modal__error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.cm-filter-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

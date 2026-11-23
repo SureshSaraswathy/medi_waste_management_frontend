@@ -37,6 +37,7 @@ import './invoiceManagementPage.css';
 import '../desktop/dashboardPage.css';
 import { MAX_BULK_PDF } from '../../utils/bulkInvoicePdf';
 import { downloadReceiptPdf } from '../../utils/receiptPdfDownload';
+import { CompanyLogoAsset, fitLogo, getCompanyLogo } from '../../utils/companyLogo';
 
 // Extended interface to match both API response and component needs
 interface Invoice extends Partial<InvoiceResponse> {
@@ -4142,6 +4143,19 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
+  // Logo of the company this receipt belongs to (companyId of the payment), if it has one
+  const [companyLogo, setCompanyLogo] = useState<CompanyLogoAsset | null>(null);
+  const receiptCompanyId: string | undefined = receiptData?.companyId || receiptData?.payment?.companyId;
+  useEffect(() => {
+    let cancelled = false;
+    getCompanyLogo(receiptCompanyId).then((logo) => {
+      if (!cancelled) setCompanyLogo(logo);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [receiptCompanyId]);
+
   const formatDate = (value: string | undefined) => {
     if (!value) return '-';
     const date = new Date(value);
@@ -4182,6 +4196,7 @@ const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
 <head><meta charset="UTF-8"><title>Receipt ${receiptData.receiptNumber}</title></head>
 <body style="font-family:Arial,sans-serif;padding:18px;color:#111827;">
   <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    ${companyLogo ? `<tr><td colspan="3" style="text-align:center;padding:10px;border:1px solid #d1d5db;"><img src="${companyLogo.dataUrl}" alt="Company Logo" style="max-width:180px;max-height:70px;object-fit:contain;" /></td></tr>` : ''}
     <tr><th colspan="3" style="font-size:28px;padding:8px;border:1px solid #d1d5db;">${companyName}</th></tr>
     <tr><th colspan="3" style="font-size:24px;padding:8px;border:1px solid #d1d5db;">Receipt Voucher</th></tr>
     <tr>
@@ -4220,6 +4235,10 @@ const ReceiptModal = ({ receiptData, onClose }: ReceiptModalProps) => {
 
         <div style={{ padding: '20px' }}>
           <div style={{ textAlign: 'center', marginBottom: '30px', padding: '20px', background: '#f1f5f9', borderRadius: '8px' }}>
+            {companyLogo && (() => {
+              const { width, height } = fitLogo(companyLogo, 160, 60);
+              return <img src={companyLogo.dataUrl} alt="Company logo" width={width} height={height} style={{ display: 'block', margin: '0 auto 10px' }} />;
+            })()}
             <h3 style={{ margin: '0 0 10px 0', color: '#1e293b' }}>Payment Receipt</h3>
             <p style={{ margin: '0', fontSize: '18px', fontWeight: 600, color: '#059669' }}>
               Receipt #: {receiptData.receiptNumber}

@@ -12,6 +12,10 @@ import '../desktop/dashboardPage.css';
 import './companyMasterPage.css';
 import '../desktop/autoclaveRegisterPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import LogoUpload from '../../components/common/LogoUpload';
+import { clearCompanyLogoCache } from '../../utils/companyLogo';
+import ApplicationBrandingModal from '../../components/company/ApplicationBrandingModal';
+import { brandingService } from '../../services/brandingService';
 import toast from 'react-hot-toast';
 
 interface State {
@@ -79,6 +83,8 @@ interface Company {
   bankBranch?: string;
   upiId?: string;
   qrCode?: string;
+  // Logo (read-only here; changed through the logo upload field)
+  logoUrl?: string | null;
 }
 
 interface AdvancedFilters {
@@ -91,6 +97,14 @@ interface AdvancedFilters {
 
 const CompanyMasterPage = () => {
   const { logout, permissions } = useAuth();
+  // Application Branding is for the designated SuperAdmin ONLY. The wildcard permission '*' is not enough: the API tells
+  // us (same rule as its write endpoints) and the answer defaults to "no" until it arrives or if it fails.
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void brandingService.canManageBranding().then((yes) => { if (alive) setIsSuperAdmin(yes); });
+    return () => { alive = false; };
+  }, []);
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -101,6 +115,7 @@ const CompanyMasterPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showBranding, setShowBranding] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +242,7 @@ const CompanyMasterPage = () => {
       bankBranch: apiCompany.bankBranch || '',
       upiId: apiCompany.upiId || '',
       qrCode: apiCompany.qrCode || '',
+      logoUrl: apiCompany.logoUrl ?? null,
     };
   };
 
@@ -492,7 +508,25 @@ const CompanyMasterPage = () => {
     return cleanPayload(payload);
   };
 
-  const handleSave = async (formData: Partial<Company>) => {
+  // Logo changes are applied AFTER the company itself is saved. A logo failure never undoes the
+  // company save: the company is already stored, so we just tell the user the logo step failed.
+  const applyLogoChange = async (companyId: string, logo?: LogoChange) => {
+    if (!logo) return;
+    try {
+      if (logo.file) {
+        await companyService.uploadLogo(companyId, logo.file);
+      } else if (logo.remove) {
+        await companyService.deleteLogo(companyId);
+      }
+    } catch (err) {
+      notifyError(`Company saved, but the logo could not be updated: ${(err as Error).message}`);
+    } finally {
+      // documents (PDF / print) must pick up the new logo straight away
+      clearCompanyLogoCache(companyId);
+    }
+  };
+
+  const handleSave = async (formData: Partial<Company>, logo?: LogoChange) => {
     setLoading(true);
     setError(null);
     
@@ -511,6 +545,7 @@ const CompanyMasterPage = () => {
         
         console.log('[CompanyMaster] Update API response:', JSON.stringify(result, null, 2));
         notifySuccess('Company updated successfully');
+        await applyLogoChange(editingCompany.id, logo);
       } else {
         // Create new company
         if (!formData.companyCode || !formData.companyName) {
@@ -525,6 +560,7 @@ const CompanyMasterPage = () => {
         
         console.log('[CompanyMaster] Create API response:', JSON.stringify(result, null, 2));
         notifySuccess('Company created successfully');
+        await applyLogoChange(result.id, logo);
       }
       
       // Reload companies after save
@@ -711,6 +747,19 @@ const CompanyMasterPage = () => {
               />
             </div>
             <div className="ra-actions">
+              {/* Application Branding - SuperAdmin only (APP_BRANDING_MANAGE is covered by the '*' wildcard) */}
+              {isSuperAdmin && (
+                <button className="ra-filter-btn" onClick={() => setShowBranding(true)} type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="13.5" cy="6.5" r="1" />
+                    <circle cx="17.5" cy="10.5" r="1" />
+                    <circle cx="8.5" cy="7.5" r="1" />
+                    <circle cx="6.5" cy="12.5" r="1" />
+                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.75 1.5-1.5 0-.39-.15-.74-.39-1.04-.23-.29-.38-.63-.38-1.04 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.48-9-10-9z" />
+                  </svg>
+                  Application Branding
+                </button>
+              )}
               <button className="ra-filter-btn" onClick={() => setShowAdvancedFilters(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -839,6 +888,9 @@ const CompanyMasterPage = () => {
         />
       )}
 
+      {/* Application Branding modal (SuperAdmin only) */}
+      {isSuperAdmin && showBranding && <ApplicationBrandingModal onClose={() => setShowBranding(false)} />}
+
       {/* Add/Edit Modal */}
       {showModal && (
         <CompanyFormModal
@@ -864,7 +916,13 @@ interface CompanyFormModalProps {
   pcbZones: PCBZone[];
   loading?: boolean;
   onClose: () => void;
-  onSave: (data: Partial<Company>) => void;
+  onSave: (data: Partial<Company>, logo?: LogoChange) => void;
+}
+
+// Pending logo change made in the form (applied when the company is saved)
+interface LogoChange {
+  file: File | null;
+  remove: boolean;
 }
 
 const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose, onSave }: CompanyFormModalProps) => {
@@ -964,6 +1022,51 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
     return defaultFormData;
   });
 
+  // Company logo: staged in the form and applied on save (works for both Add and Edit)
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoRemoved, setLogoRemoved] = useState(false);
+  const [stagedPreview, setStagedPreview] = useState<string | null>(null);
+  const [existingPreview, setExistingPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    let revoked = false;
+    let objectUrl: string | null = null;
+    if (company?.logoUrl) {
+      companyService.fetchLogoObjectUrl(company.logoUrl).then((u) => {
+        if (revoked) {
+          if (u) URL.revokeObjectURL(u);
+          return;
+        }
+        objectUrl = u;
+        setExistingPreview(u);
+      });
+    }
+    return () => {
+      revoked = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [company?.logoUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (stagedPreview) URL.revokeObjectURL(stagedPreview);
+    };
+  }, [stagedPreview]);
+
+  const handleLogoSelect = (file: File) => {
+    setLogoFile(file);
+    setLogoRemoved(false);
+    setStagedPreview(URL.createObjectURL(file));
+  };
+
+  const handleLogoRemove = () => {
+    setLogoFile(null);
+    setStagedPreview(null);
+    setLogoRemoved(true);
+  };
+
+  const logoPreview = stagedPreview ?? (logoRemoved ? null : existingPreview);
+
   // Step-based navigation state
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -1056,7 +1159,7 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
         }
         return;
       }
-      onSave(formData);
+      onSave(formData, logoFile || logoRemoved ? { file: logoFile, remove: logoRemoved } : undefined);
     }
   };
 
@@ -1349,6 +1452,21 @@ const CompanyFormModal = ({ company, states, pcbZones, loading = false, onClose,
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Company Logo Section */}
+                <div className="company-section-block">
+                  <h4 className="company-section-title">
+                    Company Logo
+                  </h4>
+                  <LogoUpload
+                    idPrefix="company-logo"
+                    previewUrl={logoPreview}
+                    placeholder="No logo"
+                    onSelect={handleLogoSelect}
+                    onRemove={handleLogoRemove}
+                    disabled={loading}
+                  />
                 </div>
               </div>
             )}

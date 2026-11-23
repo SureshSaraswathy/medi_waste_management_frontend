@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { getReceipt, getPayment } from '../services/paymentService';
 import { companyService } from '../services/companyService';
+import { fitLogo, getCompanyLogo } from './companyLogo';
 
 export interface DownloadReceiptPdfOptions {
   companyId?: string;
@@ -117,6 +118,19 @@ export async function downloadReceiptPdf(
     doc.text(rightText, right - 8, y + 16, { align: 'right' });
     y += height;
   };
+
+  // Company logo of the company that owns this receipt (payment.companyId). Centered above the
+  // company name; when the company has no logo nothing is drawn and the layout is unchanged.
+  const logo = await getCompanyLogo(company?.id);
+  if (logo) {
+    try {
+      const { width: lw, height: lh } = fitLogo(logo, 140, 52);
+      doc.addImage(logo.dataUrl, logo.format, (pageWidth - lw) / 2, y - 10, lw, lh);
+      y += lh + 6;
+    } catch {
+      // unsupported image: continue without it
+    }
+  }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);

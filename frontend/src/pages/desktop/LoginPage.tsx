@@ -2,6 +2,7 @@ import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import './loginPage.css';
+import AppLogoImage from '../../components/common/AppLogoImage';
 
 const LoginPage = () => {
   const { login, verifyOTP, loading, user } = useAuth();
@@ -186,6 +187,7 @@ const LoginPage = () => {
         {/* Left Panel - Light Black Background with Infographic Image */}
         <div className="login-left-panel">
           <div className="left-panel-header">
+            <AppLogoImage maxHeight={64} style={{ marginBottom: 16 }} />
             <h1 className="left-panel-title">Medi Waste Management System</h1>
             <p className="left-panel-subtitle">Streamlined healthcare waste tracking and compliance</p>
           </div>

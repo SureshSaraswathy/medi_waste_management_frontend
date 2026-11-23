@@ -2,6 +2,7 @@ import { FormEvent, useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import './loginPageMobileFirst.css';
+import AppLogoImage from '../../components/common/AppLogoImage';
 
 const LoginPageMobileFirst = () => {
   const { login, verifyOTP, loading, user } = useAuth();
@@ -139,6 +140,7 @@ const LoginPageMobileFirst = () => {
     <div className="mobile-login-container">
       {/* Dark Header Section */}
       <header className="login-header">
+        <AppLogoImage maxHeight={48} style={{ margin: '0 auto 12px' }} />
         <h1 className="header-title">Medi Waste Management System</h1>
         <p className="header-subtitle">Streamlined healthcare waste tracking and compliance</p>
       </header>
