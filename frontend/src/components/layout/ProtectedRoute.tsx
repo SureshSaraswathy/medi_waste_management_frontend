@@ -13,8 +13,8 @@ type Props = PropsWithChildren<{
 const ProtectedRoute = ({ roles, children }: Props) => {
   const { user, loading, permissions, permissionsLoading, permissionsReady } = useAuth();
   const location = useLocation();
-
   const { ready: entitlementsReady } = useEntitlements();
+
   // Show loading state while checking authentication
   // Important: wait until permissions are loaded at least once for this token
   // to avoid redirecting to /not-authorized due to a transient permissions=[] state.
@@ -67,12 +67,12 @@ const ProtectedRoute = ({ roles, children }: Props) => {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
-};
-
   // Customer entitlement gate (only restricts when licensing mode is ENFORCE; SuperAdmin is never restricted)
   if (!isSuperAdmin && !isRouteEntitled(location.pathname)) {
     return <NotLicensedPage />;
   }
+
+  return <>{children}</>;
+};
 
 export default ProtectedRoute;

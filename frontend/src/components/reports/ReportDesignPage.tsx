@@ -6,6 +6,7 @@ import '../../pages/desktop/dashboardPage.css';
 import './reportDesignPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface ReportParameter {
   name: string;
@@ -33,6 +34,7 @@ const ReportDesignPage = ({
   onGenerate,
   defaultParams = {},
 }: ReportDesignPageProps) => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

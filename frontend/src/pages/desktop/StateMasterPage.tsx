@@ -9,6 +9,7 @@ import './stateMasterPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
 import { validateStateDelete } from '../../utils/deleteValidationService';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface State {
   id: string;
@@ -22,6 +23,7 @@ interface State {
 }
 
 const StateMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

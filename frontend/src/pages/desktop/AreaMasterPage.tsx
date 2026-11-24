@@ -9,6 +9,7 @@ import '../desktop/dashboardPage.css';
 import './areaMasterPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface Area {
   id: string;
@@ -29,6 +30,7 @@ interface AdvancedFilters {
 }
 
 const AreaMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

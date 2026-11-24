@@ -5,6 +5,8 @@ import PageHeader from '../../components/layout/PageHeader';
 import './userManagementPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
+import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface Company {
   id: string;
@@ -38,7 +40,8 @@ interface Permission {
 }
 
 const RolesPermissionsPage = () => {
-  const { logout } = useAuth();
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
+  const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -143,57 +146,7 @@ const RolesPermissionsPage = () => {
     permissions: {} as Record<string, boolean>,
   });
 
-  const navItems = [
-    {
-      path: '/dashboard',
-      label: 'Dashboard',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-        </svg>
-      ),
-      active: location.pathname === '/dashboard',
-    },
-    {
-      path: '/master',
-      label: 'Master',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
-        </svg>
-      ),
-      active: location.pathname === '/master' || location.pathname.startsWith('/master'),
-    },
-    {
-      path: '/master/user-management',
-      label: 'User Management',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      ),
-      active: location.pathname === '/master/user-management' || location.pathname.startsWith('/master/user-management'),
-    },
-    {
-      path: '/report',
-      label: 'Report',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-      ),
-      active: location.pathname.startsWith('/report'),
-    },
-  ];
+  const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   const filteredRoles = roles.filter((role) =>
     role.roleName.toLowerCase().includes(searchQuery.toLowerCase()) ||

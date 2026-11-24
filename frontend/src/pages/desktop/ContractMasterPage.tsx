@@ -12,6 +12,7 @@ import './contractMasterPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface Company {
   id: string;
@@ -42,6 +43,7 @@ interface AdvancedFilters {
 }
 
 const ContractMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

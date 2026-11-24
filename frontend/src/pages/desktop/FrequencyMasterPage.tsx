@@ -10,6 +10,7 @@ import './frequencyMasterPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface Frequency {
   id: string;
@@ -31,6 +32,7 @@ interface Company {
 }
 
 const FrequencyMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'FREQUENCY_CREATE');

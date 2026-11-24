@@ -9,6 +9,7 @@ import './incidentRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
 import toast from 'react-hot-toast';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface IncidentRegister {
   id: string;
@@ -52,6 +53,7 @@ interface AdvancedFilters {
 }
 
 const IncidentRegisterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');

@@ -10,6 +10,7 @@ import { companyService, CompanyResponse } from '../../services/companyService';
 import PageHeader from '../../components/layout/PageHeader';
 import './receiptManagementPage.css';
 import '../desktop/dashboardPage.css';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface Company {
   id: string;
@@ -38,6 +39,7 @@ function paymentDisplayPrimary(p: PaymentResponse): string {
 }
 
 const ReceiptManagementPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');

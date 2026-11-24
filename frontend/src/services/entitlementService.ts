@@ -25,34 +25,38 @@ export interface EntitlementNode {
   features?: EntitlementNode[];
 }
 
+/** One customer in the SuperAdmin list. Shape = GET /admin/entitlements/companies (camelCase, as the backend sends it). */
 export interface CompanySummary {
-  company_id: string;
-  company_code?: string;
-  company_name?: string;
-  status?: string;
-  enabled_modules?: number;
-  total_modules?: number;
-  [k: string]: unknown;
+  companyId: string;
+  companyCode: string;
+  companyName: string;
+  status: string;
+  enabledModules: number;
+  totalModules: number;
+  newItems: number;
 }
 
+/** Shape = GET /admin/entitlements/companies/:id */
 export interface CompanyTree {
-  company: { company_id?: string; company_name?: string; company_code?: string; [k: string]: unknown };
+  company: { companyId: string; companyCode: string; companyName: string };
   version: string;
   modes: { mode: RolloutMode; tenantMode: RolloutMode };
   totals: { items: number; effective: number; newItems: number };
   modules: EntitlementNode[];
 }
 
+/** Shape = rows of GET /admin/entitlements/companies/:id/audit */
 export interface AuditRow {
-  audit_id: string;
-  batch_id: string | null;
-  entity_code: string;
-  old_value: boolean | null;
-  new_value: boolean | null;
+  auditId: string;
+  batchId: string | null;
+  companyId: string;
+  entityCode: string;
+  oldValue: boolean | null;
+  newValue: boolean | null;
   action: string;
-  changed_by: string | null;
-  changed_by_name: string | null;
-  changed_on: string;
+  changedBy: string | null;
+  changedByName: string | null;
+  changedOn: string;
   reason: string | null;
 }
 

@@ -17,6 +17,7 @@ import html2pdf from 'html2pdf.js';
 import PageHeader from '../../components/layout/PageHeader';
 import './agreementPage.css';
 import '../desktop/dashboardPage.css';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface AdvancedFilters {
   agreementNum: string;
@@ -49,6 +50,7 @@ interface HCF {
 }
 
 const AgreementPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();

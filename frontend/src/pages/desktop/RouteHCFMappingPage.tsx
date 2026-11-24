@@ -11,6 +11,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import './routeHCFMappingPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface RouteHCFMapping {
   id: string;
@@ -54,6 +55,7 @@ interface HCF {
 }
 
 const RouteHCFMappingPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'ROUTE_HCF_CREATE');

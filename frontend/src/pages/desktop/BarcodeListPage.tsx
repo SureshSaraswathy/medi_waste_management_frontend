@@ -13,6 +13,7 @@ import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import './barcodeGenerationPage.css';
 import '../desktop/dashboardPage.css';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface BarcodeLabelWithDetails extends BarcodeLabelResponse {
   hcfName?: string;
@@ -21,6 +22,7 @@ interface BarcodeLabelWithDetails extends BarcodeLabelResponse {
 }
 
 const BarcodeListPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

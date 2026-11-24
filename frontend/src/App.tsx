@@ -115,6 +115,7 @@ import HCFForgotPasswordPage from './pages/desktop/HCFForgotPasswordPage';
 import HCFResetPasswordPage from './pages/desktop/HCFResetPasswordPage';
 import HCFChangePasswordPage from './pages/desktop/HCFChangePasswordPage';
 import HCFDashboardPage from './pages/desktop/HCFDashboardPage';
+import { MODULE_HUB_PERMISSIONS } from './utils/modulePermissions';
 
 // Wrapper component to provide Dashboard context
 const AppWithDashboard = () => {
@@ -296,7 +297,7 @@ const AppWithDashboard = () => {
         path="/transaction"
         element={
           <ProtectedRoute>
-            <RequireAnyPermission anyOf={['MENU_TRANSACTION_VIEW', 'MENU_TRANSACTION.VIEW']}>
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.transaction}>
               <TransactionPage />
             </RequireAnyPermission>
           </ProtectedRoute>
@@ -495,7 +496,7 @@ const AppWithDashboard = () => {
         path="/finance"
         element={
           <ProtectedRoute>
-            <RequireAnyPermission anyOf={['MENU_FINANCE_VIEW', 'MENU_FINANCE.VIEW', 'FINANCE_VIEW', 'FINANCE.VIEW']}>
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.finance}>
               <FinancePage />
             </RequireAnyPermission>
           </ProtectedRoute>
@@ -505,7 +506,7 @@ const AppWithDashboard = () => {
         path="/commercial-agreements"
         element={
           <ProtectedRoute>
-            <RequireAnyPermission anyOf={['MENU_COMMERCIAL_VIEW', 'MENU_COMMERCIAL.VIEW']}>
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.commercial}>
               <CommercialAgreementsPage />
             </RequireAnyPermission>
           </ProtectedRoute>
@@ -562,7 +563,7 @@ const AppWithDashboard = () => {
         path="/compliance-training"
         element={
           <ProtectedRoute>
-            <RequireAnyPermission anyOf={['MENU_COMPLIANCE_VIEW', 'MENU_COMPLIANCE.VIEW']}>
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.compliance}>
               <ComplianceTrainingPage />
             </RequireAnyPermission>
           </ProtectedRoute>
@@ -593,16 +594,7 @@ const AppWithDashboard = () => {
              * - Prefer explicit MENU_MASTER_VIEW
              * - Backward compatibility: allow MASTER/MASTERS view permissions as well
              */}
-            <RequireAnyPermission
-              anyOf={[
-                'MENU_MASTER_VIEW',
-                'MENU_MASTER.VIEW',
-                'MASTERS_VIEW',
-                'MASTERS.VIEW',
-                'MASTER_VIEW',
-                'MASTER.VIEW',
-              ]}
-            >
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.master}>
               <MasterPage />
             </RequireAnyPermission>
           </ProtectedRoute>
@@ -876,7 +868,7 @@ const AppWithDashboard = () => {
         path="/report"
         element={
           <ProtectedRoute>
-            <RequireAnyPermission anyOf={['MENU_REPORTS_VIEW', 'MENU_REPORTS.VIEW', 'REPORTS_VIEW', 'REPORTS.VIEW']}>
+            <RequireAnyPermission anyOf={MODULE_HUB_PERMISSIONS.report}>
               <ReportPage />
             </RequireAnyPermission>
           </ProtectedRoute>

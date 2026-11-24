@@ -10,6 +10,7 @@ import './incinerationRegisterPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
 import toast from 'react-hot-toast';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface IncinerationRegister {
   id: string;
@@ -60,6 +61,7 @@ interface AdvancedFilters {
 }
 
 const IncinerationRegisterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');

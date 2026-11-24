@@ -12,6 +12,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import { notifySuccess, notifyError, notifyWarning, notifyLoading, notifyUpdate } from '../../utils/notify';
 import './complianceRegisterPage.css';
 import '../desktop/dashboardPage.css';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface ComplianceRegister {
   id: string;
@@ -40,6 +41,7 @@ interface AdvancedFilters {
 }
 
 const ComplianceRegisterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

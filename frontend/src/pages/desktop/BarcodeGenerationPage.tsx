@@ -13,6 +13,7 @@ import PageHeader from '../../components/layout/PageHeader';
 import toast from 'react-hot-toast';
 import './barcodeGenerationPage.css';
 import '../desktop/dashboardPage.css';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface BarcodeLabel {
   id: string;
@@ -33,6 +34,7 @@ type ColorBlock = 'Yellow' | 'Red' | 'White' | 'Blue';
 type BarcodeType = 'Barcode' | 'QR Code';
 
 const BarcodeGenerationPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

@@ -10,6 +10,7 @@ import './hcfTypeMasterPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface HCFType {
   id: string;
@@ -31,6 +32,7 @@ interface Company {
 }
 
 const HCFTypeMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'HCF_TYPE_CREATE');

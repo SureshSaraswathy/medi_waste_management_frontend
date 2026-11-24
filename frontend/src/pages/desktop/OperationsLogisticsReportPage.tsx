@@ -6,8 +6,10 @@ import PageHeader from '../../components/layout/PageHeader';
 import './dashboardPage.css';
 import './masterPage.css';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const OperationsLogisticsReportPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');

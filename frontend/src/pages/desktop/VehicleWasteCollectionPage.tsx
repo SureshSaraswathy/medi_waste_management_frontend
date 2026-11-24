@@ -10,6 +10,7 @@ import './vehicleWasteCollectionPage.css';
 import '../desktop/dashboardPage.css';
 import NotificationBell from '../../components/NotificationBell';
 import toast from 'react-hot-toast';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface VehicleWasteCollection {
   id: string;
@@ -29,6 +30,7 @@ interface VehicleWasteCollection {
 }
 
 const VehicleWasteCollectionPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');

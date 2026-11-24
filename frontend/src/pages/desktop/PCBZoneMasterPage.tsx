@@ -8,6 +8,7 @@ import '../desktop/dashboardPage.css';
 import './pcbZoneMasterPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface PCBZone {
   id: string;
@@ -24,6 +25,7 @@ interface PCBZone {
 }
 
 const PCBZoneMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

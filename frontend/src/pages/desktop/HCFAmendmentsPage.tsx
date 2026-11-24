@@ -12,6 +12,7 @@ import './hcfAmendmentsPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface HCFAmendment {
   id: string;
@@ -31,6 +32,7 @@ interface HCFAmendment {
 }
 
 const HCFAmendmentsPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const canCreate = hasPermission(Array.isArray(permissions) ? permissions : [], 'HCF_AMENDMENT_CREATE');

@@ -37,6 +37,7 @@ import './invoiceManagementPage.css';
 import '../desktop/dashboardPage.css';
 import { MAX_BULK_PDF } from '../../utils/bulkInvoicePdf';
 import { downloadReceiptPdf } from '../../utils/receiptPdfDownload';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 // Extended interface to match both API response and component needs
 interface Invoice extends Partial<InvoiceResponse> {
@@ -122,6 +123,7 @@ interface InlinePaymentSuccess {
 }
 
 const InvoiceManagementPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

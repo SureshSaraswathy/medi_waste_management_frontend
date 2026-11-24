@@ -1,24 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getDesktopSidebarNavItems } from '../../utils/desktopSidebarNav';
 import { changePassword } from '../../services/passwordService';
 import { userService, UserResponse } from '../../services/userService';
+import AppLayout from '../../components/layout/AppLayout';
 import PageHeader from '../../components/layout/PageHeader';
 import './profilePage.css';
-import './dashboardPage.css';
-import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 const ProfilePage = () => {
-  const { user, logout, permissions } = useAuth();
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
+  const { user, permissions } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<'basic' | 'contact' | 'security'>('basic');
@@ -312,81 +308,13 @@ const ProfilePage = () => {
   const navItems = getDesktopSidebarNavItems(permissions, location.pathname);
 
   return (
-    <div className="dashboard-page">
-      <aside className={`dashboard-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-          </div>
-          {!isSidebarCollapsed && <span className="brand-name">MEDI-WASTE</span>}
-        </div>
-
-        <button
-          className="sidebar-toggle"
-          onClick={toggleSidebar}
-          aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {isSidebarCollapsed ? (
-              <polyline points="9 18 15 12 9 6"></polyline>
-            ) : (
-              <polyline points="15 18 9 12 15 6"></polyline>
-            )}
-          </svg>
-        </button>
-
-        <nav className="sidebar-nav">
-          <ul className="nav-list">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`nav-link ${item.active ? 'nav-link--active' : ''}`}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  {!isSidebarCollapsed && <span className="nav-label">{item.label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="sidebar-footer">
-          <NotificationBell variant="sidebar" />
-          <Link
-            to="/profile"
-            className={`sidebar-profile-btn ${location.pathname === '/profile' ? 'sidebar-profile-btn--active' : ''}`}
-            title="My Profile"
-          >
-            <span className="nav-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </span>
-            {!isSidebarCollapsed && <span className="nav-label">Profile</span>}
-          </Link>
-          <button onClick={logout} className="sidebar-logout-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-            {!isSidebarCollapsed && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      <main className="dashboard-main">
-        <PageHeader 
-          title="Profile"
-          subtitle="Manage your profile and account settings"
-        />
-
-        <div className="dashboard-content">
+    <AppLayout navItems={navItems}>
+      {/* Shared header; `report-page-header` is the existing shared alignment class for the standard 64px header. */}
+      <PageHeader
+        title="Profile"
+        subtitle="Manage your profile and account settings"
+        className="report-page-header"
+      />
           <div className="profile-page">
             {/* Profile Header with Avatar */}
             <div className="profile-header-card profile-header-card--template">
@@ -1017,9 +945,7 @@ const ProfilePage = () => {
               )}
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+    </AppLayout>
   );
 };
 

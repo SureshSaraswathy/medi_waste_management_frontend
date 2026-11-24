@@ -23,6 +23,7 @@ import './companyMasterPage.css';
 import '../desktop/dashboardPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface HCF {
   id: string;
@@ -122,6 +123,7 @@ interface Route {
 }
 
 const HCFMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, user, permissions } = useAuth();
   const location = useLocation();
   const perms = Array.isArray(permissions) ? permissions : [];

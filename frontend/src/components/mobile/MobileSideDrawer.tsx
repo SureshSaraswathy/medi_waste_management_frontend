@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { fetchMenuConfig, canAccessMenu, hasPermission, MenuConfig } from '../../services/permissionService';
+import { isRouteEntitled } from '../../utils/entitlements';
+import { useEntitlements } from '../../context/EntitlementsContext';
 import './mobileSideDrawer.css';
 
 interface MenuItem {
@@ -24,6 +26,7 @@ interface MobileSideDrawerProps {
 }
 
 const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) => {
+  useEntitlements(); // re-render the menu when the customer's entitlements change
   const navigate = useNavigate();
   const location = useLocation();
   const { user, permissions, logout } = useAuth();
@@ -198,6 +201,9 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({ isOpen, onClose }) 
 
   // Check if item should be visible
   const isItemVisible = (item: MenuItem): boolean => {
+    // Customer entitlements: a menu entry whose screen the customer has not enabled (licensing mode ENFORCE) is not offered. This is an
+    // additional restriction (RBAC below still decides everything else); it never grants access. Fail-open until entitlements load.
+    if (item.path && item.path !== '#' && !isRouteEntitled(item.path)) return false;
     // Prefer permission-code checks from backend (`/permissions/me`) when available.
     // This avoids hardcoding role names and supports button-wise access control.
     if (item.permission && permissions && permissions.length > 0) {

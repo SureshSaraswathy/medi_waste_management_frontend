@@ -8,6 +8,7 @@ import '../desktop/dashboardPage.css';
 import './equipmentMasterPage.css';
 import toast from 'react-hot-toast';
 import NotificationBell from '../../components/NotificationBell';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface PlaceholderMaster {
   id: string;
@@ -23,6 +24,7 @@ interface PlaceholderMaster {
 }
 
 const PlaceholderMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

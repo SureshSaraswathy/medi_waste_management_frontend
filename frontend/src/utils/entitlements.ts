@@ -75,10 +75,15 @@ const MODULE_CODES: Partial<Record<DesktopModuleKey, string>> = {
   finance: 'FINANCE',
   commercial: 'COMMERCIAL',
   compliance: 'COMPLIANCE',
+  master: 'MASTER',
   report: 'REPORTS',
 };
 
-/** dashboard and master stay visible: Dashboard is core and Master hosts the core Administration pages. */
+/**
+ * Dashboard stays visible (core). Master is a normal licensed module: when it is disabled under ENFORCE the Master item disappears and
+ * the Master pages are blocked. The core Administration pages that live under /master/user-management and /master/roles-permissions
+ * are coded ADMINISTRATION (core) in the route map, so they stay reachable; they get their own Administration sidebar entry.
+ */
 export const isModuleEntitled = (key: DesktopModuleKey): boolean => {
   const code = MODULE_CODES[key];
   return code ? isCodeEntitled(code) : true;

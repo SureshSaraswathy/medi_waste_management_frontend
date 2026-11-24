@@ -1,5 +1,6 @@
 import { hasPermission } from '../services/permissionService';
 import { isModuleEntitled } from './entitlements';
+import { MODULE_HUB_PERMISSIONS } from './modulePermissions';
 
 /**
  * Module-level permission gating for desktop sidebar menus.
@@ -23,57 +24,28 @@ export type DesktopModuleKey =
   | 'report';
 
 // Strict module gating:
-// - Modules are visible only when the explicit MENU_*_VIEW permission is present.
+// - A module item is visible only when the user holds one of the permissions that open the module's HUB page. The lists are shared
+//   with the hub route guards in App.tsx (utils/modulePermissions.ts), so a link is never shown to someone the route would refuse.
 // - Dashboard shell is always visible for authenticated users (widgets/APIs remain protected separately).
-const MODULE_MENU_PERMISSIONS: Record<Exclude<DesktopModuleKey, 'dashboard'>, string[]> = {
-  // Keep this aligned with backend auth/menu-config hasAny(...) rules.
-  transaction: [
-    'MENU_TRANSACTION_VIEW', 'MENU_TRANSACTION.VIEW',
-    'ROUTE_ASSIGNMENT_VIEW', 'ROUTE_ASSIGNMENT.VIEW',
-    'BARCODE_LABEL_VIEW', 'BARCODE_LABEL.VIEW',
-    'WASTE_COLLECTION_VIEW', 'WASTE_COLLECTION.VIEW',
-    'WASTE_TRANSACTION_VIEW', 'WASTE_TRANSACTION.VIEW',
-    'VEHICLE_WASTE_COLLECTION_VIEW', 'VEHICLE_WASTE_COLLECTION.VIEW',
-    'WASTE_PROCESS_VIEW', 'WASTE_PROCESS.VIEW',
-  ],
-  finance: [
-    'MENU_FINANCE_VIEW', 'MENU_FINANCE.VIEW',
-    'FINANCE_VIEW', 'FINANCE.VIEW',
-    'INVOICE_VIEW', 'INVOICE.VIEW',
-  ],
-  commercial: [
-    'MENU_COMMERCIAL_VIEW', 'MENU_COMMERCIAL.VIEW',
-    'CONTRACT_VIEW', 'CONTRACT.VIEW',
-    'AGREEMENT_VIEW', 'AGREEMENT.VIEW',
-    'AGREEMENT_CLAUSE_VIEW', 'AGREEMENT_CLAUSE.VIEW',
-  ],
-  compliance: [
-    'MENU_COMPLIANCE_VIEW', 'MENU_COMPLIANCE.VIEW',
-    'TRAINING_CERTIFICATE_VIEW', 'TRAINING_CERTIFICATE.VIEW',
-  ],
-  // Backward compatibility:
-  // - Older seed/migrations used MASTERS_VIEW for module-level access.
-  // - Keep MENU_MASTER_VIEW as the preferred explicit menu permission.
-  master: [
-    'MENU_MASTER_VIEW', 'MENU_MASTER.VIEW',
-    'MASTERS_VIEW', 'MASTERS.VIEW', 'MASTER_VIEW', 'MASTER.VIEW',
-    'COMPANY_VIEW', 'COMPANY.VIEW',
-    'STATE_VIEW', 'STATE.VIEW',
-    'AREA_VIEW', 'AREA.VIEW',
-    'CATEGORY_VIEW', 'CATEGORY.VIEW',
-    'COLOR_VIEW', 'COLOR.VIEW',
-    'PCB_ZONE_VIEW', 'PCB_ZONE.VIEW',
-    'FREQUENCY_VIEW', 'FREQUENCY.VIEW',
-    'HCF_TYPE_VIEW', 'HCF_TYPE.VIEW',
-    'HCF_VIEW', 'HCF.VIEW',
-    'ROUTE_VIEW', 'ROUTE.VIEW',
-    'FLEET_VIEW', 'FLEET.VIEW',
-    'ROUTE_HCF_VIEW', 'ROUTE_HCF.VIEW',
-    'USER_VIEW', 'USER.VIEW',
-    'ROLE_VIEW', 'ROLE.VIEW',
-  ],
-  report: ['MENU_REPORTS_VIEW', 'MENU_REPORTS.VIEW', 'REPORTS_VIEW', 'REPORTS.VIEW'],
+const MODULE_MENU_PERMISSIONS: Record<Exclude<DesktopModuleKey, 'dashboard'>, string[]> = MODULE_HUB_PERMISSIONS;
+
+/**
+ * Core Administration pages (User Management, Roles & Permissions). They belong to the core ADMINISTRATION entitlement module, so
+ * they never depend on the Master entitlement. These lists mirror the route guards in App.tsx.
+ */
+export const ADMINISTRATION_PERMISSIONS = {
+  users: ['USER_VIEW', 'USER_CREATE', 'USER_EDIT', 'USER_DELETE', 'USER_ACTIVATE', 'USER_DEACTIVATE'],
+  roles: ['ROLE_VIEW', 'ROLE_CREATE', 'ROLE_EDIT', 'ROLE_DELETE', 'ROLE_PERMISSIONS_MANAGE'],
 };
+
+/** First core Administration page the user may open, or null (SuperAdmin included: they always can). */
+export function firstAdministrationPath(userPermissions: string[] | undefined): string | null {
+  const perms = Array.isArray(userPermissions) ? userPermissions : [];
+  if (perms.includes('*')) return '/master/user-management';
+  if (ADMINISTRATION_PERMISSIONS.users.some((p) => hasPermission(perms, p))) return '/master/user-management';
+  if (ADMINISTRATION_PERMISSIONS.roles.some((p) => hasPermission(perms, p))) return '/master/roles-permissions';
+  return null;
+}
 
 export function canAccessDesktopModule(userPermissions: string[] | undefined, moduleKey: DesktopModuleKey): boolean {
   const perms = Array.isArray(userPermissions) ? userPermissions : [];

@@ -13,6 +13,7 @@ import './companyMasterPage.css';
 import '../desktop/autoclaveRegisterPage.css';
 import NotificationBell from '../../components/NotificationBell';
 import toast from 'react-hot-toast';
+import { useEntitlements } from '../../context/EntitlementsContext';
 
 interface State {
   id: string;
@@ -90,6 +91,7 @@ interface AdvancedFilters {
 }
 
 const CompanyMasterPage = () => {
+  useEntitlements(); // re-render the sidebar when the customer's entitlements change
   const { logout, permissions } = useAuth();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

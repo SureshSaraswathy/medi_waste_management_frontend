@@ -1,5 +1,5 @@
 import React from 'react';
-import { canAccessDesktopModule } from './moduleAccess';
+import { canAccessDesktopModule, firstAdministrationPath } from './moduleAccess';
 import { getAdminNavItems, SidebarNavItem } from './adminNavItems';
 
 export function getDesktopSidebarNavItems(permissions: string[] | undefined, pathname: string): SidebarNavItem[] {
@@ -94,10 +94,9 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
       ),
       active: normalizedPath === '/report' || normalizedPath.startsWith('/report/'),
     },
-    ...getAdminNavItems(permissions, pathname),
   ];
 
-  return navItemsAll.filter((item) => {
+  const modules = navItemsAll.filter((item) => {
     if (item.path === '/dashboard') return canAccessDesktopModule(permissions, 'dashboard');
     if (item.path === '/transaction') return canAccessDesktopModule(permissions, 'transaction');
     if (item.path === '/finance') return canAccessDesktopModule(permissions, 'finance');
@@ -107,5 +106,32 @@ export function getDesktopSidebarNavItems(permissions: string[] | undefined, pat
     if (item.path === '/report') return canAccessDesktopModule(permissions, 'report');
     return true;
   });
+
+  // Core Administration (User Management, Roles & Permissions) is independent of the Master licence. When the Master item is not
+  // available to this user (no Master permission, or Master disabled for the customer) but they may still manage users/roles, offer a
+  // direct Administration entry so those core pages stay reachable. SuperAdmin keeps the normal Master hub.
+  const isWildcard = (Array.isArray(permissions) ? permissions : []).includes('*');
+  const adminPath = firstAdministrationPath(permissions);
+  const administration: SidebarNavItem[] =
+    !isWildcard && adminPath && !modules.some((m) => m.path === '/master')
+      ? [
+          {
+            path: adminPath,
+            label: 'Administration',
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path>
+                <circle cx="10" cy="7" r="4"></circle>
+                <path d="M21 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            ),
+            active: normalizedPath.startsWith('/master/user-management') || normalizedPath.startsWith('/master/roles-permissions') || normalizedPath === '/users/new',
+          },
+        ]
+      : [];
+
+  // SuperAdmin-only tools (Dashboard Configuration, Permission Configuration, Customer Entitlements): not licensable, never filtered here.
+  return [...modules, ...administration, ...getAdminNavItems(permissions, pathname)];
 }
 
